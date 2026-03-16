@@ -1,4 +1,4 @@
-<svg width="400" viewBox="0 0 680 780" xmlns="http://www.w3.org/2000/svg">
+<svg width="600px" height="600px" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <radialGradient id="hex-gradient" cx="50%" cy="50%" r="50%">
       <stop offset="0%"   stop-color="rgba(161,161,209,1)"/>
@@ -17,6 +17,7 @@
       .pkg-name { font-family: "Courier New", Courier, monospace; font-size: 52px; font-weight: 700; fill: #EEEDFE; letter-spacing: -1px; text-anchor: middle; }
     </style>
   </defs>
+  <g transform="translate(300,300) scale(0.91) translate(-340,-390)">
   <polygon class="hex-bg"    points="650,390 495,658.5 185,658.5 30,390 185,121.5 495,121.5"/>
   <polygon class="hex-border" points="650,390 495,658.5 185,658.5 30,390 185,121.5 495,121.5"/>
   <polygon class="hex-inner-border" points="624,390 482,636.1 198,636.1 56,390 198,143.9 482,143.9"/>
@@ -47,4 +48,5 @@
   <circle class="node-circle" cx="440" cy="490" r="12"/>
   <circle class="node-circle" cx="340" cy="535" r="12"/>
   <text class="pkg-name" x="340" y="618">dmrfit</text>
+  </g>
 </svg>
