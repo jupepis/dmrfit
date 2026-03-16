@@ -7,7 +7,7 @@
 dmrfit(
   data,
   n_categories,
-  parinit,
+  parinit = NULL,
   structure = NULL,
   with_prior = FALSE,
   ncores = 1
