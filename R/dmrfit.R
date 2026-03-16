@@ -78,9 +78,9 @@ dmrfit <- function(data, n_categories, parinit, structure = NULL, with_prior = F
     data <- cbind(data, 2.0 * cross_product_stats)
 
     if(is.null(structure)) {
-        pmles <- suppressWarnings(tryCatch(expr = dmrfit::optimize(data = data, parinit = parinit, n_categories =  n_categories, P = P, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps), n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = with_prior, epsilon = 1e-06, ncores = ncores), error = function(e) {NULL}))
+        pmles <- suppressWarnings(tryCatch(expr = dmrfit:::optimize(data = data, parinit = parinit, n_categories =  n_categories, P = P, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps), n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = with_prior, epsilon = 1e-06, ncores = ncores), error = function(e) {NULL}))
     } else {
-        pmles <- suppressWarnings(tryCatch(expr = dmrfit::optimize_with_structure(data = data, parinit = parinit, n_categories =  n_categories, P = P, structure = structure, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps) , n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = with_prior, epsilon = 1e-06, ncores = ncores), error = function(e) {NULL}))
+        pmles <- suppressWarnings(tryCatch(expr = dmrfit:::optimize_with_structure(data = data, parinit = parinit, n_categories =  n_categories, P = P, structure = structure, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps) , n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = with_prior, epsilon = 1e-06, ncores = ncores), error = function(e) {NULL}))
     }
 
     if(is.null(pmles)) {
