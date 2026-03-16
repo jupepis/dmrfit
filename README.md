@@ -1,6 +1,7 @@
 <img align="right" width="185" src='man/figures/dmrfit-logo.svg' alt="dmrfit logo">
 
 # **dmrfit** 
+
 ### _Optimization Tools for Discrete Markov Random Fields_
 
 <!-- badges: start -->
