@@ -1,0 +1,50 @@
+<svg width="400" viewBox="0 0 680 780" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="hex-gradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="rgba(161,161,209,1)"/>
+      <stop offset="70%"  stop-color="rgba(26,26,46,1)"/>
+      <stop offset="80%"  stop-color="rgba(0,0,0,1)"/>
+      <stop offset="99%"  stop-color="rgba(26,26,46,1)"/>
+    </radialGradient>
+    <style>
+      .hex-bg { fill: url(#hex-gradient); }
+      .hex-border { fill: none; stroke: #7F77DD; stroke-width: 6; }
+      .hex-inner-border { fill: none; stroke: #AFA9EC; stroke-width: 5; stroke-dasharray: 28 28; opacity: 0.9; stroke-linecap: round; }
+      .node-circle { fill: #AFA9EC; }
+      .node-circle-accent { fill: #FCDE5A; }
+      .edge { stroke: #7F77DD; stroke-width: 1.8; fill: none; opacity: 0.7; }
+      .edge-constrained { stroke: #5DCAA5; stroke-width: 3.5; fill: none; opacity: 0.9; stroke-dasharray: 10 6; }
+      .pkg-name { font-family: "Courier New", Courier, monospace; font-size: 52px; font-weight: 700; fill: #EEEDFE; letter-spacing: -1px; text-anchor: middle; }
+    </style>
+  </defs>
+  <polygon class="hex-bg"    points="650,390 495,658.5 185,658.5 30,390 185,121.5 495,121.5"/>
+  <polygon class="hex-border" points="650,390 495,658.5 185,658.5 30,390 185,121.5 495,121.5"/>
+  <polygon class="hex-inner-border" points="624,390 482,636.1 198,636.1 56,390 198,143.9 482,143.9"/>
+  <line class="edge" x1="340" y1="200" x2="220" y2="275"/>
+  <line class="edge" x1="340" y1="200" x2="460" y2="275"/>
+  <line class="edge" x1="220" y1="275" x2="185" y2="390"/>
+  <line class="edge" x1="460" y1="275" x2="495" y2="390"/>
+  <line class="edge" x1="185" y1="390" x2="240" y2="490"/>
+  <line class="edge" x1="495" y1="390" x2="440" y2="490"/>
+  <line class="edge" x1="240" y1="490" x2="340" y2="535"/>
+  <line class="edge" x1="440" y1="490" x2="340" y2="535"/>
+  <line class="edge-constrained" x1="220" y1="275" x2="460" y2="275"/>
+  <line class="edge-constrained" x1="185" y1="390" x2="495" y2="390"/>
+  <line class="edge-constrained" x1="340" y1="200" x2="185" y2="390"/>
+  <line class="edge-constrained" x1="460" y1="275" x2="240" y2="490"/>
+  <circle class="node-circle" cx="340" cy="200" r="12"/>
+  <circle cx="340" cy="200" r="7" fill="#1a1a2e"/>
+  <circle class="node-circle" cx="220" cy="275" r="12"/>
+  <circle cx="220" cy="275" r="7" fill="#1a1a2e"/>
+  <circle class="node-circle" cx="460" cy="275" r="12"/>
+  <circle cx="460" cy="275" r="7" fill="#1a1a2e"/>
+  <circle class="node-circle" cx="185" cy="390" r="12"/>
+  <circle cx="185" cy="390" r="7" fill="#1a1a2e"/>
+  <circle class="node-circle" cx="495" cy="390" r="12"/>
+  <circle cx="495" cy="390" r="7" fill="#1a1a2e"/>
+  <circle class="node-circle" cx="240" cy="490" r="12"/>
+  <circle cx="240" cy="490" r="7" fill="#1a1a2e"/>
+  <circle class="node-circle" cx="440" cy="490" r="12"/>
+  <circle class="node-circle" cx="340" cy="535" r="12"/>
+  <text class="pkg-name" x="340" y="618">dmrfit</text>
+</svg>
