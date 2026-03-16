@@ -1,0 +1,30 @@
+Package: dmrfit
+Date: 2026-03-16
+Type: Package
+Title: Optimization Tools for Discrete Markov Random Fields
+Version: 0.0.1
+Authors@R: c(person(given = "Giuseppe",
+             family = "Arena",
+             role = c("aut", "cre"),
+             email = "g.arena@uva.nl",
+             comment = c(ORCID = "0000-0001-5204-3326")))
+Description: A set of tools designed for estimating discrete Markov Random Fields via pseudolikelihood, for both Ising models (Ising, 1925, <doi:10.1007/BF02980577>) and Ordinal Markov Random Fields (Marsman, M., van den Bergh, D., and Haslbeck, J. M. B, 2025, <doi:10.1017/psy.2024.4>). Parameters are estimated through a trust region optimization algorithm, with robust standard error estimation. The package supports both full network estimation,  where all edges are included, and constrained network estimation, where only a specified subset of edges is considered. 
+License: MIT + file LICENSE
+URL: https://github.com/jupepis/dmrfit
+BugReports: https://github.com/jupepis/dmrfit/issues
+Depends:
+    R (>= 4.0.0)
+Imports:
+    Rcpp (>= 1.1.0)
+Suggests: 
+    knitr,
+    rmarkdown,
+    tinytest
+LinkingTo:
+    Rcpp,
+    RcppArmadillo
+VignetteBuilder:
+    knitr    
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
