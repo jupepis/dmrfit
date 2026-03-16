@@ -1,9 +1,6 @@
-<br />
-
 <img align="right" width="185" src='man/figures/dmrfit-logo.svg' alt="dmrfit logo">
 
-## **dmrfit** 
-
+# **dmrfit** 
 ### _Optimization Tools for Discrete Markov Random Fields_
 
 <!-- badges: start -->
@@ -18,8 +15,7 @@ A set of tools designed for estimating discrete Markov Random Fields via pseudol
 
 <br />
 
-
-### Installation
+## Installation
 
 Install the package in R from CRAN:
 
@@ -30,7 +26,7 @@ library(dmrfit) # load the package
 ```
 <br />
 
-### Any issues with the package?
+## Any issues with the package?
 
 Should you encounter errors while using the package, or for reporting any kind of malfunction of the package, you can open an issue in [here](https://github.com/jupepis/dmrfit/issues). 
 
@@ -38,7 +34,7 @@ When opening an issue, please, use a descriptive title that clearly states the i
 
 <br />
 
-### References
+## References
 - Ising, E. (1925). Beitrag zur theorie des ferromagnetismus. _Zeitschrift für Physik_, 31(1):253–258.
 - Fletcher, R. (1987). _Practical Methods of Optimization_. 2nd ed. Chichester: Wiley.
 - Nocedal, J. and Wright, S.J. (1999). _Numerical Optimization_. New York: Springer.
