@@ -12,79 +12,126 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // optimize
-Rcpp::List optimize(arma::mat data, arma::vec parinit, arma::uvec n_categories, arma::uword P, double f_term, double m_term, arma::uword n_iter_max, double rinit, double rmax, bool with_prior, double epsilon, int ncores);
-RcppExport SEXP _dmrfit_optimize(SEXP dataSEXP, SEXP parinitSEXP, SEXP n_categoriesSEXP, SEXP PSEXP, SEXP f_termSEXP, SEXP m_termSEXP, SEXP n_iter_maxSEXP, SEXP rinitSEXP, SEXP rmaxSEXP, SEXP with_priorSEXP, SEXP epsilonSEXP, SEXP ncoresSEXP) {
+Rcpp::List optimize(const arma::mat& data, const arma::vec& parinit, const arma::uvec& n_categories, const arma::uword& P, const double& f_term, const double& m_term, const arma::uword& n_iter_max, const double& rinit, const double& rmax, const bool& with_prior, const double& epsilon, const int& ncores, const double& thresholds_alpha, const double& thresholds_beta, const double& interactions_location, const double& interactions_scale);
+RcppExport SEXP _dmrfit_optimize(SEXP dataSEXP, SEXP parinitSEXP, SEXP n_categoriesSEXP, SEXP PSEXP, SEXP f_termSEXP, SEXP m_termSEXP, SEXP n_iter_maxSEXP, SEXP rinitSEXP, SEXP rmaxSEXP, SEXP with_priorSEXP, SEXP epsilonSEXP, SEXP ncoresSEXP, SEXP thresholds_alphaSEXP, SEXP thresholds_betaSEXP, SEXP interactions_locationSEXP, SEXP interactions_scaleSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type data(dataSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type parinit(parinitSEXP);
-    Rcpp::traits::input_parameter< arma::uvec >::type n_categories(n_categoriesSEXP);
-    Rcpp::traits::input_parameter< arma::uword >::type P(PSEXP);
-    Rcpp::traits::input_parameter< double >::type f_term(f_termSEXP);
-    Rcpp::traits::input_parameter< double >::type m_term(m_termSEXP);
-    Rcpp::traits::input_parameter< arma::uword >::type n_iter_max(n_iter_maxSEXP);
-    Rcpp::traits::input_parameter< double >::type rinit(rinitSEXP);
-    Rcpp::traits::input_parameter< double >::type rmax(rmaxSEXP);
-    Rcpp::traits::input_parameter< bool >::type with_prior(with_priorSEXP);
-    Rcpp::traits::input_parameter< double >::type epsilon(epsilonSEXP);
-    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
-    rcpp_result_gen = Rcpp::wrap(optimize(data, parinit, n_categories, P, f_term, m_term, n_iter_max, rinit, rmax, with_prior, epsilon, ncores));
+    Rcpp::traits::input_parameter< const arma::mat& >::type data(dataSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type parinit(parinitSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type n_categories(n_categoriesSEXP);
+    Rcpp::traits::input_parameter< const arma::uword& >::type P(PSEXP);
+    Rcpp::traits::input_parameter< const double& >::type f_term(f_termSEXP);
+    Rcpp::traits::input_parameter< const double& >::type m_term(m_termSEXP);
+    Rcpp::traits::input_parameter< const arma::uword& >::type n_iter_max(n_iter_maxSEXP);
+    Rcpp::traits::input_parameter< const double& >::type rinit(rinitSEXP);
+    Rcpp::traits::input_parameter< const double& >::type rmax(rmaxSEXP);
+    Rcpp::traits::input_parameter< const bool& >::type with_prior(with_priorSEXP);
+    Rcpp::traits::input_parameter< const double& >::type epsilon(epsilonSEXP);
+    Rcpp::traits::input_parameter< const int& >::type ncores(ncoresSEXP);
+    Rcpp::traits::input_parameter< const double& >::type thresholds_alpha(thresholds_alphaSEXP);
+    Rcpp::traits::input_parameter< const double& >::type thresholds_beta(thresholds_betaSEXP);
+    Rcpp::traits::input_parameter< const double& >::type interactions_location(interactions_locationSEXP);
+    Rcpp::traits::input_parameter< const double& >::type interactions_scale(interactions_scaleSEXP);
+    rcpp_result_gen = Rcpp::wrap(optimize(data, parinit, n_categories, P, f_term, m_term, n_iter_max, rinit, rmax, with_prior, epsilon, ncores, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale));
     return rcpp_result_gen;
 END_RCPP
 }
 // optimize_with_structure
-Rcpp::List optimize_with_structure(arma::mat data, arma::vec parinit, arma::vec structure, arma::uvec n_categories, arma::uword P, double f_term, double m_term, arma::uword n_iter_max, double rinit, double rmax, bool with_prior, double epsilon, int ncores);
-RcppExport SEXP _dmrfit_optimize_with_structure(SEXP dataSEXP, SEXP parinitSEXP, SEXP structureSEXP, SEXP n_categoriesSEXP, SEXP PSEXP, SEXP f_termSEXP, SEXP m_termSEXP, SEXP n_iter_maxSEXP, SEXP rinitSEXP, SEXP rmaxSEXP, SEXP with_priorSEXP, SEXP epsilonSEXP, SEXP ncoresSEXP) {
+Rcpp::List optimize_with_structure(const arma::mat& data, const arma::vec& parinit, const arma::vec& structure, const arma::uvec& n_categories, const arma::uword& P, const double& f_term, const double& m_term, const arma::uword& n_iter_max, const double& rinit, const double& rmax, const bool& with_prior, const double& epsilon, const int& ncores, const double& thresholds_alpha, const double& thresholds_beta, const double& interactions_location, const double& interactions_scale);
+RcppExport SEXP _dmrfit_optimize_with_structure(SEXP dataSEXP, SEXP parinitSEXP, SEXP structureSEXP, SEXP n_categoriesSEXP, SEXP PSEXP, SEXP f_termSEXP, SEXP m_termSEXP, SEXP n_iter_maxSEXP, SEXP rinitSEXP, SEXP rmaxSEXP, SEXP with_priorSEXP, SEXP epsilonSEXP, SEXP ncoresSEXP, SEXP thresholds_alphaSEXP, SEXP thresholds_betaSEXP, SEXP interactions_locationSEXP, SEXP interactions_scaleSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type data(dataSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type parinit(parinitSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type structure(structureSEXP);
-    Rcpp::traits::input_parameter< arma::uvec >::type n_categories(n_categoriesSEXP);
-    Rcpp::traits::input_parameter< arma::uword >::type P(PSEXP);
-    Rcpp::traits::input_parameter< double >::type f_term(f_termSEXP);
-    Rcpp::traits::input_parameter< double >::type m_term(m_termSEXP);
-    Rcpp::traits::input_parameter< arma::uword >::type n_iter_max(n_iter_maxSEXP);
-    Rcpp::traits::input_parameter< double >::type rinit(rinitSEXP);
-    Rcpp::traits::input_parameter< double >::type rmax(rmaxSEXP);
-    Rcpp::traits::input_parameter< bool >::type with_prior(with_priorSEXP);
-    Rcpp::traits::input_parameter< double >::type epsilon(epsilonSEXP);
-    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
-    rcpp_result_gen = Rcpp::wrap(optimize_with_structure(data, parinit, structure, n_categories, P, f_term, m_term, n_iter_max, rinit, rmax, with_prior, epsilon, ncores));
+    Rcpp::traits::input_parameter< const arma::mat& >::type data(dataSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type parinit(parinitSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type structure(structureSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type n_categories(n_categoriesSEXP);
+    Rcpp::traits::input_parameter< const arma::uword& >::type P(PSEXP);
+    Rcpp::traits::input_parameter< const double& >::type f_term(f_termSEXP);
+    Rcpp::traits::input_parameter< const double& >::type m_term(m_termSEXP);
+    Rcpp::traits::input_parameter< const arma::uword& >::type n_iter_max(n_iter_maxSEXP);
+    Rcpp::traits::input_parameter< const double& >::type rinit(rinitSEXP);
+    Rcpp::traits::input_parameter< const double& >::type rmax(rmaxSEXP);
+    Rcpp::traits::input_parameter< const bool& >::type with_prior(with_priorSEXP);
+    Rcpp::traits::input_parameter< const double& >::type epsilon(epsilonSEXP);
+    Rcpp::traits::input_parameter< const int& >::type ncores(ncoresSEXP);
+    Rcpp::traits::input_parameter< const double& >::type thresholds_alpha(thresholds_alphaSEXP);
+    Rcpp::traits::input_parameter< const double& >::type thresholds_beta(thresholds_betaSEXP);
+    Rcpp::traits::input_parameter< const double& >::type interactions_location(interactions_locationSEXP);
+    Rcpp::traits::input_parameter< const double& >::type interactions_scale(interactions_scaleSEXP);
+    rcpp_result_gen = Rcpp::wrap(optimize_with_structure(data, parinit, structure, n_categories, P, f_term, m_term, n_iter_max, rinit, rmax, with_prior, epsilon, ncores, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale));
     return rcpp_result_gen;
 END_RCPP
 }
 // optimize_profile
-Rcpp::List optimize_profile(arma::mat data, arma::vec parinit, arma::uvec which_parconstr, arma::vec parconstr, arma::uvec n_categories, arma::uword P, double f_term, double m_term, arma::uword n_iter_max, double rinit, double rmax, bool with_prior, double epsilon, int ncores);
-RcppExport SEXP _dmrfit_optimize_profile(SEXP dataSEXP, SEXP parinitSEXP, SEXP which_parconstrSEXP, SEXP parconstrSEXP, SEXP n_categoriesSEXP, SEXP PSEXP, SEXP f_termSEXP, SEXP m_termSEXP, SEXP n_iter_maxSEXP, SEXP rinitSEXP, SEXP rmaxSEXP, SEXP with_priorSEXP, SEXP epsilonSEXP, SEXP ncoresSEXP) {
+Rcpp::List optimize_profile(const arma::mat& data, const arma::vec& parinit, const arma::uvec& which_parconstr, const arma::vec& parconstr, const arma::uvec& n_categories, const arma::uword& P, const double& f_term, const double& m_term, const arma::uword& n_iter_max, const double& rinit, const double& rmax, const bool& with_prior, const double& epsilon, const int& ncores, const double& thresholds_alpha, const double& thresholds_beta, const double& interactions_location, const double& interactions_scale);
+RcppExport SEXP _dmrfit_optimize_profile(SEXP dataSEXP, SEXP parinitSEXP, SEXP which_parconstrSEXP, SEXP parconstrSEXP, SEXP n_categoriesSEXP, SEXP PSEXP, SEXP f_termSEXP, SEXP m_termSEXP, SEXP n_iter_maxSEXP, SEXP rinitSEXP, SEXP rmaxSEXP, SEXP with_priorSEXP, SEXP epsilonSEXP, SEXP ncoresSEXP, SEXP thresholds_alphaSEXP, SEXP thresholds_betaSEXP, SEXP interactions_locationSEXP, SEXP interactions_scaleSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type data(dataSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type parinit(parinitSEXP);
-    Rcpp::traits::input_parameter< arma::uvec >::type which_parconstr(which_parconstrSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type parconstr(parconstrSEXP);
-    Rcpp::traits::input_parameter< arma::uvec >::type n_categories(n_categoriesSEXP);
-    Rcpp::traits::input_parameter< arma::uword >::type P(PSEXP);
-    Rcpp::traits::input_parameter< double >::type f_term(f_termSEXP);
-    Rcpp::traits::input_parameter< double >::type m_term(m_termSEXP);
-    Rcpp::traits::input_parameter< arma::uword >::type n_iter_max(n_iter_maxSEXP);
-    Rcpp::traits::input_parameter< double >::type rinit(rinitSEXP);
-    Rcpp::traits::input_parameter< double >::type rmax(rmaxSEXP);
-    Rcpp::traits::input_parameter< bool >::type with_prior(with_priorSEXP);
-    Rcpp::traits::input_parameter< double >::type epsilon(epsilonSEXP);
-    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
-    rcpp_result_gen = Rcpp::wrap(optimize_profile(data, parinit, which_parconstr, parconstr, n_categories, P, f_term, m_term, n_iter_max, rinit, rmax, with_prior, epsilon, ncores));
+    Rcpp::traits::input_parameter< const arma::mat& >::type data(dataSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type parinit(parinitSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type which_parconstr(which_parconstrSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type parconstr(parconstrSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type n_categories(n_categoriesSEXP);
+    Rcpp::traits::input_parameter< const arma::uword& >::type P(PSEXP);
+    Rcpp::traits::input_parameter< const double& >::type f_term(f_termSEXP);
+    Rcpp::traits::input_parameter< const double& >::type m_term(m_termSEXP);
+    Rcpp::traits::input_parameter< const arma::uword& >::type n_iter_max(n_iter_maxSEXP);
+    Rcpp::traits::input_parameter< const double& >::type rinit(rinitSEXP);
+    Rcpp::traits::input_parameter< const double& >::type rmax(rmaxSEXP);
+    Rcpp::traits::input_parameter< const bool& >::type with_prior(with_priorSEXP);
+    Rcpp::traits::input_parameter< const double& >::type epsilon(epsilonSEXP);
+    Rcpp::traits::input_parameter< const int& >::type ncores(ncoresSEXP);
+    Rcpp::traits::input_parameter< const double& >::type thresholds_alpha(thresholds_alphaSEXP);
+    Rcpp::traits::input_parameter< const double& >::type thresholds_beta(thresholds_betaSEXP);
+    Rcpp::traits::input_parameter< const double& >::type interactions_location(interactions_locationSEXP);
+    Rcpp::traits::input_parameter< const double& >::type interactions_scale(interactions_scaleSEXP);
+    rcpp_result_gen = Rcpp::wrap(optimize_profile(data, parinit, which_parconstr, parconstr, n_categories, P, f_term, m_term, n_iter_max, rinit, rmax, with_prior, epsilon, ncores, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale));
+    return rcpp_result_gen;
+END_RCPP
+}
+// mvnrnd_arma
+arma::mat mvnrnd_arma(const arma::vec& mu, const arma::mat& Sigma, int n);
+RcppExport SEXP _dmrfit_mvnrnd_arma(SEXP muSEXP, SEXP SigmaSEXP, SEXP nSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Sigma(SigmaSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    rcpp_result_gen = Rcpp::wrap(mvnrnd_arma(mu, Sigma, n));
+    return rcpp_result_gen;
+END_RCPP
+}
+// npseudologlik
+double npseudologlik(const arma::vec& pars, const arma::mat& data, const arma::uword& P, const arma::uvec& n_categories, const bool& with_prior, const int& ncores, const double& thresholds_alpha, const double& thresholds_beta, const double& interactions_location, const double& interactions_scale);
+RcppExport SEXP _dmrfit_npseudologlik(SEXP parsSEXP, SEXP dataSEXP, SEXP PSEXP, SEXP n_categoriesSEXP, SEXP with_priorSEXP, SEXP ncoresSEXP, SEXP thresholds_alphaSEXP, SEXP thresholds_betaSEXP, SEXP interactions_locationSEXP, SEXP interactions_scaleSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type pars(parsSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type data(dataSEXP);
+    Rcpp::traits::input_parameter< const arma::uword& >::type P(PSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type n_categories(n_categoriesSEXP);
+    Rcpp::traits::input_parameter< const bool& >::type with_prior(with_priorSEXP);
+    Rcpp::traits::input_parameter< const int& >::type ncores(ncoresSEXP);
+    Rcpp::traits::input_parameter< const double& >::type thresholds_alpha(thresholds_alphaSEXP);
+    Rcpp::traits::input_parameter< const double& >::type thresholds_beta(thresholds_betaSEXP);
+    Rcpp::traits::input_parameter< const double& >::type interactions_location(interactions_locationSEXP);
+    Rcpp::traits::input_parameter< const double& >::type interactions_scale(interactions_scaleSEXP);
+    rcpp_result_gen = Rcpp::wrap(npseudologlik(pars, data, P, n_categories, with_prior, ncores, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_dmrfit_optimize", (DL_FUNC) &_dmrfit_optimize, 12},
-    {"_dmrfit_optimize_with_structure", (DL_FUNC) &_dmrfit_optimize_with_structure, 13},
-    {"_dmrfit_optimize_profile", (DL_FUNC) &_dmrfit_optimize_profile, 14},
+    {"_dmrfit_optimize", (DL_FUNC) &_dmrfit_optimize, 16},
+    {"_dmrfit_optimize_with_structure", (DL_FUNC) &_dmrfit_optimize_with_structure, 17},
+    {"_dmrfit_optimize_profile", (DL_FUNC) &_dmrfit_optimize_profile, 18},
+    {"_dmrfit_mvnrnd_arma", (DL_FUNC) &_dmrfit_mvnrnd_arma, 3},
+    {"_dmrfit_npseudologlik", (DL_FUNC) &_dmrfit_npseudologlik, 10},
     {NULL, NULL, 0}
 };
 

@@ -10,7 +10,13 @@ dmrfit(
   parinit = NULL,
   structure = NULL,
   with_prior = FALSE,
-  ncores = 1
+  savage_dickey = FALSE,
+  M = 10000,
+  ncores = 1,
+  thresholds_alpha = 0.5,
+  thresholds_beta = 0.5,
+  interactions_location = 0,
+  interactions_scale = 2.5
 )
 }
 \arguments{
@@ -24,7 +30,19 @@ dmrfit(
 
 \item{with_prior}{with_prior, logical, whether to include the prior in the optimization. If TRUE, a Beta-Prime and a Cauchy prior are applied to thresholds and pairwise associations respectively. If FALSE, no prior is applied. Default is FALSE}
 
+\item{savage_dickey}{logical, whether to compute the Savage-Dickey density ratio Bayes factor for each pairwise interaction via Bayesian Sampling Importance Resampling (BSIR). Only available when \code{with_prior = TRUE}. Default is FALSE.}
+
+\item{M}{number of importance samples for the BSIR step (default is 10000). Only used when \code{savage_dickey = TRUE}.}
+
 \item{ncores}{ncores, number of cores to use for parallel computing of the gradient, hessian and likelihood values. If ncores is larger than the number of available cores, it will be set to the number of available cores minus one. Default is 1.}
+
+\item{thresholds_alpha}{alpha parameter for the Beta-Prime prior on thresholds (default is 0.5). Only used when \code{with_prior = TRUE}.}
+
+\item{thresholds_beta}{beta parameter for the Beta-Prime prior on thresholds (default is 0.5). Only used when \code{with_prior = TRUE}.}
+
+\item{interactions_location}{location parameter for the Cauchy prior on pairwise interactions (default is 0.0). Only used when \code{with_prior = TRUE}.}
+
+\item{interactions_scale}{scale parameter for the Cauchy prior on pairwise interactions (default is 2.5). Only used when \code{with_prior = TRUE}.}
 }
 \value{
 dmrfit S3 class object

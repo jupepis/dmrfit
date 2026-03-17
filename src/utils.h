@@ -7,12 +7,35 @@
 
 // utility functions for discrete Markov random fields
 
+// Generate a random normal matrix 
+arma::mat rnorm_arma(int nrow, int ncol);
+
+// Generate n multivariate normal samples
+arma::mat mvnrnd_arma(const arma::vec &mu, const arma::mat &Sigma, int n);
+
 // function to calculate the negative pseudologlikelihood and its derivatives (gradient and hessian) for a discrete MRF model, used by the optimization algorithm
 Rcpp::List dmrf_deriv(const arma::vec &pars,
-                      const arma::mat &data, // this is already the matrix of sufficient statistics, by row (person) it looks like: {X_1, ..., X_P,2X_1X_2,...,2X_{P-1}X_P}
+                      const arma::mat &data,
                       const arma::uword &P,
                       const arma::uvec &n_categories,
-                      bool with_prior = false, // whether to include (TRUE) or not (FALSE) prior information (non-informative priors are used)
-                      int ncores = 1);
+                      const bool &with_prior = false,
+                      const int &ncores = 1,
+                      const double &thresholds_alpha = 0.5,
+                      const double &thresholds_beta = 0.5,
+                      const double &interactions_location = 0.0,
+                      const double &interactions_scale = 2.5);
+
+// function to calculate the negative pseudologlikelihood for a discrete MRF model
+double npseudologlik(const arma::vec &pars,
+                    const arma::mat &data,
+                    const arma::uword &P,
+                    const arma::uvec &n_categories,
+                    const bool &with_prior = false,
+                    const int &ncores = 1,
+                    const double &thresholds_alpha = 0.5,
+                    const double &thresholds_beta = 0.5,
+                    const double &interactions_location = 0.0,
+                    const double &interactions_scale = 2.5);
+
 
 #endif

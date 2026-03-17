@@ -70,23 +70,27 @@ double find_root(double lower,
 
 // [[Rcpp::export]]
 Rcpp::List optimize(
-    arma::mat data,
-    arma::vec parinit,
-    arma::uvec n_categories,
-    arma::uword P,
-    double f_term,
-    double m_term,
-    arma::uword n_iter_max = 100,
-    double rinit = 1.0,
-    double rmax =  10.0,
-    bool with_prior = false,
-    double epsilon = 1e-06,
-    int ncores = 1){
+    const arma::mat &data,
+    const arma::vec &parinit,
+    const arma::uvec &n_categories,
+    const arma::uword &P,
+    const double &f_term,
+    const double &m_term,
+    const arma::uword &n_iter_max = 100,
+    const double &rinit = 1.0,
+    const double &rmax =  10.0,
+    const bool &with_prior = false,
+    const double &epsilon = 1e-06,
+    const int &ncores = 1,
+    const double &thresholds_alpha = 0.5,
+    const double &thresholds_beta = 0.5,
+    const double &interactions_location = 0.0,
+    const double &interactions_scale = 2.5){
 
     double r = rinit;
     arma::vec pars = parinit;
     arma::uword n_pars = pars.n_elem;
-    Rcpp::List deriv = dmrf_deriv(pars,data,P,n_categories,with_prior,ncores);
+    Rcpp::List deriv = dmrf_deriv(pars,data,P,n_categories,with_prior,ncores,thresholds_alpha,thresholds_beta, interactions_location,interactions_scale);
 
     double rho = 0.0;
     double f = 0.0;
@@ -185,7 +189,7 @@ Rcpp::List optimize(
         arma::vec pars_try = pars + p;
 
 
-        deriv = dmrf_deriv(pars_try,data,P,n_categories,with_prior,ncores);
+        deriv = dmrf_deriv(pars_try,data,P,n_categories,with_prior,ncores,thresholds_alpha,thresholds_beta, interactions_location,interactions_scale);
         double f_try = deriv["value"];
         rho = (f_try-f)/preddiff;
 
@@ -223,7 +227,7 @@ Rcpp::List optimize(
 
     }
 
-    deriv = dmrf_deriv(pars,data,P,n_categories,with_prior,ncores);
+    deriv = dmrf_deriv(pars,data,P,n_categories,with_prior,ncores,thresholds_alpha, thresholds_beta, interactions_location, interactions_scale);
     return Rcpp::List::create(Rcpp::Named("argument") = pars, Rcpp::Named("utils") = deriv);
 }
 
@@ -232,24 +236,28 @@ Rcpp::List optimize(
 
 // [[Rcpp::export]]
 Rcpp::List optimize_with_structure(
-    arma::mat data,
-    arma::vec parinit,
-    arma::vec structure,
-    arma::uvec n_categories,
-    arma::uword P,
-    double f_term,
-    double m_term,
-    arma::uword n_iter_max = 100,
-    double rinit = 1.0,
-    double rmax =  10.0,
-    bool with_prior = false,
-    double epsilon = 1e-06,
-    int ncores = 1){
+    const arma::mat &data,
+    const arma::vec &parinit,
+    const arma::vec &structure,
+    const arma::uvec &n_categories,
+    const arma::uword &P,
+    const double &f_term,
+    const double &m_term,
+    const arma::uword &n_iter_max = 100,
+    const double &rinit = 1.0,
+    const double &rmax =  10.0,
+    const bool &with_prior = false,
+    const double &epsilon = 1e-06,
+    const int &ncores = 1,
+    const double &thresholds_alpha = 0.5,
+    const double &thresholds_beta = 0.5,
+    const double &interactions_location = 0.0,
+    const double &interactions_scale = 2.5){
 
     double r = rinit;
     arma::vec pars = parinit % structure;
     arma::uword n_pars = pars.n_elem;
-    Rcpp::List deriv = dmrf_deriv(pars,data,P,n_categories,with_prior,ncores);
+    Rcpp::List deriv = dmrf_deriv(pars,data,P,n_categories,with_prior,ncores,thresholds_alpha, thresholds_beta, interactions_location, interactions_scale);
 
     double rho = 0.0;
     double f = 0.0;
@@ -349,7 +357,7 @@ Rcpp::List optimize_with_structure(
         pars_try %= structure;
 
 
-        deriv = dmrf_deriv(pars_try,data,P,n_categories,with_prior,ncores);
+        deriv = dmrf_deriv(pars_try,data,P,n_categories,with_prior,ncores,thresholds_alpha, thresholds_beta, interactions_location, interactions_scale);
         double f_try = deriv["value"];
         rho = (f_try-f)/preddiff;
 
@@ -387,7 +395,7 @@ Rcpp::List optimize_with_structure(
 
     }
 
-    deriv = dmrf_deriv(pars,data,P,n_categories,with_prior,ncores);
+    deriv = dmrf_deriv(pars,data,P,n_categories,with_prior,ncores,thresholds_alpha, thresholds_beta, interactions_location, interactions_scale);
     return Rcpp::List::create(Rcpp::Named("argument") = pars, Rcpp::Named("utils") = deriv);
 }
 
@@ -397,27 +405,31 @@ Rcpp::List optimize_with_structure(
 
 // [[Rcpp::export]]
 Rcpp::List optimize_profile(
-    arma::mat data,
-    arma::vec parinit,
-    arma::uvec which_parconstr,
-    arma::vec parconstr,
-    arma::uvec n_categories,
-    arma::uword P,
-    double f_term,
-    double m_term,
-    arma::uword n_iter_max = 100,
-    double rinit = 1.0,
-    double rmax =  10.0,
-    bool with_prior = false,
-    double epsilon = 1e-06,
-    int ncores = 1){
+    const arma::mat &data,
+    const arma::vec &parinit,
+    const arma::uvec &which_parconstr,
+    const arma::vec &parconstr,
+    const arma::uvec &n_categories,
+    const arma::uword &P,
+    const double &f_term,
+    const double &m_term,
+    const arma::uword &n_iter_max = 100,
+    const double &rinit = 1.0,
+    const double &rmax =  10.0,
+    const bool &with_prior = false,
+    const double &epsilon = 1e-06,
+    const int &ncores = 1,
+    const double &thresholds_alpha = 0.5,
+    const double &thresholds_beta = 0.5,
+    const double &interactions_location = 0.0,
+    const double &interactions_scale = 2.5){
 
     double r = rinit;
     arma::vec pars = parinit;
     arma::uword n_pars = pars.n_elem;
     // impose constrained value for certain parameters
     pars(which_parconstr) = parconstr;
-    Rcpp::List deriv = dmrf_deriv(pars,data,P,n_categories,with_prior,ncores);
+    Rcpp::List deriv = dmrf_deriv(pars,data,P,n_categories,with_prior,ncores,thresholds_alpha, thresholds_beta, interactions_location, interactions_scale);
 
     double rho = 0.0;
     double f = 0.0;
@@ -518,7 +530,7 @@ Rcpp::List optimize_profile(
         pars_try(which_parconstr) = parconstr;
 
 
-        deriv = dmrf_deriv(pars_try,data,P,n_categories,with_prior,ncores);
+        deriv = dmrf_deriv(pars_try,data,P,n_categories,with_prior,ncores,thresholds_alpha, thresholds_beta, interactions_location, interactions_scale);
         double f_try = deriv["value"];
         rho = (f_try-f)/preddiff;
 
@@ -558,6 +570,6 @@ Rcpp::List optimize_profile(
 
     // impose constrained value for certain parameters
     pars(which_parconstr) = parconstr;
-    deriv = dmrf_deriv(pars,data,P,n_categories,with_prior,ncores);
+    deriv = dmrf_deriv(pars,data,P,n_categories,with_prior,ncores,thresholds_alpha, thresholds_beta, interactions_location, interactions_scale);
     return Rcpp::List::create(Rcpp::Named("argument") = pars, Rcpp::Named("utils") = deriv);
 }

@@ -3,20 +3,66 @@
 #' @description Fit a discrete Markov Random Field model via pseudo-likelihood estimation. The optimization is performed using the trust region algorithm implemented by 
 #' 
 #' @param data data matrix, with rows as samples and columns as variables. Each variable should be rescaled to the range of 0 to m-1, where m is the number of categories for that variable. The baseline category is always the minimum value in the variable. The internal processing will check if the variables are rescaled and will rescale them if necessary. If there are any NAs in the data, they will be removed before optimization (listwise deletion).
-#' @param n_categories n_categories, a vector of length equal to the number of variables, where each element specifies the number of categories for the corresponding variable. If a single number is provided, it will be replicated for all variables.
 #' @param parinit parinit, initial parameter estimates, a vector of length equal to the number of parameters in the model. If NULL, it will be initialized to a vector of zeros. The number of parameters in the model is calculated as sum(P * (n_categories - 1)) + P * (P - 1) / 2, where P is the number of variables.
 #' @param structure network structure, P x P matrix, with 0 for no edge and 1 for edge. If NULL, then fully connected graph is assumed. Default is NULL
 #' @param with_prior with_prior, logical, whether to include the prior in the optimization. If TRUE, a Beta-Prime and a Cauchy prior are applied to thresholds and pairwise associations respectively. If FALSE, no prior is applied. Default is FALSE
+#' @param savage_dickey logical, whether to compute the Savage-Dickey density ratio Bayes factor for each pairwise interaction via Bayesian Sampling Importance Resampling (BSIR). Only available when \code{with_prior = TRUE}. Default is FALSE.
+#' @param M number of importance samples for the BSIR step (default is 1000). Only used when \code{savage_dickey = TRUE}.
+#' @param oversampling multiplier for the number of proposal draws in the BSIR step (default is 10). The total number of proposal samples is \code{M * oversampling}. Only used when \code{savage_dickey = TRUE}.
 #' @param ncores ncores, number of cores to use for parallel computing of the gradient, hessian and likelihood values. If ncores is larger than the number of available cores, it will be set to the number of available cores minus one. Default is 1.
+#' @param thresholds_alpha alpha parameter for the Beta-Prime prior on thresholds (default is 0.5). Only used when \code{with_prior = TRUE}.
+#' @param thresholds_beta beta parameter for the Beta-Prime prior on thresholds (default is 0.5). Only used when \code{with_prior = TRUE}.
+#' @param interactions_location location parameter for the Cauchy prior on pairwise interactions (default is 0.0). Only used when \code{with_prior = TRUE}.
+#' @param interactions_scale scale parameter for the Cauchy prior on pairwise interactions (default is 2.5). Only used when \code{with_prior = TRUE}.
+#' @param proposal_df degrees of freedom for the multivariate t proposal distribution in the BSIR step (default is 5). Only used when \code{savage_dickey = TRUE}. 
+#' @param seed random seed for reproducibility of the BSIR step (default is 123). Only used when \code{savage_dickey = TRUE}.
+#' 
 #' @return dmrfit S3 class object
+#' 
+#' @example 
+#' 
+#' # simulate data from a 3-node Ising model with 2 categories per node
+#' set.seed(123)
+#' n <- 1000
+#' P <- 3
+#' structure <- matrix(c(0, 1, 0, 1, 0, 1, 0, 1, 0), nrow = P)
+#' data <- matrix(rbinom(n * P, size = 1, prob = c(0.2, 0.5, 0.3)[rep(1:P, each = n)]), nrow = n, ncol = P)
+#' fit <- dmrfit(data, structure = structure, with_prior = TRUE, savage_dickey = TRUE, M = 10000, ncores = 2)
+#' summary(fit)
+#'
 #' @export 
 #' 
-dmrfit <- function(data, n_categories, parinit = NULL, structure = NULL, with_prior = FALSE, ncores = 1) {
+dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, savage_dickey = FALSE, M = 1000, oversampling = 10, ncores = 1, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, proposal_df = 5, seed = 123) {
 
+    # save the matched call for print and summary methods
     cl <- match.call()
+
+    # validate savage_dickey requires with_prior
+    if (savage_dickey && !with_prior)
+        stop("savage_dickey = TRUE requires with_prior = TRUE.")
 
     # processing input arguments
 
+    # check if data is a matrix, if not convert it to a matrix
+    if(!is.matrix(data)) {
+        data <- as.matrix(data)
+    }
+
+     # remove NAs from data if any exist
+    data <- data[!is.na(rowSums(data)), ]
+
+    # check that columns of data are integer and non-negative
+    if(any(data < 0) || any(data != floor(data))) {
+        stop("All values in data must be non-negative integers.")
+    }
+
+    # rescale the data to the range of 0 to m-1 if necessary
+    for(i in 1:ncol(data)) {
+        data[, i] <- data[, i] - min(data[, i]) # baseline category is always the minimum value in the variable 
+    }
+
+    # n_categories is calculated as the maximum value in each column of data plus 1, since the categories are assumed to be coded from 0 to m-1
+    n_categories <- apply(data, 2, max) + 1
     # number of variables
     P <- ncol(data)
     n_thresholds <- sum(n_categories - 1)
@@ -57,28 +103,6 @@ dmrfit <- function(data, n_categories, parinit = NULL, structure = NULL, with_pr
         ncores <- min(c(ncores,parallel::detectCores()-1, 1))
     }
 
-    # check if data is a matrix, if not convert it to a matrix
-    if(!is.matrix(data)) {
-        data <- as.matrix(data)
-    }
-
-    # remove NAs from data if any exist
-    data <- data[!is.na(rowSums(data)), ]
-
-    # check if variables are rescaled from 0 to m-1
-    for(i in 1:ncol(data)) {
-        if(any(data[, i] < 0) || any(data[, i] >= n_categories[i])) {
-            stop(paste("Variable", i, "contains values outside the range of 0 to n_categories - 1. Please rescale the variable accordingly."))
-        }
-    }
-
-    # rescale the data to the range of 0 to m-1 if necessary
-    for(i in 1:ncol(data)) {
-        if(any(data[, i] < 0) || any(data[, i] >= n_categories[i])) {
-            data[, i] <- data[, i] - min(data[, i]) # baseline category is always the minimum value in the variable
-        }
-    }
-
     # cross-product terms for the pairwise associations
     cross_product_stats <- t(apply(data,1,function(x) {
         S <- x%*%t(x)
@@ -87,10 +111,10 @@ dmrfit <- function(data, n_categories, parinit = NULL, structure = NULL, with_pr
     data <- cbind(data, 2.0 * cross_product_stats)
 
     if(is.null(structure)) {
-        pmles <- suppressWarnings(tryCatch(expr = dmrfit:::optimize(data = data, parinit = parinit, n_categories =  n_categories, P = P, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps), n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = with_prior, epsilon = 1e-06, ncores = ncores), error = function(e) {NULL}))
+        pmles <- suppressWarnings(tryCatch(expr = dmrfit:::optimize(data = data, parinit = parinit, n_categories =  n_categories, P = P, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps), n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = with_prior, epsilon = 1e-06, ncores = ncores, thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta, interactions_location = interactions_location, interactions_scale = interactions_scale), error = function(e) {NULL}))
     } else {
         structure_input_optimize <- c(rep(1, n_thresholds), structure[lower.tri(structure, diag = FALSE)])
-        pmles <- suppressWarnings(tryCatch(expr = dmrfit:::optimize_with_structure(data = data, parinit = parinit, n_categories =  n_categories, P = P, structure = structure_input_optimize, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps) , n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = with_prior, epsilon = 1e-06, ncores = ncores), error = function(e) {NULL}))
+        pmles <- suppressWarnings(tryCatch(expr = dmrfit:::optimize_with_structure(data = data, parinit = parinit, n_categories =  n_categories, P = P, structure = structure_input_optimize, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps) , n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = with_prior, epsilon = 1e-06, ncores = ncores, thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta, interactions_location = interactions_location, interactions_scale = interactions_scale), error = function(e) {NULL}))
     }
 
     if(is.null(pmles)) {
@@ -106,6 +130,7 @@ dmrfit <- function(data, n_categories, parinit = NULL, structure = NULL, with_pr
     pmles$with_prior <- with_prior
     pmles$structured <- !is.null(structure)
     pmles$structure <- structure
+    pmles$ncores <- ncores
 
     # label the parameter vector
     n_thresholds <- sum(n_categories - 1)
@@ -116,6 +141,102 @@ dmrfit <- function(data, n_categories, parinit = NULL, structure = NULL, with_pr
         lapply((j + 1):P, function(i) paste0("sigma[", i, ",", j, "]"))
     }))
     names(pmles$argument) <- c(thresh_names, inter_names)
+
+    # --- Savage-Dickey via BSIR ---
+    if(savage_dickey){
+
+        pars <- pmles$argument
+        Sigma <- pmles$utils$HW
+        se <- sqrt(diag(Sigma))
+
+        # draw M samples from proposal
+        M_importance <- M * oversampling  # draw more samples than needed to ensure enough effective samples after weighting
+        # draw random multivariatenormal samples (n_pars x M_importance)
+        Z <- dmrfit:::mvnrnd_arma(mu = rep(0, n_pars), Sigma = Sigma, n = M_importance)
+        # draw chi-squared scaling factors
+        V <- rchisq(n = M_importance, df = proposal_df)
+
+        # scale each column: Z / sqrt(V/nu), then shift by mu
+        samples <- sweep(Z, 2, sqrt(proposal_df/V), "*")
+        samples <- sweep(samples, 1, pars, "+")  # n_pars x M_importance
+
+        # log-density of the proposal at each sample (multivariate log t density)
+        L <- chol(Sigma)
+        log_det_Sigma <- 2 * sum(log(diag(L))) # this is log determinant of Sigma calculated as 2 * sum of log-diagonal-elements of the Cholesky factor
+        diff_mat <- sweep(samples, 1, pars, check.margin = FALSE)  # n_pars x M_importance
+        solve_L <- backsolve(L, diff_mat, transpose = TRUE)
+        mahal <- colSums(solve_L^2)
+        log_q <- lgamma((proposal_df + n_pars)/2) - lgamma(proposal_df/2) - (n_pars/2) * log(proposal_df*pi) - 0.5*log_det_Sigma - ((proposal_df + n_pars) / 2) * log(1 + mahal / proposal_df)
+
+        log_target <- numeric(M_importance)
+        for(m in seq_len(M_importance)){
+            log_target[m] <- -dmrfit:::npseudologlik(
+                pars = samples[, m],
+                data = data,
+                P = P,
+                n_categories = n_categories,
+                with_prior = TRUE,
+                ncores = ncores,
+                thresholds_alpha = thresholds_alpha,
+                thresholds_beta = thresholds_beta,
+                interactions_location = interactions_location,
+                interactions_scale = interactions_scale
+            )
+        }
+
+        irlw <- (log_target - max(log_target) + min(log_q)) - log_q  # stabilize weights by subtracting max log_target and adding min log_q
+        s_irlw <- log(sum(exp(irlw)) - exp(irlw)) # ISIR (Skare et al., 2003 Scandinavian Journal of Statistics)
+        irlw <- irlw - s_irlw
+        w <- exp(irlw) # importance resampling weights (irw)
+
+
+        idx <- sample(x = 1:M_importance, size = M, replace = TRUE, prob = w)
+        sir_samples <- samples[, idx, drop = FALSE]
+
+        sir_var <- cov(t(sir_samples))
+        logdetX <- determinant(sir_var, logarithm = TRUE)
+        logdetZ <- determinant(Sigma, logarithm = TRUE)
+        logX <- as.numeric(logdetX$modulus)
+        logZ <- as.numeric(logdetZ$modulus)
+        ess <- M * exp((logX - logZ) / n_pars) # * (logdetX$sign / logdetZ$sign)
+
+        if (!is.null(structure)) {
+            free_inter <- structure[lower.tri(structure, diag = FALSE)] == 1
+        } else {
+            free_inter <- rep(TRUE, n_interactions)
+        }
+        inter_idx <- (n_thresholds + 1):n_pars
+        free_inter_idx <- inter_idx[free_inter]
+
+        log_prior_at_zero <- dcauchy(0, location = interactions_location, scale = interactions_scale, log = TRUE)
+
+        bf_01 <- numeric(length(free_inter_idx))
+        names(bf_01) <- names(pars)[free_inter_idx]
+
+        for (k in seq_along(free_inter_idx)){
+            j <- free_inter_idx[k]
+            sir_samples_j <- sir_samples[j, ]
+            range_j <- range(sir_samples_j)
+            d <- density(sir_samples_j, n = 1024, from = min(range_j), to = max(range_j))
+            log_post_at_zero <- log(approx(x = d$x, y = d$y, xout = 0.0)$y)
+            log_post_at_zero <- ifelse(is.na(log_post_at_zero), log(.Machine$double.eps), log_post_at_zero) #if NA, it means 0.0 is not in range and therefore it is -Inf
+            log_post_at_zero <- ifelse(log_post_at_zero == Inf, -log(.Machine$double.eps), log_post_at_zero)
+            bf_01[k] <- exp(log_post_at_zero - log_prior_at_zero)
+        }
+
+        pr_null <- bf_01 / (1 + bf_01) # This is the Pr(=0|x)
+
+        pmles$savage_dickey <- list(
+            bf_01 = bf_01,
+            pr_null = pr_null,
+            estimate = pars[free_inter_idx],
+            se = se[free_inter_idx],
+            interactions_location = interactions_location,
+            interactions_scale = interactions_scale,
+            ess = ess,
+            M = M
+        )
+    }
 
     return(structure(pmles, class = "dmrfit"))
 }
@@ -192,20 +313,20 @@ summary.dmrfit <- function(object, ...) {
     if (!inherits(object, "dmrfit"))
         stop("object is not of class 'dmrfit'")
 
-    P  <- object$P
+    P <- object$P
     n_categories <- object$n_categories
-    n_thresholds   <- sum(n_categories - 1)
+    n_thresholds <- sum(n_categories - 1)
     n_interactions <- P * (P - 1) / 2
     n_pars <- n_thresholds + n_interactions
-    pars   <- object$argument
+    pars <- object$argument
 
     # standard errors from Huber-White sandwich estimator
     se <- sqrt(diag(object$utils$HW))
     names(se) <- names(pars)
 
     # build full coefficient table
-    z_val  <- pars / se
-    p_val  <- 2 * pnorm(-abs(z_val))
+    z_val <- pars / se
+    p_val <- 2 * pnorm(-abs(z_val))
     coef_table <- cbind(Estimate = pars, `Std. Error` = se,
                         `z value` = z_val, `Pr(>|z|)` = p_val)
     rownames(coef_table) <- names(pars)
@@ -226,30 +347,20 @@ summary.dmrfit <- function(object, ...) {
     inter_idx <- (n_thresholds + 1):n_pars
     free_inter_idx <- inter_idx[free_inter]
 
-    # Build interactions table; add Savage-Dickey column when prior was used
     inter_table <- coef_table[free_inter_idx, , drop = FALSE]
-    if (object$with_prior) {
-        # Savage-Dickey density ratio: prior Cauchy(0, 2.5), posterior ~ Normal(est, se)
-        inter_est <- pars[free_inter_idx]
-        inter_se  <- se[free_inter_idx]
-        prior_at_zero <- dcauchy(0, location = 0, scale = 2.5)
-        post_at_zero  <- dnorm(0, mean = inter_est, sd = inter_se)
-        bf_01 <- post_at_zero / prior_at_zero
-        pr_null <- bf_01 / (1 + bf_01)
-        inter_table <- cbind(inter_table, `Pr(=0|x)` = pr_null)
-    }
 
     out <- list(
-        call            = object$call,
-        coefficients    = coef_table[c(1:n_thresholds, free_inter_idx), , drop = FALSE],
-        thresholds      = coef_table[1:n_thresholds, , drop = FALSE],
-        interactions    = inter_table,
+        call = object$call,
+        coefficients = coef_table[c(1:n_thresholds, free_inter_idx), , drop = FALSE],
+        thresholds = coef_table[1:n_thresholds, , drop = FALSE],
+        interactions = inter_table,
         neg_pseudo_loglik = object$utils$value,
-        P               = P,
-        N               = object$N,
-        n_categories    = n_categories,
-        with_prior      = object$with_prior,
-        structured      = object$structured
+        P = P,
+        N = object$N,
+        n_categories = n_categories,
+        with_prior = object$with_prior,
+        structured = object$structured,
+        savage_dickey = object$savage_dickey
     )
     class(out) <- "summary.dmrfit"
     out
@@ -290,19 +401,24 @@ print.summary.dmrfit <- function(x, ...) {
                  signif.stars = FALSE, ...)
 
     cat("\nPairwise interactions:\n")
-    inter <- x$interactions
-    if (x$with_prior) {
-        # print first 4 cols via printCoefmat, then the Pr(=0|x) column
-        printCoefmat(inter[, 1:4, drop = FALSE], P.values = TRUE, has.Pvalue = TRUE,
-                     signif.stars = TRUE, ...)
-        cat("\nSavage-Dickey Pr(=0|x)  [prior: Cauchy(0, 2.5)]:\n")
-        print(round(inter[, "Pr(=0|x)", drop = FALSE], 4))
-    } else {
-        printCoefmat(inter, P.values = TRUE, has.Pvalue = TRUE,
-                     signif.stars = TRUE, ...)
-    }
+    printCoefmat(x$interactions, P.values = TRUE, has.Pvalue = TRUE,
+                 signif.stars = TRUE, ...)
 
     cat("\nNegative pseudo-loglikelihood:", round(x$neg_pseudo_loglik, 4), "\n")
+
+    if (!is.null(x$savage_dickey)) {
+        sd <- x$savage_dickey
+        cat("\nSavage-Dickey density ratio  [prior: Cauchy(",sd$interactions_location,",",
+            sd$interactions_scale, ")]\n")
+        cat("H0: sigma = 0 for each pairwise interaction\n\n")
+        tbl <- cbind(Estimate = sd$estimate, SE = sd$se,
+                     BF_01 = sd$bf_01, `Pr(=0|x)` = sd$pr_null)
+        print(round(tbl, 4))
+        cat("\nSIR samples:", sd$M,
+            "  Effective sample size:", round(sd$ess, 1), "\n")
+    }
+
     invisible(x)
 }
+
 
