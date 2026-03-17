@@ -52,17 +52,19 @@
     <div id="ref-usage">
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">dmrfit</span><span class="op">(</span></span>
 <span>  <span class="va">data</span>,</span>
-<span>  <span class="va">n_categories</span>,</span>
 <span>  parinit <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  structure <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  with_prior <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  savage_dickey <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  M <span class="op">=</span> <span class="fl">10000</span>,</span>
+<span>  M <span class="op">=</span> <span class="fl">1000</span>,</span>
+<span>  oversampling <span class="op">=</span> <span class="fl">10</span>,</span>
 <span>  ncores <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  thresholds_alpha <span class="op">=</span> <span class="fl">0.5</span>,</span>
 <span>  thresholds_beta <span class="op">=</span> <span class="fl">0.5</span>,</span>
 <span>  interactions_location <span class="op">=</span> <span class="fl">0</span>,</span>
-<span>  interactions_scale <span class="op">=</span> <span class="fl">2.5</span></span>
+<span>  interactions_scale <span class="op">=</span> <span class="fl">2.5</span>,</span>
+<span>  proposal_df <span class="op">=</span> <span class="fl">5</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">123</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -72,10 +74,6 @@
 
 <dl><dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
 <dd><p>data matrix, with rows as samples and columns as variables. Each variable should be rescaled to the range of 0 to m-1, where m is the number of categories for that variable. The baseline category is always the minimum value in the variable. The internal processing will check if the variables are rescaled and will rescale them if necessary. If there are any NAs in the data, they will be removed before optimization (listwise deletion).</p></dd>
-
-
-<dt id="arg-n-categories">n_categories<a class="anchor" aria-label="anchor" href="#arg-n-categories"></a></dt>
-<dd><p>n_categories, a vector of length equal to the number of variables, where each element specifies the number of categories for the corresponding variable. If a single number is provided, it will be replicated for all variables.</p></dd>
 
 
 <dt id="arg-parinit">parinit<a class="anchor" aria-label="anchor" href="#arg-parinit"></a></dt>
@@ -95,7 +93,11 @@
 
 
 <dt id="arg-m">M<a class="anchor" aria-label="anchor" href="#arg-m"></a></dt>
-<dd><p>number of importance samples for the BSIR step (default is 10000). Only used when <code>savage_dickey = TRUE</code>.</p></dd>
+<dd><p>number of importance samples for the BSIR step (default is 1000). Only used when <code>savage_dickey = TRUE</code>.</p></dd>
+
+
+<dt id="arg-oversampling">oversampling<a class="anchor" aria-label="anchor" href="#arg-oversampling"></a></dt>
+<dd><p>multiplier for the number of proposal draws in the BSIR step (default is 10). The total number of proposal samples is <code>M * oversampling</code>. Only used when <code>savage_dickey = TRUE</code>.</p></dd>
 
 
 <dt id="arg-ncores">ncores<a class="anchor" aria-label="anchor" href="#arg-ncores"></a></dt>
@@ -117,12 +119,67 @@
 <dt id="arg-interactions-scale">interactions_scale<a class="anchor" aria-label="anchor" href="#arg-interactions-scale"></a></dt>
 <dd><p>scale parameter for the Cauchy prior on pairwise interactions (default is 2.5). Only used when <code>with_prior = TRUE</code>.</p></dd>
 
+
+<dt id="arg-proposal-df">proposal_df<a class="anchor" aria-label="anchor" href="#arg-proposal-df"></a></dt>
+<dd><p>degrees of freedom for the multivariate t proposal distribution in the BSIR step (default is 5). Only used when <code>savage_dickey = TRUE</code>.</p></dd>
+
+
+<dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
+<dd><p>random seed for reproducibility of the BSIR step (default is 123). Only used when <code>savage_dickey = TRUE</code>.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
     <p>dmrfit S3 class object</p>
     </div>
 
+    <div id="ref-examples">
+    <h2>Examples</h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># simulate data from a 3-node Ising model with 2 categories per node</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">1000</span></span></span>
+<span class="r-in"><span><span class="va">P</span> <span class="op">&lt;-</span> <span class="fl">3</span></span></span>
+<span class="r-in"><span><span class="va">structure</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="va">P</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Binomial.html" class="external-link">rbinom</a></span><span class="op">(</span><span class="va">n</span> <span class="op">*</span> <span class="va">P</span>, size <span class="op">=</span> <span class="fl">1</span>, prob <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.2</span>, <span class="fl">0.5</span>, <span class="fl">0.3</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">P</span>, each <span class="op">=</span> <span class="va">n</span><span class="op">)</span><span class="op">]</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="va">n</span>, ncol <span class="op">=</span> <span class="va">P</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu">dmrfit</span><span class="op">(</span><span class="va">data</span>, structure <span class="op">=</span> <span class="va">structure</span>, with_prior <span class="op">=</span> <span class="cn">TRUE</span>, savage_dickey <span class="op">=</span> <span class="cn">TRUE</span>, M <span class="op">=</span> <span class="fl">10000</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> dmrfit(data = data, structure = structure, with_prior = TRUE, </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     savage_dickey = TRUE, M = 10000, ncores = 2)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Discrete Markov Random Field (Ising)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Estimation method: maximum pseudo-likelihood (with prior)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Network structure: constrained</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Nodes: 3  Observations: 1000  Free parameters: 5 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Standard errors: Huber-White sandwich estimator</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> ------------------------------------------------------------ </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Thresholds:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         Post.Mode   Post.SD  z value  Pr(&gt;|z|)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[1,1] -1.329430  0.117546 -11.3099 &lt; 2.2e-16</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[2,1]  0.017534  0.082013   0.2138    0.8307</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[3,1] -0.809384  0.101373  -7.9842 1.414e-15</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Pairwise interactions:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            Post.Mode   Post.SD z value Pr(&gt;|z|)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[2,1] -0.137283  0.158022 -0.8688   0.3850</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[3,2] -0.007817  0.136502 -0.0573   0.9543</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Negative pseudo-loglikelihood: 1818.673 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Savage-Dickey density ratio  [prior: Cauchy( 0 , 2.5 )]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> H0: sigma = 0 for each pairwise interaction</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            Estimate     SE   BF_01 Pr(=0|x)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[2,1]  -0.1373 0.1580 13.1534   0.9293</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[3,2]  -0.0078 0.1365 31.9040   0.9696</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> SIR samples: 10000   Effective sample size: 7003 </span>
+<span class="r-in"><span></span></span>
+</code></pre></div>
+    </div>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top"><h2 data-toc-skip>Contents</h2>
