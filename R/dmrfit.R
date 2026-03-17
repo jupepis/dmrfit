@@ -40,6 +40,11 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
     # validate savage_dickey requires with_prior
     if (savage_dickey && !with_prior)
         stop("savage_dickey = TRUE requires with_prior = TRUE.")
+    
+    # set random seed for reproducibility of the BSIR step
+    if(savage_dickey){
+        set.seed(seed)
+    }
 
     # processing input arguments
 
@@ -149,24 +154,44 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
         Sigma <- pmles$utils$HW
         se <- sqrt(diag(Sigma))
 
+        # identify free parameters (all thresholds + interactions where structure == 1)
+        if(!is.null(structure)){
+            free_inter <- structure[lower.tri(structure, diag = FALSE)] == 1
+            free_idx <- c(1:n_pars)[c(rep(TRUE, n_thresholds), free_inter)]
+        } else {
+            free_inter <- rep(TRUE, n_interactions)
+            free_idx <- seq_len(n_pars)
+        }
+        n_pars_free <- length(free_idx)
+
+        if (M <= n_pars_free)
+            warning("M (", M, ") is not larger than the number of free parameters (", n_pars_free, "). Issues with SIR covariance and ESS estimation may arise. Consider increasing M.")
+
+        inter_idx <- (n_thresholds + 1):n_pars
+        free_inter_idx <- inter_idx[free_inter]
+
+        # proposal only over free parameters (this is necessary if there are fixed interaction parameters = 0)
+        pars_free  <- pars[free_idx]
+        Sigma_free <- Sigma[free_idx, free_idx, drop = FALSE]
+
         # draw M samples from proposal
-        M_importance <- M * oversampling  # draw more samples than needed to ensure enough effective samples after weighting
-        # draw random multivariatenormal samples (n_pars x M_importance)
-        Z <- dmrfit:::mvnrnd_arma(mu = rep(0, n_pars), Sigma = Sigma, n = M_importance)
-        # draw chi-squared scaling factors
+        M_importance <- M * oversampling
+        Z <- dmrfit:::mvnrnd_arma(mu = rep(0, n_pars_free), Sigma = Sigma_free, n = M_importance)
         V <- rchisq(n = M_importance, df = proposal_df)
+        samples_free <- sweep(Z, 2, sqrt(proposal_df/V), "*")
+        samples_free <- sweep(samples_free, 1, pars_free, "+")  # n_pars_free x M_importance
 
-        # scale each column: Z / sqrt(V/nu), then shift by mu
-        samples <- sweep(Z, 2, sqrt(proposal_df/V), "*")
-        samples <- sweep(samples, 1, pars, "+")  # n_pars x M_importance
+        # reconstruct full parameter vectors (fixed params stay at 0)
+        samples <- matrix(0, n_pars, M_importance)
+        samples[free_idx, ] <- samples_free
 
-        # log-density of the proposal at each sample (multivariate log t density)
-        L <- chol(Sigma)
-        log_det_Sigma <- 2 * sum(log(diag(L))) # this is log determinant of Sigma calculated as 2 * sum of log-diagonal-elements of the Cholesky factor
-        diff_mat <- sweep(samples, 1, pars, check.margin = FALSE)  # n_pars x M_importance
+        # log-density of the proposal at each sample (multivariate t, free subspace)
+        L <- chol(Sigma_free)
+        log_det_Sigma <- 2 * sum(log(diag(L)))
+        diff_mat <- sweep(samples_free, 1, pars_free, check.margin = FALSE)
         solve_L <- backsolve(L, diff_mat, transpose = TRUE)
         mahal <- colSums(solve_L^2)
-        log_q <- lgamma((proposal_df + n_pars)/2) - lgamma(proposal_df/2) - (n_pars/2) * log(proposal_df*pi) - 0.5*log_det_Sigma - ((proposal_df + n_pars) / 2) * log(1 + mahal / proposal_df)
+        log_q <- lgamma((proposal_df + n_pars_free)/2) - lgamma(proposal_df/2) - (n_pars_free/2) * log(proposal_df*pi) - 0.5*log_det_Sigma - ((proposal_df + n_pars_free)/2) * log(1 + mahal/proposal_df)
 
         log_target <- numeric(M_importance)
         for(m in seq_len(M_importance)){
@@ -184,29 +209,22 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
             )
         }
 
-        irlw <- (log_target - max(log_target) + min(log_q)) - log_q  # stabilize weights by subtracting max log_target and adding min log_q
+        irlw <- (log_target - max(log_target) + min(log_q)) - log_q # rescaling log weights for numerical stability
         s_irlw <- log(sum(exp(irlw)) - exp(irlw)) # ISIR (Skare et al., 2003 Scandinavian Journal of Statistics)
         irlw <- irlw - s_irlw
-        w <- exp(irlw) # importance resampling weights (irw)
+        w <- exp(irlw)
 
-
+        # resample from the proposal samples according to the importance weights
         idx <- sample(x = 1:M_importance, size = M, replace = TRUE, prob = w)
         sir_samples <- samples[, idx, drop = FALSE]
 
-        sir_var <- cov(t(sir_samples))
+        # ESS via determinant ratio on free parameters
+        sir_var <- cov(t(sir_samples[free_idx, , drop = FALSE]))
         logdetX <- determinant(sir_var, logarithm = TRUE)
-        logdetZ <- determinant(Sigma, logarithm = TRUE)
+        logdetZ <- determinant(Sigma_free, logarithm = TRUE)
         logX <- as.numeric(logdetX$modulus)
         logZ <- as.numeric(logdetZ$modulus)
-        ess <- M * exp((logX - logZ) / n_pars) # * (logdetX$sign / logdetZ$sign)
-
-        if (!is.null(structure)) {
-            free_inter <- structure[lower.tri(structure, diag = FALSE)] == 1
-        } else {
-            free_inter <- rep(TRUE, n_interactions)
-        }
-        inter_idx <- (n_thresholds + 1):n_pars
-        free_inter_idx <- inter_idx[free_inter]
+        ess <- M * exp((logX - logZ) / n_pars_free)
 
         log_prior_at_zero <- dcauchy(0, location = interactions_location, scale = interactions_scale, log = TRUE)
 
@@ -216,12 +234,18 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
         for (k in seq_along(free_inter_idx)){
             j <- free_inter_idx[k]
             sir_samples_j <- sir_samples[j, ]
-            range_j <- range(sir_samples_j)
-            d <- density(sir_samples_j, n = 1024, from = min(range_j), to = max(range_j))
-            log_post_at_zero <- log(approx(x = d$x, y = d$y, xout = 0.0)$y)
-            log_post_at_zero <- ifelse(is.na(log_post_at_zero), log(.Machine$double.eps), log_post_at_zero) #if NA, it means 0.0 is not in range and therefore it is -Inf
-            log_post_at_zero <- ifelse(log_post_at_zero == Inf, -log(.Machine$double.eps), log_post_at_zero)
-            bf_01[k] <- exp(log_post_at_zero - log_prior_at_zero)
+            bf_01[k] <- tryCatch({
+                range_j <- range(sir_samples_j)
+                d <- density(sir_samples_j, n = 1024, from = min(range_j), to = max(range_j))
+                log_post_at_zero <- log(approx(x = d$x, y = d$y, xout = 0.0)$y)
+                log_post_at_zero <- ifelse(is.na(log_post_at_zero), log(.Machine$double.eps), log_post_at_zero)
+                log_post_at_zero <- ifelse(log_post_at_zero == Inf, -log(.Machine$double.eps), log_post_at_zero)
+                exp(log_post_at_zero - log_prior_at_zero)
+            }, error = function(e) {
+                warning("Savage-Dickey: density estimation failed for ", names(pars)[j],
+                        ". The 'BF_01' is set to NA.")
+                NA_real_
+            })
         }
 
         pr_null <- bf_01 / (1 + bf_01) # This is the Pr(=0|x)
