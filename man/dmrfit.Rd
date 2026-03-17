@@ -6,23 +6,23 @@
 \usage{
 dmrfit(
   data,
-  n_categories,
   parinit = NULL,
   structure = NULL,
   with_prior = FALSE,
   savage_dickey = FALSE,
-  M = 10000,
+  M = 1000,
+  oversampling = 10,
   ncores = 1,
   thresholds_alpha = 0.5,
   thresholds_beta = 0.5,
   interactions_location = 0,
-  interactions_scale = 2.5
+  interactions_scale = 2.5,
+  proposal_df = 5,
+  seed = 123
 )
 }
 \arguments{
 \item{data}{data matrix, with rows as samples and columns as variables. Each variable should be rescaled to the range of 0 to m-1, where m is the number of categories for that variable. The baseline category is always the minimum value in the variable. The internal processing will check if the variables are rescaled and will rescale them if necessary. If there are any NAs in the data, they will be removed before optimization (listwise deletion).}
-
-\item{n_categories}{n_categories, a vector of length equal to the number of variables, where each element specifies the number of categories for the corresponding variable. If a single number is provided, it will be replicated for all variables.}
 
 \item{parinit}{parinit, initial parameter estimates, a vector of length equal to the number of parameters in the model. If NULL, it will be initialized to a vector of zeros. The number of parameters in the model is calculated as sum(P * (n_categories - 1)) + P * (P - 1) / 2, where P is the number of variables.}
 
@@ -32,7 +32,9 @@ dmrfit(
 
 \item{savage_dickey}{logical, whether to compute the Savage-Dickey density ratio Bayes factor for each pairwise interaction via Bayesian Sampling Importance Resampling (BSIR). Only available when \code{with_prior = TRUE}. Default is FALSE.}
 
-\item{M}{number of importance samples for the BSIR step (default is 10000). Only used when \code{savage_dickey = TRUE}.}
+\item{M}{number of importance samples for the BSIR step (default is 1000). Only used when \code{savage_dickey = TRUE}.}
+
+\item{oversampling}{multiplier for the number of proposal draws in the BSIR step (default is 10). The total number of proposal samples is \code{M * oversampling}. Only used when \code{savage_dickey = TRUE}.}
 
 \item{ncores}{ncores, number of cores to use for parallel computing of the gradient, hessian and likelihood values. If ncores is larger than the number of available cores, it will be set to the number of available cores minus one. Default is 1.}
 
@@ -43,10 +45,26 @@ dmrfit(
 \item{interactions_location}{location parameter for the Cauchy prior on pairwise interactions (default is 0.0). Only used when \code{with_prior = TRUE}.}
 
 \item{interactions_scale}{scale parameter for the Cauchy prior on pairwise interactions (default is 2.5). Only used when \code{with_prior = TRUE}.}
+
+\item{proposal_df}{degrees of freedom for the multivariate t proposal distribution in the BSIR step (default is 5). Only used when \code{savage_dickey = TRUE}.}
+
+\item{seed}{random seed for reproducibility of the BSIR step (default is 123). Only used when \code{savage_dickey = TRUE}.}
 }
 \value{
 dmrfit S3 class object
 }
 \description{
 Fit a discrete Markov Random Field model via pseudo-likelihood estimation. The optimization is performed using the trust region algorithm implemented by
+}
+\examples{
+
+# simulate data from a 3-node Ising model with 2 categories per node
+set.seed(123)
+n <- 1000
+P <- 3
+structure <- matrix(c(0, 1, 0, 1, 0, 1, 0, 1, 0), nrow = P)
+data <- matrix(rbinom(n * P, size = 1, prob = c(0.2, 0.5, 0.3)[rep(1:P, each = n)]), nrow = n, ncol = P)
+fit <- dmrfit(data, structure = structure, with_prior = TRUE, savage_dickey = TRUE, M = 10000, ncores = 2)
+summary(fit)
+
 }

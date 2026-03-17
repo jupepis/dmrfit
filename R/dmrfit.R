@@ -19,7 +19,7 @@
 #' 
 #' @return dmrfit S3 class object
 #' 
-#' @example 
+#' @examples 
 #' 
 #' # simulate data from a 3-node Ising model with 2 categories per node
 #' set.seed(123)
