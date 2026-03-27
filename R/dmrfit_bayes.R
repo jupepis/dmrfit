@@ -35,6 +35,14 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
 
     # processing input arguments
 
+    if(sigma2 > 1.0) {
+        warning("sigma2 is set to a value greater than 1.0. This may lead to unstable sampling. Consider using a smaller value (e.g., 1.0, 0.1 or 0.01) for better performance.")
+    }
+    if(sigma2 <= 0.0) {
+        sigma2 <- 1.0
+        warning("sigma2 must be positive. It is reset to 1.0.")
+    }
+
     # check if data is a matrix, if not convert it to a matrix
     if(!is.matrix(data)) {
         data <- as.matrix(data)
@@ -103,7 +111,7 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
         current_scale = current_sale, # cholesky of hessian matrix of pseudo-likelihood calculate at the 'pmles' 
         new_scale = new_scale, # transposed cholesky of Godambe-Huber-White sandwich estimator
         adaptive_stage_n_iter = 500, # iterations for the initial adaptive stage (simple MALA), fixed to 500 for now
-        sigma2 = 1.0, # for ordinal MRF, set this value to [[0.01]] or higher 0.1, by default this is set to 1.0 but with the ordinal MRF the algorithms runs fine with 0.1 or 0.01 (this sigma2 is adaptive and a good starting value is needed, however, it is allowed to vary over iterations)
+        sigma2 = sigma2, # for ordinal MRF, set this value to [[0.01]] or higher 0.1, by default this is set to 1.0 but with the ordinal MRF the algorithms runs fine with 0.1 or 0.01 (this sigma2 is adaptive and a good starting value is needed, however, it is allowed to vary over iterations)
         thresholds_alpha = thresholds_alpha,
         thresholds_beta = thresholds_beta,
         interactions_location = interactions_location,
@@ -227,7 +235,7 @@ summary.dmrfit_bayes <- function(object, ...) {
     post_mean <- rowMeans(object$draws)
     names(post_mean) <- names(pars)
 
-    # 95% credible intervals
+    # 95% credible intervals (they are not posterior HDI)
     ci <- apply(object$draws, 1, quantile, probs = c(0.025, 0.975))
 
     # build coefficient table
