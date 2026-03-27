@@ -1,6 +1,6 @@
 #' @title dmrfit
 #' 
-#' @description Fit a discrete Markov Random Field model via pseudo-likelihood estimation. The optimization is performed using the trust region algorithm implemented by 
+#' @description Fit a discrete Markov Random Field model via pseudo-likelihood estimation. The optimization is performed using the trust region algorithm
 #' 
 #' @param data data matrix, with rows as samples and columns as variables. Each variable should be rescaled to the range of 0 to m-1, where m is the number of categories for that variable. The baseline category is always the minimum value in the variable. The internal processing will check if the variables are rescaled and will rescale them if necessary. If there are any NAs in the data, they will be removed before optimization (listwise deletion).
 #' @param parinit parinit, initial parameter estimates, a vector of length equal to the number of parameters in the model. If NULL, it will be initialized to a vector of zeros. The number of parameters in the model is calculated as sum(P * (n_categories - 1)) + P * (P - 1) / 2, where P is the number of variables.
@@ -80,14 +80,6 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
     }
     else if(length(parinit) != n_pars) {
         stop(paste("Length of parinit must be equal to the number of parameters in the model:", n_pars))
-    }
-
-    # if n_categories is a single number, replicate it for all variables
-    if(length(n_categories) == 1) {
-        n_categories <- rep(n_categories, P)
-    }
-    else if(length(n_categories) != P) {
-        stop("Length of n_categories must be either 1 or equal to the number of variables (columns) in data.")
     }
 
     # if structure is provided, check if it is a square matrix with dimensions equal to the number of variables

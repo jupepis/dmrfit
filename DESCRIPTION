@@ -22,7 +22,8 @@ Suggests:
     tinytest
 LinkingTo:
     Rcpp,
-    RcppArmadillo
+    RcppArmadillo,
+    RcppProgress
 VignetteBuilder:
     knitr    
 Encoding: UTF-8

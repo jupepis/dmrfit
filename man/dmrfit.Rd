@@ -54,7 +54,7 @@ dmrfit(
 dmrfit S3 class object
 }
 \description{
-Fit a discrete Markov Random Field model via pseudo-likelihood estimation. The optimization is performed using the trust region algorithm implemented by
+Fit a discrete Markov Random Field model via pseudo-likelihood estimation. The optimization is performed using the trust region algorithm
 }
 \examples{
 
