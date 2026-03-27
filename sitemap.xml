@@ -6,9 +6,13 @@
 <url><loc>/index.html</loc></url>
 <url><loc>/reference/dmrfit-package.html</loc></url>
 <url><loc>/reference/dmrfit.html</loc></url>
+<url><loc>/reference/dmrfit_bayes.html</loc></url>
 <url><loc>/reference/index.html</loc></url>
 <url><loc>/reference/print.dmrfit.html</loc></url>
+<url><loc>/reference/print.dmrfit_bayes.html</loc></url>
 <url><loc>/reference/print.summary.dmrfit.html</loc></url>
+<url><loc>/reference/print.summary.dmrfit_bayes.html</loc></url>
 <url><loc>/reference/summary.dmrfit.html</loc></url>
+<url><loc>/reference/summary.dmrfit_bayes.html</loc></url>
 </urlset>
 
