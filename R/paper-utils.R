@@ -197,29 +197,29 @@
 }
 
 #' build_conditions
-#' @description This function builds the full set of simulation conditions, one row per runnable design
+#' @description This function builds the full set of simulation conditions
 #' @param P integer vector of network sizes (number of variables)
 #' @param N sample sizes; a vector applied to every P, or a function of P returning the sample sizes for that P
 #' @param structures character vector of graph structures ("full", "random", "smallworld")
-#' @return a data frame of conditions with columns index, P, structure, N and reference ("exact" or "dmh"); P = 12 appears twice (both references)
+#' @return a data frame of conditions with columns index, P, structure, N, reference ("exact" or "dmh"),
+#'   and dmh_bridge (TRUE only for P = 12, where the "reference" run also produces a DMH-vs-exact
+#'   comparison as a byproduct -- no separate method = "DMH" run is needed or allowed for these rows)
 #' @export
-build_conditions <- function(P = c(6, 9, 12, 24), N, structures = c("full", "random", "smallworld")) {
+build_conditions <- function(P = c(6, 9, 12, 24), N = c(500, 1000, 2000, 3000), structures = c("full", "random", "smallworld")) {
   base <- expand.grid(P = P, structure = structures, N = N,
                       stringsAsFactors = FALSE)
 
     # This function selects the reference method for a given number of nodes in the network (network size)
-    .reference_for_p <- function(p) { 
-    if (p %in% c(6, 9)) "exact"
-    else if (p == 12)   c("exact", "dmh")   # bridge: both
-    else                "dmh"               # p = 24 (and any p > 12)
-    }                  
-  # fan out on reference (p = 12 -> two rows)
-  conditions <- do.call(rbind, lapply(seq_len(nrow(base)), function(i) {
-    refs <- .reference_for_p(base$P[i])
-    cbind(base[rep(i, length(refs)), , drop = FALSE],
-          reference = refs, row.names = NULL)
-  }))
-  # number the runnable rows (after fan-out, so p=12's two rows get distinct indices)
+    .reference_for_p <- function(p) {
+        if (p <= 12) "exact"   # exact is generated for P <= 12; for P = 12 this run also yields DMH as a byproduct (see dmh_bridge)
+        else         "dmh"     # p = 24 (and any p > 12)
+    }
+
+  conditions <- cbind(base, reference = vapply(base$P, .reference_for_p, character(1L)),
+                       row.names = NULL)
+  conditions$dmh_bridge <- conditions$P == 12
+
+  # number the runnable rows -- one per P/N/structure combination, no fan-out
   conditions <- cbind(index = seq_len(nrow(conditions)), conditions)
   return(conditions)
 }

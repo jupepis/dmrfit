@@ -31,7 +31,7 @@
 #' @title simulation
 #' @description compute posterior distribution according to a specific 'method' (repeating <simulate>|<reference>|<pseudo> as this saves storage space and time for saving rds of exact and posterior draws and also for memory serialization
 #' @param data raw dataset with only complete cases and X1,...,XP coded in 0,...,M-1 levels (IMPORTANT!)
-#' @param study_design row from the build_conditions() output, which contains all the simulation conditions. It contains the following columns: N, P, structure, index, and reference method (exact or dmh)
+#' @param condition row from the build_conditions() output, which contains all the simulation conditions. It contains the following columns: N, P, structure, index, and reference method (exact or dmh)
 #' @param master_seed master seed to use with RNG for reproducibility of parallelized simulations (IF WE GENERATE EVERYTIME FOR ONE METHOD TO RUN, WE NEED TO USE THE SAME MASTER SEED FOR ALL METHODS TO ENSURE THAT THE SAME RANDOM STRUCTURES ARE GENERATED)
 #' @param Q number of random structures to generate (default is 10)
 #' @param Q_nsim number of simulation per random structure to generate (default is 10)
@@ -40,18 +40,22 @@
 #' @param folder the folder where the results will be saved
 #' @return  depending on "method", a summary list of results or list of draws, or helpers is saved
 #' @export
-simulation <- function(data, study_design, master_seed, folder = "pl_project/", Q = 10, Q_nsim = 10, nthreads = 100L, method = c("reference","PPH","DMH","CoRe","CoRe-RM","CoRe-MCH","AdaCoRe")){
+simulation <- function(data, condition, master_seed, folder = "pl_project/", Q = 10, Q_nsim = 10, nthreads = 100L, method = c("reference","PPH","DMH","CoRe","CoRe-RM","CoRe-MCH","AdaCoRe")){
 
     # ---- Process method ----
     method  <- match.arg(arg = method, choices = c("reference","PPH","DMH","CoRe","CoRe-RM","CoRe-MCH","AdaCoRe"), several.ok = FALSE)
 
-    # ---- Initialize a parallel cluster ----
-    cl <- makeCluster(nthreads, type = "FORK") # FORK because we want to share large objects in memory (e.g., the partition function matrix X for P <= 12)
-    registerDoParallel(cl)
+    # ---- Generate master seed if not provided ----
     if (is.null(master_seed)) {
         master_seed <- as.integer(Sys.time()) + as.integer(Sys.getpid())
         
     }
+
+    # ---- Initialize a parallel cluster ----
+    cl <- makeCluster(nthreads, type = "FORK") # FORK because we want to share large objects in memory (e.g., the partition function matrix X for P <= 12)
+    registerDoParallel(cl)
+
+    # --- Set the random seed for reproducibility across parallel threads ---
     set.seed(master_seed)
     registerDoRNG(seed = master_seed) # ensure each thread has a unique seed
 
@@ -86,11 +90,11 @@ simulation <- function(data, study_design, master_seed, folder = "pl_project/", 
     progress <- .HYPER$progress
 
     # ---- Initialize variables and process data ----
-    N                       <- as.numeric(study_design[["N"]])                  # sample size
-    P                       <- as.numeric(study_design[["P"]])                  # number of nodes (variables)
-    S                       <- as.character(study_design[["structure"]])        # structure type
-    index_sim               <- as.numeric(study_design[["index"]])              # index of the simulation condition
-    reference               <- as.character(study_design[["reference"]])        # reference condition (dmh or exact; both only for P = 12)
+    N                       <- as.numeric(condition[["N"]])                  # sample size
+    P                       <- as.numeric(condition[["P"]])                  # number of nodes (variables)
+    S                       <- as.character(condition[["structure"]])        # structure type
+    index_sim               <- as.numeric(condition[["index"]])              # index of the simulation condition
+    reference               <- as.character(condition[["reference"]])        # reference condition (dmh or exact; both only for P = 12)
     design_condition        <- list(index = index_sim, N = N, P = P, S = S, reference = reference) # list to store the design condition
     proc_data               <- .process_data(data = data, suff_stats = FALSE)   # process data to include sufficient statistics
     data                    <- proc_data$data
@@ -263,7 +267,7 @@ simulation <- function(data, study_design, master_seed, folder = "pl_project/", 
                                                                     interactions_location = interactions_location, interactions_scale = interactions_scale,
                                                                     verbose = verbose, progress = progress)
                 if(save_sigma2_z){
-                    .save_and_move_object(obj = reference_draws$exact$sigma2, folder = folder, subfolder = "Exact", results_name = paste0("sigma2_condition_", index_sim, "_sample_", z, ".rds"))
+                    .save_and_move_object(obj = reference_draws$exact$sigma2, folder = folder, subfolder = "Exact", results_name = paste0("exact_sigma2_condition_", index_sim, "_sample_", z, ".rds"))
                 }
                 # Reference draws using DMH sampler --> only for P = 12 we also add DMH and return a list with two sets of samples
                 if(P == 12) {
@@ -285,7 +289,7 @@ simulation <- function(data, study_design, master_seed, folder = "pl_project/", 
                     # -- Save Metrics (reference to exact) for DMH draws (only for P = 12) --
                     .save_and_move_object(obj = dmh_metrics, folder = folder, subfolder = "DMH", results_name = paste0("summary_condition_", index_sim, ".rds"))
                     if(save_sigma2_z){
-                        .save_and_move_object(obj = reference_draws$dmh$sigma2, folder = folder, subfolder = "DMH", results_name = paste0("sigma2_condition_", index_sim, "_sample_", z, ".rds"))
+                        .save_and_move_object(obj = reference_draws$dmh$sigma2, folder = folder, subfolder = "DMH", results_name = paste0("dmh_sigma2_condition_", index_sim, "_sample_", z, ".rds"))
                     }
                 }
                 # ---- Reference draws ----
@@ -315,12 +319,12 @@ simulation <- function(data, study_design, master_seed, folder = "pl_project/", 
                 # ---- Reference draws ----
                 .save_and_move_object(obj = reference_draws, folder = folder, subfolder = paste0(method, "/condition_", index_sim), results_name = paste0("reference_draws_sample_", z, ".rds"))
                 if(save_sigma2_z){
-                    .save_and_move_object(obj = reference_draws$sigma2, folder = folder, subfolder = "DMH", results_name = paste0("sigma2_condition_", index_sim, "_sample_", z, ".rds"))
+                    .save_and_move_object(obj = reference_draws$sigma2, folder = folder, subfolder = "DMH", results_name = paste0("dmh_sigma2_condition_", index_sim, "_sample_", z, ".rds"))
                 }
             }
         }
 
-        invisible() # function ends here if method is "reference" # [[NOTE HERE: function ends here  if method is set to "refernece" because in that case we want to save only the simulated datasets and the reference draws]]
+        return(invisible()) # function ends here if method is "reference"
     }
     else { # load simulated data and ground truth (reference draws are loaded within the foreach loop for each sample under a specific method)
         samples_ls <- readRDS(paste0(folder, "simulate_data/simulate_data_condition_", index_sim, ".rds"))
@@ -356,7 +360,7 @@ simulation <- function(data, study_design, master_seed, folder = "pl_project/", 
                                                     thresholds_beta = thresholds_beta, interactions_location = interactions_location, interactions_scale = interactions_scale, 
                                                     verbose = verbose, progress = progress)
             if(save_sigma2_z){
-                .save_and_move_object(obj = draws_pp$sigma2, folder = folder, subfolder = "Pseudo", results_name = paste0("sigma2_condition_", index_sim, "_sample_", z, ".rds"))
+                .save_and_move_object(obj = draws_pp$sigma2, folder = folder, subfolder = method, results_name = paste0("pseudo_sigma2_condition_", index_sim, "_sample_", z, ".rds"))
             }
             # --- Load reference draws for replicate z ---
             ref_z <- readRDS(paste0(folder, "reference/condition_", index_sim, "/reference_draws_sample_", z, ".rds")) # load reference draws for replicate z
@@ -823,7 +827,8 @@ simulation <- function(data, study_design, master_seed, folder = "pl_project/", 
     }
  
     # save results object [[NOTE HERE: probably will have to check if .save_and_move_object() works fine in the line below]]
-    .save_and_move_object(obj = summary_ls, folder = folder, subfolder = method, results_name = paste0("summary_condition_",index_sim,".rds"))
+    summary_out <- list(summary = summary_ls, master_seed = master_seed)
+    .save_and_move_object(obj = summary_out, folder = folder, subfolder = method, results_name = paste0("summary_condition_",index_sim,".rds"))
     cat(paste(Sys.time()," - Results saved. \n",sep=""))
 
     # stop the parallel cluster

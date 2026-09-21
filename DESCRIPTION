@@ -13,7 +13,11 @@ License: MIT + file LICENSE
 URL: https://github.com/jupepis/dmrfit
 BugReports: https://github.com/jupepis/dmrfit/issues
 Depends:
-    R (>= 4.0.0)
+    R (>= 4.0.0),
+    parallel,
+    foreach,
+    doParallel,
+    doRNG
 Imports:
     Rcpp (>= 1.1.0)
 Suggests: 

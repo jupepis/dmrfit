@@ -6,7 +6,7 @@
 \usage{
 simulation(
   data,
-  study_design,
+  condition,
   master_seed,
   folder = "pl_project/",
   Q = 10,
@@ -18,7 +18,7 @@ simulation(
 \arguments{
 \item{data}{raw dataset with only complete cases and X1,...,XP coded in 0,...,M-1 levels (IMPORTANT!)}
 
-\item{study_design}{row from the build_conditions() output, which contains all the simulation conditions. It contains the following columns: N, P, structure, index, and reference method (exact or dmh)}
+\item{condition}{row from the build_conditions() output, which contains all the simulation conditions. It contains the following columns: N, P, structure, index, and reference method (exact or dmh)}
 
 \item{master_seed}{master seed to use with RNG for reproducibility of parallelized simulations (IF WE GENERATE EVERYTIME FOR ONE METHOD TO RUN, WE NEED TO USE THE SAME MASTER SEED FOR ALL METHODS TO ENSURE THAT THE SAME RANDOM STRUCTURES ARE GENERATED)}
 

@@ -6,7 +6,7 @@
 \usage{
 build_conditions(
   P = c(6, 9, 12, 24),
-  N,
+  N = c(500, 1000, 2000, 3000),
   structures = c("full", "random", "smallworld")
 )
 }
@@ -18,8 +18,10 @@ build_conditions(
 \item{structures}{character vector of graph structures ("full", "random", "smallworld")}
 }
 \value{
-a data frame of conditions with columns index, P, structure, N and reference ("exact" or "dmh"); P = 12 appears twice (both references)
+a data frame of conditions with columns index, P, structure, N, reference ("exact" or "dmh"),
+and dmh_bridge (TRUE only for P = 12, where the "reference" run also produces a DMH-vs-exact
+comparison as a byproduct -- no separate method = "DMH" run is needed or allowed for these rows)
 }
 \description{
-This function builds the full set of simulation conditions, one row per runnable design
+This function builds the full set of simulation conditions
 }
