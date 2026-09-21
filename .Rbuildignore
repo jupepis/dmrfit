@@ -5,3 +5,4 @@
 ^\.github$
 ^pl_project$
 ^zenodo$
+^.DS_Store$
