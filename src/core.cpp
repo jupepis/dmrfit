@@ -8,7 +8,6 @@
 // [[Rcpp::depends(RcppArmadillo, RcppProgress)]]
 
 // utility [matrix 2 x P*(P-1)/2] where by column the indices (i,j) of the interaction effects 
-// [[Rcpp::export]]
 arma::umat get_indices_sigma(const arma::uword &P){
     arma::umat matrix_indices_sigma(2,P*(P-1)/2);
     arma::uword l = 0;
@@ -23,7 +22,6 @@ arma::umat get_indices_sigma(const arma::uword &P){
 }
 
 // utility vector of which stats are involved in the thresholds (of length n_thresholds - used in the hessian computation)
-// [[Rcpp::export]]
 arma::uvec get_which_stats(const arma::uvec &n_categories, const arma::uword &n_thresholds){
     arma::uword P = n_categories.n_elem;
     arma::uvec which_stats(n_thresholds,arma::fill::zeros);
@@ -38,7 +36,6 @@ arma::uvec get_which_stats(const arma::uvec &n_categories, const arma::uword &n_
 }
 
 // utility vector of category statistics (of length n_thresholds - used in the hessian computation)
-// [[Rcpp::export]]
 arma::vec get_category_stats(const arma::uvec &n_categories, const arma::uword &n_thresholds){
     arma::uword P = n_categories.n_elem;
     arma::vec category_stats(n_thresholds,arma::fill::zeros);
@@ -53,7 +50,6 @@ arma::vec get_category_stats(const arma::uvec &n_categories, const arma::uword &
 }
 
 // sufficient statistics for omrf
-// [[Rcpp::export]]
 arma::vec get_sufficient_stats_omrf(
     const arma::mat &data, // P x N matrix of data (each column is a person, each row is a variable)
     const arma::uvec &which_stats,
@@ -80,7 +76,6 @@ arma::vec get_sufficient_stats_omrf(
 }
 
 // calculate log proposal ratio
-// [[Rcpp::export]]
 double get_log_proposal_ratio(
     const arma::vec &current_pars,
     const arma::vec &proposed_pars,
@@ -97,7 +92,6 @@ double get_log_proposal_ratio(
 }
 
 // caculate log-likelihood ratio (fast way to calculate without inverting vcov matrix - based on Proposition 1 from Michalis Titsias)
-// [[Rcpp::export]]
 double get_log_prior_ratio(
     const arma::vec &theta_current, 
     const arma::vec &theta_proposed,
@@ -115,6 +109,9 @@ double get_log_prior_ratio(
             log_dcauchy(theta_proposed(arma::span(n_thresholds,n_pars-1)), interactions_location, interactions_scale) - log_dcauchy(theta_current(arma::span(n_thresholds,n_pars-1)), interactions_location, interactions_scale)
         ); 
 }
+
+// The functions above are utility functions from the previous version of dmrfit. They might be redundant given the new implementation and will be removed in the future.
+
 
 // update preconditioning matrix R_n based on the current acceptance rate
 void update_optimal_preconditioner(
@@ -158,7 +155,6 @@ void update_global_step_size(
 }
 
 // gradient vector and log_Z_ratio Ordinal MRF Pseudolikelihood
-// [[Rcpp::export]]
 arma::field<arma::vec> omrf_pl_grad_logZ(
     const arma::vec &pars,
     const arma::vec &current_pars,
@@ -308,7 +304,7 @@ arma::field<arma::vec> omrf_pl_grad_logZ(
 }
 
 // [[Rcpp::export]]
-Rcpp::List omrf_core_sampler(
+Rcpp::List cpp_omrf_core_sampler(
   const arma::mat &data, // matrix of P rows (variables: X_1, ..., X_P) and N columns (each column is a person)
   const arma::vec &pars, // (thresholds, interactions)
   const arma::uvec &n_categories, // number of categories per each node

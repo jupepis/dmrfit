@@ -1,8 +1,8 @@
 Package: dmrfit
-Date: 2026-03-16
+Date: 2026-08-06
 Type: Package
 Title: Optimization Tools for Discrete Markov Random Fields
-Version: 0.0.1
+Version: 0.1.0
 Authors@R: c(person(given = "Giuseppe",
              family = "Arena",
              role = c("aut", "cre"),

@@ -89,7 +89,7 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
     data <- cbind(data, 2.0 * cross_product_stats)
 
     # finding the PMLEs via optimization of the pseudo-likelihood with trust region method
-    pmles <- suppressWarnings(tryCatch(expr = dmrfit:::optimize(data = data, parinit = parinit, n_categories =  n_categories, P = P, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps), n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = TRUE, epsilon = 1e-06, ncores = ncores, thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta, interactions_location = interactions_location, interactions_scale = interactions_scale), error = function(e) {NULL}))
+    pmles <- suppressWarnings(tryCatch(expr = cpp_optimize(data = data, parinit = parinit, n_categories =  n_categories, P = P, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps), n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = TRUE, epsilon = 1e-06, ncores = ncores, thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta, interactions_location = interactions_location, interactions_scale = interactions_scale), error = function(e) {NULL}))
     if(is.null(pmles)) {
         warning("Optimization failed. Returning NULL.")
         return(NULL)
@@ -100,7 +100,7 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
     new_scale <- t(chol(pmles$utils$HW))
     
     # run the core sampler 
-    out <- suppressWarnings(tryCatch(expr = dmrfit:::omrf_core_sampler(
+    out <- suppressWarnings(tryCatch(expr = cpp_omrf_core_sampler(
         data = t(data[,1:P, drop = FALSE]), # only the original data (without the cross-product terms) is needed for the core sampler, which computes the pseudo-likelihood and its gradient
         pars = pmles$argument,
         n_categories = n_categories,

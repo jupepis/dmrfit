@@ -108,10 +108,10 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
     data <- cbind(data, 2.0 * cross_product_stats)
 
     if(is.null(structure)) {
-        pmles <- suppressWarnings(tryCatch(expr = dmrfit:::optimize(data = data, parinit = parinit, n_categories =  n_categories, P = P, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps), n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = with_prior, epsilon = 1e-06, ncores = ncores, thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta, interactions_location = interactions_location, interactions_scale = interactions_scale), error = function(e) {NULL}))
+        pmles <- suppressWarnings(tryCatch(expr = cpp_optimize(data = data, parinit = parinit, n_categories =  n_categories, P = P, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps), n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = with_prior, epsilon = 1e-06, ncores = ncores, thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta, interactions_location = interactions_location, interactions_scale = interactions_scale), error = function(e) {NULL}))
     } else {
         structure_input_optimize <- c(rep(1, n_thresholds), structure[lower.tri(structure, diag = FALSE)])
-        pmles <- suppressWarnings(tryCatch(expr = dmrfit:::optimize_with_structure(data = data, parinit = parinit, n_categories =  n_categories, P = P, structure = structure_input_optimize, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps) , n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = with_prior, epsilon = 1e-06, ncores = ncores, thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta, interactions_location = interactions_location, interactions_scale = interactions_scale), error = function(e) {NULL}))
+        pmles <- suppressWarnings(tryCatch(expr = cpp_optimize_with_structure(data = data, parinit = parinit, n_categories =  n_categories, P = P, structure = structure_input_optimize, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps) , n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = with_prior, epsilon = 1e-06, ncores = ncores, thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta, interactions_location = interactions_location, interactions_scale = interactions_scale), error = function(e) {NULL}))
     }
 
     if(is.null(pmles)) {
@@ -168,7 +168,7 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
 
         # draw M samples from proposal
         M_importance <- M * oversampling
-        Z <- dmrfit:::mvnrnd_arma(mu = rep(0, n_pars_free), Sigma = Sigma_free, n = M_importance)
+        Z <- cpp_mvnrnd_arma(mu = rep(0, n_pars_free), Sigma = Sigma_free, n = M_importance)
         V <- rchisq(n = M_importance, df = proposal_df)
         samples_free <- sweep(Z, 2, sqrt(proposal_df/V), "*")
         samples_free <- sweep(samples_free, 1, pars_free, "+")  # n_pars_free x M_importance
@@ -187,7 +187,7 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
 
         log_target <- numeric(M_importance)
         for(m in seq_len(M_importance)){
-            log_target[m] <- -dmrfit:::npseudologlik(
+            log_target[m] <- -cpp_npseudologlik(
                 pars = samples[, m],
                 data = data,
                 P = P,

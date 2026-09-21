@@ -69,7 +69,7 @@ double find_root(double lower,
 // optimization routine for discrete MRFs via trust region algorithm
 
 // [[Rcpp::export]]
-Rcpp::List optimize(
+Rcpp::List cpp_optimize(
     const arma::mat &data,
     const arma::vec &parinit,
     const arma::uvec &n_categories,
@@ -235,7 +235,7 @@ Rcpp::List optimize(
 // optimization routine for discrete MRFs with fixed structure via trust region algorithm
 
 // [[Rcpp::export]]
-Rcpp::List optimize_with_structure(
+Rcpp::List cpp_optimize_with_structure(
     const arma::mat &data,
     const arma::vec &parinit,
     const arma::vec &structure,
@@ -404,7 +404,7 @@ Rcpp::List optimize_with_structure(
 // trust-region algorithm profile negative loglikelihood via parconstr
 
 // [[Rcpp::export]]
-Rcpp::List optimize_profile(
+Rcpp::List cpp_optimize_profile(
     const arma::mat &data,
     const arma::vec &parinit,
     const arma::uvec &which_parconstr,

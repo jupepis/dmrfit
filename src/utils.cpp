@@ -13,7 +13,7 @@ arma::mat rnorm_arma(int nrow, int ncol) {
 
 // Generate n multivariate normal samples
 // [[Rcpp::export]]
-arma::mat mvnrnd_arma(const arma::vec &mu, const arma::mat &Sigma, int n) {
+arma::mat cpp_mvnrnd_arma(const arma::vec &mu, const arma::mat &Sigma, int n) {
   int p = mu.n_elem;
   arma::mat Z = rnorm_arma(p, n);   // each column is a sample
   arma::mat C = arma::chol(Sigma, "lower");
@@ -31,6 +31,7 @@ arma::mat mvnrnd_arma(const arma::vec &mu, const arma::mat &Sigma, int n) {
 // "hessian" is the negative hessian value (its inverse returns the matrix of variances and covariances of the model parameters)
 // "HW" is the Huber-White sandwich variance estimator (it is already a matrix of variances and covariances)
 // note: loglik, gradient and hessian are used by the trust algorithm to find the MPLEs
+// [[Rcpp::export]]
 Rcpp::List dmrf_deriv(
     const arma::vec &pars,
     const arma::mat &data, // this is already the matrix of sufficient statistics, by row (person) it looks like: {X_1, ..., X_P,2X_1X_2,...,2X_{P-1}X_P}
@@ -352,7 +353,7 @@ Rcpp::List dmrf_deriv(
 
 // function to calculate the negative pseudologlikelihood for a discrete MRF model
 // [[Rcpp::export]]
-double npseudologlik(
+double cpp_npseudologlik(
     const arma::vec &pars,
     const arma::mat &data, // this is already the matrix of sufficient statistics, by row (person) it looks like: {X_1, ..., X_P,2X_1X_2,...,2X_{P-1}X_P}
     const arma::uword &P,
@@ -446,4 +447,39 @@ double npseudologlik(
         loglik -= (arma::accu(log_beta_prime(thresholds, thresholds_alpha, thresholds_beta)) + arma::accu(log_dcauchy(interactions_vec, interactions_location, interactions_scale)));
     }
    return loglik;
+}
+
+
+// Deduplicate rows of `data`, returning unique rows and their frequencies
+void get_data_unique(arma::mat& unique_data, arma::vec& frequency, const arma::mat& data) {
+    arma::uword N = data.n_rows;
+    arma::uword P = data.n_cols;
+
+    // Encode each row as a single integer (base = max category range + 1,
+    // safe here since values are small non-negative integers 0..m-1).
+    // Using a std::map keyed by a packed integer avoids string hashing.
+    std::map<std::vector<int>, arma::uword> row_counts;
+    std::vector<std::vector<int>> row_order;   // preserves first-seen order
+
+    for (arma::uword n = 0; n < N; n++) {
+        std::vector<int> row(P);
+        for (arma::uword p = 0; p < P; p++) row[p] = static_cast<int>(data(n, p));
+
+        auto it = row_counts.find(row);
+        if (it == row_counts.end()) {
+            row_counts[row] = 1;
+            row_order.push_back(row);
+        } else {
+            it->second++;
+        }
+    }
+
+    arma::uword n_unique = row_order.size();
+    unique_data.set_size(n_unique, P);
+    frequency.set_size(n_unique);
+
+    for (arma::uword i = 0; i < n_unique; i++) {
+        for (arma::uword p = 0; p < P; p++) unique_data(i, p) = static_cast<double>(row_order[i][p]);
+        frequency(i) = static_cast<double>(row_counts[row_order[i]]);
+    }
 }
