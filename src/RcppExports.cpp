@@ -118,18 +118,18 @@ BEGIN_RCPP
 END_RCPP
 }
 // update_target_rescaling
-void update_target_rescaling(const arma::mat& I, const arma::vec& pars, const arma::mat& data, const arma::vec& frequency, const arma::uword& P, const arma::uword& N, const arma::uword& n_pars, const arma::uword& n_thresholds, const arma::uvec& n_categories, const arma::uvec& lower_indices, arma::mat& interactions, const arma::umat& matrix_indices_sigma, const arma::uvec& which_stats, const arma::vec& category_stats, const arma::uvec& category_offsets, arma::mat& Score, arma::mat& hessian, arma::mat& invHW, arma::mat& HW, arma::mat& Gamma, arma::mat& invGamma, arma::mat& Lt, arma::mat& invLt, arma::vec& log_prior_curvature, arma::mat& log_prior_curvature_mat);
-RcppExport SEXP _dmrfit_update_target_rescaling(SEXP ISEXP, SEXP parsSEXP, SEXP dataSEXP, SEXP frequencySEXP, SEXP PSEXP, SEXP NSEXP, SEXP n_parsSEXP, SEXP n_thresholdsSEXP, SEXP n_categoriesSEXP, SEXP lower_indicesSEXP, SEXP interactionsSEXP, SEXP matrix_indices_sigmaSEXP, SEXP which_statsSEXP, SEXP category_statsSEXP, SEXP category_offsetsSEXP, SEXP ScoreSEXP, SEXP hessianSEXP, SEXP invHWSEXP, SEXP HWSEXP, SEXP GammaSEXP, SEXP invGammaSEXP, SEXP LtSEXP, SEXP invLtSEXP, SEXP log_prior_curvatureSEXP, SEXP log_prior_curvature_matSEXP) {
+void update_target_rescaling(const arma::mat& I, const arma::vec& pars, const arma::mat& data, const arma::vec& frequency, arma::uword P, arma::uword N, arma::uword n_pars, arma::uword n_thresholds, const arma::uvec& n_categories, const arma::uvec& lower_indices, arma::mat& interactions, const arma::umat& matrix_indices_sigma, const arma::uvec& which_stats, const arma::vec& category_stats, const arma::uvec& category_offsets, double thresholds_alpha, double thresholds_beta, double interactions_location, double interactions_scale, arma::mat& Score, arma::mat& hessian, arma::mat& invHW, arma::mat& HW, arma::mat& Gamma, arma::mat& invGamma, arma::mat& Lt, arma::mat& invLt, arma::vec& log_prior_curvature, arma::mat& log_prior_curvature_mat);
+RcppExport SEXP _dmrfit_update_target_rescaling(SEXP ISEXP, SEXP parsSEXP, SEXP dataSEXP, SEXP frequencySEXP, SEXP PSEXP, SEXP NSEXP, SEXP n_parsSEXP, SEXP n_thresholdsSEXP, SEXP n_categoriesSEXP, SEXP lower_indicesSEXP, SEXP interactionsSEXP, SEXP matrix_indices_sigmaSEXP, SEXP which_statsSEXP, SEXP category_statsSEXP, SEXP category_offsetsSEXP, SEXP thresholds_alphaSEXP, SEXP thresholds_betaSEXP, SEXP interactions_locationSEXP, SEXP interactions_scaleSEXP, SEXP ScoreSEXP, SEXP hessianSEXP, SEXP invHWSEXP, SEXP HWSEXP, SEXP GammaSEXP, SEXP invGammaSEXP, SEXP LtSEXP, SEXP invLtSEXP, SEXP log_prior_curvatureSEXP, SEXP log_prior_curvature_matSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::mat& >::type I(ISEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type pars(parsSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type data(dataSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type frequency(frequencySEXP);
-    Rcpp::traits::input_parameter< const arma::uword& >::type P(PSEXP);
-    Rcpp::traits::input_parameter< const arma::uword& >::type N(NSEXP);
-    Rcpp::traits::input_parameter< const arma::uword& >::type n_pars(n_parsSEXP);
-    Rcpp::traits::input_parameter< const arma::uword& >::type n_thresholds(n_thresholdsSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type P(PSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type N(NSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type n_pars(n_parsSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type n_thresholds(n_thresholdsSEXP);
     Rcpp::traits::input_parameter< const arma::uvec& >::type n_categories(n_categoriesSEXP);
     Rcpp::traits::input_parameter< const arma::uvec& >::type lower_indices(lower_indicesSEXP);
     Rcpp::traits::input_parameter< arma::mat& >::type interactions(interactionsSEXP);
@@ -137,6 +137,10 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::uvec& >::type which_stats(which_statsSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type category_stats(category_statsSEXP);
     Rcpp::traits::input_parameter< const arma::uvec& >::type category_offsets(category_offsetsSEXP);
+    Rcpp::traits::input_parameter< double >::type thresholds_alpha(thresholds_alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type thresholds_beta(thresholds_betaSEXP);
+    Rcpp::traits::input_parameter< double >::type interactions_location(interactions_locationSEXP);
+    Rcpp::traits::input_parameter< double >::type interactions_scale(interactions_scaleSEXP);
     Rcpp::traits::input_parameter< arma::mat& >::type Score(ScoreSEXP);
     Rcpp::traits::input_parameter< arma::mat& >::type hessian(hessianSEXP);
     Rcpp::traits::input_parameter< arma::mat& >::type invHW(invHWSEXP);
@@ -147,7 +151,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::mat& >::type invLt(invLtSEXP);
     Rcpp::traits::input_parameter< arma::vec& >::type log_prior_curvature(log_prior_curvatureSEXP);
     Rcpp::traits::input_parameter< arma::mat& >::type log_prior_curvature_mat(log_prior_curvature_matSEXP);
-    update_target_rescaling(I, pars, data, frequency, P, N, n_pars, n_thresholds, n_categories, lower_indices, interactions, matrix_indices_sigma, which_stats, category_stats, category_offsets, Score, hessian, invHW, HW, Gamma, invGamma, Lt, invLt, log_prior_curvature, log_prior_curvature_mat);
+    update_target_rescaling(I, pars, data, frequency, P, N, n_pars, n_thresholds, n_categories, lower_indices, interactions, matrix_indices_sigma, which_stats, category_stats, category_offsets, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, Score, hessian, invHW, HW, Gamma, invGamma, Lt, invLt, log_prior_curvature, log_prior_curvature_mat);
     return R_NilValue;
 END_RCPP
 }
@@ -466,7 +470,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_dmrfit_cpp_optimize", (DL_FUNC) &_dmrfit_cpp_optimize, 16},
     {"_dmrfit_cpp_optimize_with_structure", (DL_FUNC) &_dmrfit_cpp_optimize_with_structure, 17},
     {"_dmrfit_cpp_optimize_profile", (DL_FUNC) &_dmrfit_cpp_optimize_profile, 18},
-    {"_dmrfit_update_target_rescaling", (DL_FUNC) &_dmrfit_update_target_rescaling, 25},
+    {"_dmrfit_update_target_rescaling", (DL_FUNC) &_dmrfit_update_target_rescaling, 29},
     {"_dmrfit_cpp_adacore_sampler", (DL_FUNC) &_dmrfit_cpp_adacore_sampler, 14},
     {"_dmrfit_cpp_core_sampler", (DL_FUNC) &_dmrfit_cpp_core_sampler, 16},
     {"_dmrfit_cpp_dmh_sampler", (DL_FUNC) &_dmrfit_cpp_dmh_sampler, 15},

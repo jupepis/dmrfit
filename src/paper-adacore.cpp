@@ -14,10 +14,10 @@ void update_target_rescaling(
     const arma::vec &pars,
     const arma::mat &data, // this is already the matrix of sufficient statistics, by row (person) it looks like: {X_1, ..., X_P,2X_1X_2,...,2X_{P-1}X_P}
     const arma::vec &frequency, // frequency of data by row
-    const arma::uword &P,
-    const arma::uword &N,
-    const arma::uword &n_pars,
-    const arma::uword &n_thresholds,
+    arma::uword P,
+    arma::uword N,
+    arma::uword n_pars,
+    arma::uword n_thresholds,
     const arma::uvec &n_categories,
     const arma::uvec &lower_indices,
     arma::mat &interactions,
@@ -25,6 +25,10 @@ void update_target_rescaling(
     const arma::uvec &which_stats,
     const arma::vec &category_stats,
     const arma::uvec &category_offsets,
+    double thresholds_alpha,
+    double thresholds_beta,
+    double interactions_location,
+    double interactions_scale,
     arma::mat &Score,
     arma::mat &hessian,
     arma::mat &invHW,
@@ -35,8 +39,7 @@ void update_target_rescaling(
     arma::mat &invLt,
     arma::vec &log_prior_curvature,
     arma::mat &log_prior_curvature_mat
-)
-{
+) {
     arma::uword n,p,i,j,h;
     arma::vec thresholds = pars(arma::span(0,n_thresholds-1));  // vector of thresholds parameters
     arma::vec interactions_vec = pars(arma::span(n_thresholds,n_pars-1));// vector of P*(P-1)/2 interaction parameters
@@ -190,7 +193,8 @@ void update_target_rescaling(
     // Adding prior information on inverse HW hessian 
 
     // prior curvature
-    log_prior_curvature = arma::join_cols(log_beta_prime_second_derivative(thresholds),log_dcauchy_second_derivative(interactions_vec));
+    log_prior_curvature = arma::join_cols(log_beta_prime_second_derivative(thresholds, thresholds_alpha, thresholds_beta),
+                                            log_dcauchy_second_derivative(interactions_vec, interactions_location, interactions_scale));
     log_prior_curvature_mat = arma::diagmat(log_prior_curvature);
 
     // adding prior information to HW and find Gamma
@@ -316,8 +320,7 @@ Rcpp::List cpp_adacore_sampler(const arma::mat &data,
     // --- Preallocate matrices for Score and Hessian ---
     arma::mat Score(n_pars, n_pars), 
               hessian(n_pars, n_pars),
-              interactions(P, P);
-
+              interactions(P, P);                            
     // --- Preallocate matrices for the rescaling ---
     //
     // Three important relationships for the rescaling matrices:
@@ -337,8 +340,9 @@ Rcpp::List cpp_adacore_sampler(const arma::mat &data,
     // arma::vec log_prior_curvature(n_pars,arma::fill::zeros);
 
     update_target_rescaling(I_d,eta_current,unique_data,frequency,P,N_unique,n_pars,n_thresholds,n_categories,
-                            lower_indices,interactions,matrix_indices_sigma,which_stats, category_stats,
-                            category_offsets,Score,hessian,invHW,HW,Gamma,invGamma,Lt,invLt,log_prior_curvature,log_prior_curvature_mat);                       
+                            lower_indices,interactions,matrix_indices_sigma,which_stats,category_stats,
+                            category_offsets,thresholds_alpha,thresholds_beta,interactions_location,interactions_scale,
+                            Score,hessian,invHW,HW,Gamma,invGamma,Lt,invLt,log_prior_curvature,log_prior_curvature_mat);                       
     arma::vec beta_current = (Gamma * (Lt * (pars - pmles))) + pmles; // CoRe space                              
 
     // --- Calculate pseudo gradient and normalizing constant at current parameters, then trasnform to CoRe space gradient ---
@@ -376,7 +380,8 @@ Rcpp::List cpp_adacore_sampler(const arma::mat &data,
                 m = (1.0 - alpha_m) * m + alpha_m * st;
                 if(m > th_update){
                     update_target_rescaling(I_d,pars_cumsum/static_cast<double>(s),unique_data,frequency,P,N_unique,n_pars,n_thresholds,n_categories,
-                                            lower_indices,interactions,matrix_indices_sigma,which_stats,category_stats,category_offsets,Score,hessian,
+                                            lower_indices,interactions,matrix_indices_sigma,which_stats,category_stats,category_offsets,thresholds_alpha, 
+                                            thresholds_beta,interactions_location,interactions_scale,Score,hessian,
                                             invHW,HW,Gamma,invGamma,Lt,invLt,log_prior_curvature,log_prior_curvature_mat);
                     counter_update++;
                     beta_current = (Gamma * (Lt * (eta_current - pmles))) + pmles; // CoRe space using the updated rescaling matrices
@@ -444,7 +449,7 @@ Rcpp::List cpp_adacore_sampler(const arma::mat &data,
                         << learning_rate * (std::exp(log_a) - target_ar) << "\n";
         }
 
-        if (s % print_every == 0) p.increment(print_every); // Update progress bar
+        if (progress && s % print_every == 0) p.increment(print_every); // Update progress bar
 
         s++; // Increment counter
     }

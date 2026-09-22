@@ -239,7 +239,7 @@ Rcpp::List cpp_exact_sampler(const arma::mat &data,
                         << learning_rate * (std::exp(log_a) - target_ar) << "\n";
         }
 
-        if (s % print_every == 0) p.increment(print_every); // Update progress bar
+        if (progress && s % print_every == 0) p.increment(print_every); // Update progress bar
 
         s++; // Increment counter
     }

@@ -52,7 +52,8 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
     }
 
     # ---- Initialize a parallel cluster ----
-    cl <- makeCluster(nthreads, type = "FORK") # FORK because we want to share large objects in memory (e.g., the partition function matrix X for P <= 12)
+    #cl <- makeCluster(nthreads, type = "FORK") # FORK because we want to share large objects in memory (e.g., the partition function matrix X for P <= 12)
+    cl <- makeCluster(nthreads, type = "FORK", outfile = file.path(Sys.getenv("HOME"), "worker.log"))
     registerDoParallel(cl)
 
     # --- Set the random seed for reproducibility across parallel threads ---
@@ -238,12 +239,13 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
         if(P <= 12){ # use exact sampler for P <= 12           
             X <- NULL
             if(.equal_categories_check){ # if equal categories case is satisfied and only for P<=12 where exact likelihood is feasible
-                permutations <- expand.grid(sapply(1:P, function(x) list(0:(n_categories[1] - 1)))) 
+                ncat_P <- rep(n_categories[1], P)
+                permutations <- expand.grid(sapply(1:P, function(x) list(0:(ncat_P[1] - 1)))) 
                 permutations <- as.matrix(permutations) 
-                n_thresholds_equal <- sum(n_categories - 1)
-                n_pars_equal <-  n_thresholds_equal + P * (P - 1) / 2
-                X <- dmrfit:::cpp_build_permutations_stats(permutations = permutations, n_pars = n_pars_equal, n_thresholds = n_thresholds_equal, n_categories = n_categories) 
-                rm(permutations, n_pars_equal, n_thresholds_equal)
+                n_thresholds_equal <- sum(ncat_P - 1)
+                n_pars_equal <- n_thresholds_equal + P * (P - 1) / 2
+                X <- dmrfit:::cpp_build_permutations_stats(permutations = permutations, n_pars = n_pars_equal, n_thresholds = n_thresholds_equal, n_categories = ncat_P) 
+                rm(permutations, n_pars_equal, n_thresholds_equal, ncat_P)
             }
             draws <- foreach(z = 1:n_datasets, .packages = "dmrfit") %dopar% {
                 # Unpack objects from replicate z
@@ -732,7 +734,7 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
  
             # --- Unpack objects from replicate z ---
             sample_z <- samples_ls[[z]] # select replicate z
-            data_z <- sample_z$sample[,1:P] # select the data for replicate z
+            data_z <- sample_z$sample # select the data for replicate z (including P*(P-1)/2 crossproducts columns)
             pars_z <- sample_z$pmles # pmles
             ref_str_z <- sample_z$ref_str # reference structure index
             n_categories_z <- truth_info[[ref_str_z]]$n_categories
@@ -742,7 +744,7 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
             save_sigma2_z <- sample_z$save_sigma2
 
             # --- Compute AdaCoRe draws ---
-            draws_adacore <- dmrfit:::cpp_adacore_sampler(data = data_z,
+            draws_adacore <- dmrfit:::cpp_adacore_sampler(data = data_z, # columns: the P variables and the P*(P-1)/2 crossproducts 
                                                             pars = pars_z, 
                                                             n_categories = n_categories_z,
                                                             pmles = pars_z, 

@@ -582,15 +582,15 @@ arma::mat cpp_compute_mc_hessian(const arma::mat &data,
 
     // --- Initialize structures ---
 
-    // Lower triangular matrix indices excluding diagonal elements
+    // Lower triangular matrix indices excluding diagonal elements (this is for the lower triangular part of the interaction matrix)
     arma::uvec lower_indices = arma::trimatl_ind(arma::size(P, P), -1);
 
-    // Lower triangular matrix indices including diagonal elements
-    arma::uvec lower_indices_including_diagonal = arma::trimatl_ind(arma::size(P, P), 0);
+    // Lower triangular matrix indices including diagonal elements (this is for the lower triangular part of the hessian matrix, which considers n_pars)
+    arma::uvec lower_indices_including_diagonal = arma::trimatl_ind(arma::size(n_pars, n_pars), 0);
 
-    // Lower triangular matrix indices including diagonal elements (i,j) pairs
+    // Lower triangular matrix indices including diagonal elements (i,j) pairs (this is for the lower triangular part of the hessian matrix, which considers n_pars and includes the diagonal elements)
     arma::umat matrix_indices_lower_diag;
-    sigma_lower_tri_indices_with_diagonal(matrix_indices_lower_diag,P);
+    sigma_lower_tri_indices_with_diagonal(matrix_indices_lower_diag,n_pars);
 
     // Utility vectors indicating which stats and which category 
     arma::uvec which_stats;

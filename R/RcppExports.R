@@ -17,8 +17,8 @@ cpp_optimize_profile <- function(data, parinit, which_parconstr, parconstr, n_ca
     .Call(`_dmrfit_cpp_optimize_profile`, data, parinit, which_parconstr, parconstr, n_categories, P, f_term, m_term, n_iter_max, rinit, rmax, with_prior, epsilon, ncores, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale)
 }
 
-update_target_rescaling <- function(I, pars, data, frequency, P, N, n_pars, n_thresholds, n_categories, lower_indices, interactions, matrix_indices_sigma, which_stats, category_stats, category_offsets, Score, hessian, invHW, HW, Gamma, invGamma, Lt, invLt, log_prior_curvature, log_prior_curvature_mat) {
-    invisible(.Call(`_dmrfit_update_target_rescaling`, I, pars, data, frequency, P, N, n_pars, n_thresholds, n_categories, lower_indices, interactions, matrix_indices_sigma, which_stats, category_stats, category_offsets, Score, hessian, invHW, HW, Gamma, invGamma, Lt, invLt, log_prior_curvature, log_prior_curvature_mat))
+update_target_rescaling <- function(I, pars, data, frequency, P, N, n_pars, n_thresholds, n_categories, lower_indices, interactions, matrix_indices_sigma, which_stats, category_stats, category_offsets, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, Score, hessian, invHW, HW, Gamma, invGamma, Lt, invLt, log_prior_curvature, log_prior_curvature_mat) {
+    invisible(.Call(`_dmrfit_update_target_rescaling`, I, pars, data, frequency, P, N, n_pars, n_thresholds, n_categories, lower_indices, interactions, matrix_indices_sigma, which_stats, category_stats, category_offsets, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, Score, hessian, invHW, HW, Gamma, invGamma, Lt, invLt, log_prior_curvature, log_prior_curvature_mat))
 }
 
 cpp_adacore_sampler <- function(data, pars, n_categories, pmles, nsim, burnin, adaptive_stage_n_iter = 500L, sigma2 = 1.0, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, verbose = FALSE, progress = TRUE) {

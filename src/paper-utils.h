@@ -77,9 +77,9 @@ void fishermala_update_step_size(double& sigma2,
                                         double& sigma2_R,
                                         const arma::mat& R_n,
                                         arma::uword n_pars,
-                                        double learning_rate,
+                                        double log_a,
                                         double target_ar,
-                                        double log_a);                            
+                                        double learning_rate);                            
 
 // Compute pseudo-posterior based gradient and logZ_ratio
 struct PseudoGradient {

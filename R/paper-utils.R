@@ -190,8 +190,8 @@
 #' @noRd
 .save_and_move_object <- function(obj, folder, subfolder, results_name){ 
     save_path <- paste0(folder, subfolder, "/")
-    cp_from      <- paste0('cp "$TMPDIR"', save_path)
-    cp_to        <- paste0(' "$HOME"', save_path)
+    cp_from      <- paste0('cp "$TMPDIR"/', save_path)
+    cp_to        <- paste0(' "$HOME"/', save_path)
     saveRDS(obj,file = paste0(save_path, results_name)) 
     system(command = paste(cp_from, results_name, cp_to,sep="")) 
 }
