@@ -1,4 +1,38 @@
+.Rproj.user/
+*.Rproj
+.Rhistory
+.RData
+
+# Editor or OS
+.vscode/
 .DS_Store
-.Rproj.user
-pl_project/
+
+# Folders
 zenodo/
+pl_project/
+pl_project_mini/
+
+# Build and package artifacts
+*.tar.gz
+.Rcheck/
+src/*.o
+src/*.so
+src/*.dll
+src/*.dylib
+src/Makevars
+src/Makevars.win
+src/sources.mk
+inst/doc/
+doc/
+Meta/
+
+# other files
+
+# Formatting style files
+
+
+# Other
+*.log
+# /.quarto/
+# **/*.quarto_ipynb
+docs
