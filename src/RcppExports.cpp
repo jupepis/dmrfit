@@ -338,6 +338,24 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// cpp_npseudologlik_draws
+arma::vec cpp_npseudologlik_draws(const arma::mat& pars_draws, const arma::mat& data, const arma::uvec& n_categories, const bool& with_prior, const double& thresholds_alpha, const double& thresholds_beta, const double& interactions_location, const double& interactions_scale);
+RcppExport SEXP _dmrfit_cpp_npseudologlik_draws(SEXP pars_drawsSEXP, SEXP dataSEXP, SEXP n_categoriesSEXP, SEXP with_priorSEXP, SEXP thresholds_alphaSEXP, SEXP thresholds_betaSEXP, SEXP interactions_locationSEXP, SEXP interactions_scaleSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type pars_draws(pars_drawsSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type data(dataSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type n_categories(n_categoriesSEXP);
+    Rcpp::traits::input_parameter< const bool& >::type with_prior(with_priorSEXP);
+    Rcpp::traits::input_parameter< const double& >::type thresholds_alpha(thresholds_alphaSEXP);
+    Rcpp::traits::input_parameter< const double& >::type thresholds_beta(thresholds_betaSEXP);
+    Rcpp::traits::input_parameter< const double& >::type interactions_location(interactions_locationSEXP);
+    Rcpp::traits::input_parameter< const double& >::type interactions_scale(interactions_scaleSEXP);
+    rcpp_result_gen = Rcpp::wrap(cpp_npseudologlik_draws(pars_draws, data, n_categories, with_prior, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_dmrfit_cpp_optimize", (DL_FUNC) &_dmrfit_cpp_optimize, 16},
@@ -355,6 +373,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_dmrfit_cpp_mvnrnd_arma", (DL_FUNC) &_dmrfit_cpp_mvnrnd_arma, 3},
     {"_dmrfit_dmrf_deriv", (DL_FUNC) &_dmrfit_dmrf_deriv, 10},
     {"_dmrfit_cpp_npseudologlik", (DL_FUNC) &_dmrfit_cpp_npseudologlik, 10},
+    {"_dmrfit_cpp_npseudologlik_draws", (DL_FUNC) &_dmrfit_cpp_npseudologlik_draws, 8},
     {NULL, NULL, 0}
 };
 

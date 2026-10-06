@@ -61,3 +61,7 @@ cpp_npseudologlik <- function(pars, data, P, n_categories, with_prior, ncores, t
     .Call(`_dmrfit_cpp_npseudologlik`, pars, data, P, n_categories, with_prior, ncores, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale)
 }
 
+cpp_npseudologlik_draws <- function(pars_draws, data, n_categories, with_prior, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale) {
+    .Call(`_dmrfit_cpp_npseudologlik_draws`, pars_draws, data, n_categories, with_prior, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale)
+}
+

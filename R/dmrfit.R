@@ -206,21 +206,17 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
         eta <- matrix(0, n_pars, M_importance)
         eta[free_idx, ] <- eta_free
 
-        log_target <- numeric(M_importance)
-        for(m in seq_len(M_importance)){
-            log_target[m] <- -cpp_npseudologlik(
-                pars = eta[, m],
-                data = data,
-                P = P,
-                n_categories = n_categories,
-                with_prior = TRUE,
-                ncores = ncores,
-                thresholds_alpha = thresholds_alpha,
-                thresholds_beta = thresholds_beta,
-                interactions_location = interactions_location,
-                interactions_scale = interactions_scale
-            )
-        }
+        # --- Log pseudo-posterior at the mapped draws (all draws at once, over the unique response patterns) ---
+        log_target <- -cpp_npseudologlik_draws(
+            pars_draws = eta,
+            data = data[, 1:P, drop = FALSE],
+            n_categories = n_categories,
+            with_prior = TRUE,
+            thresholds_alpha = thresholds_alpha,
+            thresholds_beta = thresholds_beta,
+            interactions_location = interactions_location,
+            interactions_scale = interactions_scale
+        )
 
         # --- Importance weights on the log scale, shifted by their maximum (the largest weight is 1) ---
         log_w <- log_target - log_q
