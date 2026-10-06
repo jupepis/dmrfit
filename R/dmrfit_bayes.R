@@ -14,7 +14,7 @@
 #' @param sigma2 initial value for the adaptive variance parameter in the FisherMALA sampler (default is 0.1).
 #' @param seed random seed for reproducibility of the MCMC sampler (default is 123). The caller's random number stream is restored on exit.
 #' 
-#' @return dmrfit S3 class object
+#' @return an object of class \code{dmrfit_bayes} (also of class \code{dmrfit}), including the posterior draws (\code{draws}), the Savage-Dickey Bayes factors with the effective sample size of each parameter (\code{savage_dickey}), and the multivariate effective sample size of the draws (\code{mess}; Vats, Flegal and Jones, 2019), which is \code{NA} when there are fewer than \code{P + 1} batches of \code{floor(sqrt(nsim))} draws per parameter.
 #' 
 #' @examples 
 #' 
@@ -33,7 +33,7 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
     # save the matched call for print and summary methods
     cl <- match.call()
 
-    # set random seed for reproducibility of the sampler, restoring the caller's random number stream on exit
+    # --- Random seed for the sampler (the caller's random state is restored on exit) ---
     had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
     if (had_seed) old_seed <- get(".Random.seed", envir = globalenv(), inherits = FALSE)
     on.exit({
@@ -169,7 +169,8 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
     bf_01 <- numeric(length(inter_idx))
     names(bf_01) <- par_names[inter_idx]
 
-    # when zero lies beyond all posterior draws, the density at zero cannot be estimated from the draws (a kernel
+    # --- Savage-Dickey density ratio at zero for each interaction ---
+    # When zero lies beyond all posterior draws, the density at zero cannot be estimated from the draws (a kernel
     # estimate there only extrapolates the tail of the nearest kernel): BF_01 is then reported at a floor and flagged
     bf_floor <- 1 / (10 * nsim)
     zero_beyond_draws <- logical(length(inter_idx))
@@ -195,7 +196,7 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
 
     pr_null <- bf_01 / (1 + bf_01) # this is the Pr(=0|x)
 
-    # effective sample size of the posterior draws, per parameter (autocorrelation-based)
+    # --- Effective sample size of the posterior draws, per parameter (autocorrelation-based) ---
     ess <- apply(out$draws, 1, .ess_mcmc)
     names(ess) <- par_names
     if (min(ess[inter_idx]) < 100)
@@ -217,6 +218,9 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
 
     # store posterior draws
     pmles$draws <- out$draws
+
+    # --- Multivariate effective sample size of the posterior draws (Vats, Flegal and Jones, 2019) ---
+    pmles$mess <- .mess_mcmc(out$draws)
 
     return(structure(pmles, class = c("dmrfit_bayes", "dmrfit")))
 }
@@ -279,6 +283,7 @@ summary.dmrfit_bayes <- function(object, ...) {
         acceptance       = object$acceptance,
         seconds_elapsed  = object$seconds_elapsed,
         nsim             = ncol(object$draws),
+        mess             = object$mess,
         savage_dickey    = object$savage_dickey
     )
     class(out) <- c("summary.dmrfit_bayes", "summary.dmrfit")
@@ -321,6 +326,8 @@ print.dmrfit_bayes <- function(x, ...) {
     cat("\nMCMC samples:", ncol(x$draws),
         " Acceptance rate:", round(x$acceptance, 3),
         " Elapsed:", round(x$seconds_elapsed, 1), "sec\n")
+    if (!is.null(x$mess) && !is.na(x$mess))
+        cat("Multivariate effective sample size:", round(x$mess, 1), "\n")
     cat("\n")
     invisible(x)
 }
@@ -351,6 +358,8 @@ print.summary.dmrfit_bayes <- function(x, ...) {
     cat("MCMC samples:", x$nsim,
         " Acceptance rate:", round(x$acceptance, 3),
         " Elapsed:", round(x$seconds_elapsed, 1), "sec\n")
+    if (!is.null(x$mess) && !is.na(x$mess))
+        cat("Multivariate effective sample size:", round(x$mess, 1), "\n")
     cat(paste0(rep("-", min(60, getOption("width"))), collapse = ""), "\n")
 
     cat("\nThresholds:\n")
@@ -393,22 +402,75 @@ print.summary.dmrfit_bayes <- function(x, ...) {
     invisible(x)
 }
 
-# .ess_mcmc (internal): effective sample size of a single chain of draws, from its autocorrelations summed with Geyer's
-# initial positive sequence (sums of pairs of consecutive autocorrelations, up to the first non-positive pair)
+#' ess_mcmc (internal)
+#' @description Effective sample size of a single chain of draws, from its autocorrelations summed with Geyer's
+#'   initial positive sequence (sums of pairs of consecutive autocorrelations, up to the first non-positive pair).
+#'   The autocorrelations are computed through the fast Fourier transform.
+#' @param x numeric vector, the draws of one parameter
+#' @return the effective sample size (NA for fewer than 4 draws or constant draws)
+#' @noRd
 .ess_mcmc <- function(x) {
+
     n <- length(x)
     if (n < 4 || stats::var(x) == 0) return(NA_real_)
-    # autocorrelations at lags 0, ..., n - 1 through the fast Fourier transform (zero-padded to avoid wrap-around)
+
+    # --- Autocorrelations at lags 0, ..., n - 1 (zero-padded to avoid wrap-around) ---
     xc <- x - mean(x)
     m <- 2^ceiling(log2(2 * n))
     f <- stats::fft(c(xc, rep(0, m - n)))
     acov <- Re(stats::fft(Mod(f)^2, inverse = TRUE))[seq_len(n)] / m
     rho <- acov / acov[1]
+
+    # --- Integrated autocorrelation time (Geyer's initial positive sequence) ---
     tau <- -1
     for (k in seq(1, n - 1, by = 2)) {
         pair <- rho[k] + rho[k + 1]
         if (is.na(pair) || pair <= 0) break
         tau <- tau + 2 * pair
     }
-    n / max(tau, 1 / n)
+
+    # --- Return the effective sample size ---
+    return(n / max(tau, 1 / n))
+}
+
+#' mess_mcmc (internal)
+#' @description Multivariate effective sample size of a chain of draws (Vats, Flegal and Jones, 2019, Biometrika),
+#'   n * (det(Lambda) / det(Sigma))^(1/p), with Lambda the sample covariance of the draws and Sigma the asymptotic
+#'   covariance of their mean. Sigma includes the autocorrelation of the chain, so the ratio shrinks when the chain
+#'   mixes slowly. Sigma is estimated by lugsail batch means (Vats and Flegal, 2022), 2 * Sigma_b - Sigma_{b/3} with
+#'   batch size b = floor(sqrt(n)), which corrects the underestimation of plain batch means for slowly mixing chains;
+#'   plain batch means are used when the lugsail estimate is not positive definite.
+#' @param draws matrix of size [p x n] with the draws (parameters by rows)
+#' @return the multivariate effective sample size (NA when there are not more batches than parameters, i.e. Sigma is
+#'   singular)
+#' @noRd
+.mess_mcmc <- function(draws) {
+
+    p <- nrow(draws)
+    n <- ncol(draws)
+    b <- floor(sqrt(n))
+    if (floor(n / b) <= p || floor(b / 3) < 1) return(NA_real_)
+    x <- t(draws)
+
+    # --- Batch-means estimate of Sigma with batch size b ---
+    sigma_bm <- function(b) {
+        a <- floor(n / b)
+        batch_means <- rowsum(x[seq_len(a * b), , drop = FALSE], rep(seq_len(a), each = b), reorder = FALSE) / b
+        b * stats::cov(batch_means)
+    }
+
+    # --- Log-determinant (NA if the matrix is not positive definite) ---
+    log_det <- function(m) {
+        d <- determinant(m, logarithm = TRUE)
+        if (d$sign <= 0) NA_real_ else as.numeric(d$modulus)
+    }
+
+    # --- Lugsail estimate of Sigma, plain batch means as fallback ---
+    Sigma_b <- sigma_bm(b)
+    Sigma <- 2 * Sigma_b - sigma_bm(floor(b / 3))
+    if (is.na(log_det(Sigma)) || any(eigen(Sigma, symmetric = TRUE, only.values = TRUE)$values <= 0)) Sigma <- Sigma_b
+
+    # --- Return the multivariate effective sample size ---
+    ratio <- (log_det(stats::cov(x)) - log_det(Sigma)) / p
+    return(if (is.na(ratio)) NA_real_ else n * exp(ratio))
 }

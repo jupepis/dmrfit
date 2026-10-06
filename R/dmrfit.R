@@ -41,7 +41,7 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
     if (savage_dickey && !with_prior)
         stop("savage_dickey = TRUE requires with_prior = TRUE.")
     
-    # set random seed for reproducibility of the BSIR step, restoring the caller's random number stream on exit
+    # --- Random seed for the BSIR step (the caller's random state is restored on exit) ---
     if(savage_dickey){
         had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
         if (had_seed) old_seed <- get(".Random.seed", envir = globalenv(), inherits = FALSE)
@@ -191,8 +191,9 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
         mahal <- colSums(solve_L^2)
         log_q <- lgamma((proposal_df + n_pars_free)/2) - lgamma(proposal_df/2) - (n_pars_free/2) * log(proposal_df*pi) - 0.5*log_det_Sigma - ((proposal_df + n_pars_free)/2) * log(1 + mahal/proposal_df)
 
-        # target: the coordinate-rescaled (CoRe) pseudo-posterior, whose covariance is the sandwich covariance Sigma (the
-        # covariance of the proposal). Each proposal draw beta is mapped back to the pseudo-posterior scale,
+        # --- Target: the coordinate-rescaled (CoRe) pseudo-posterior ---
+        # Its covariance is the sandwich covariance Sigma (the covariance of the proposal). Each proposal draw beta is
+        # mapped back to the pseudo-posterior scale,
         # eta = A^{-1} (beta - pars) + pars with A^{-1} = R^{-1} L^{-T} (R'R = H, the curvature of the negative log
         # pseudo-posterior at the mode; L'L = Sigma), and the pseudo-posterior is evaluated there. The Jacobian of the
         # map is constant and cancels when the weights are normalized. Proposal and target thus share the same scale and
@@ -221,7 +222,7 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
             )
         }
 
-        # importance weights on the log scale, shifted by their maximum (the largest weight is 1, so none overflows)
+        # --- Importance weights on the log scale, shifted by their maximum (the largest weight is 1) ---
         log_w <- log_target - log_q
         log_w[!is.finite(log_w)] <- -Inf
         if (all(log_w == -Inf))
@@ -233,11 +234,11 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
             warning("Savage-Dickey: the effective sample size of the importance sample (", round(ess, 1), ") is less than ",
                     "a tenth of M (", M, "); the Bayes factors may be unreliable. Consider increasing 'oversampling'.")
 
-        # ISIR weights w_i / sum_{j != i} w_j (Skare et al., 2003, Scandinavian Journal of Statistics); the denominator
-        # is bounded away from zero when a single draw carries almost all the weight
+        # --- ISIR weights w_i / sum_{j != i} w_j (Skare et al., 2003, Scandinavian Journal of Statistics) ---
+        # The denominator is bounded away from zero when a single draw carries almost all the weight
         w_isir <- w / pmax(w_sum - w, .Machine$double.xmin)
 
-        # resample from the proposal draws (on the CoRe scale) according to the importance weights
+        # --- Resample the proposal draws (on the CoRe scale) according to the importance weights ---
         idx <- sample(x = seq_len(M_importance), size = M, replace = TRUE, prob = w_isir)
         sir_samples <- samples[, idx, drop = FALSE]
 
@@ -246,7 +247,8 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
         bf_01 <- numeric(length(free_inter_idx))
         names(bf_01) <- names(pars)[free_inter_idx]
 
-        # when zero lies beyond all resampled draws, the density at zero cannot be estimated from the draws (a kernel
+        # --- Savage-Dickey density ratio at zero for each free interaction ---
+        # When zero lies beyond all resampled draws, the density at zero cannot be estimated from the draws (a kernel
         # estimate there only extrapolates the tail of the nearest kernel): BF_01 is then reported at a floor and flagged
         bf_floor <- 1 / (10 * M)
         zero_beyond_draws <- logical(length(free_inter_idx))
