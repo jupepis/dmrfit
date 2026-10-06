@@ -10,6 +10,7 @@ Estimation of discrete Markov Random Fields through the pseudolikelihood, for bo
 \seealso{
 Useful links:
 \itemize{
+  \item \url{https://jupepis.github.io/dmrfit/}
   \item \url{https://github.com/jupepis/dmrfit}
   \item Report bugs at \url{https://github.com/jupepis/dmrfit/issues}
 }

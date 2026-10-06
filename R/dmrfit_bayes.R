@@ -1,23 +1,51 @@
 #' @title dmrfit_bayes
-#' 
-#' @description Fit a discrete Markov Random Field model via pseudo-likelihood estimation. The optimization is performed using the Coordinate Rescaling sampler implemented by Arena and Marsman (2026). 
-#' 
+#'
+#' @description Bayesian inference for a discrete Markov Random Field (Ising or ordinal) by Markov chain Monte Carlo.
+#' By default, the posterior is approximated by the coordinate-rescaled (CoRe) pseudo-posterior of Arena and Marsman
+#' (2026): the pseudo-posterior rescaled around its mode so that its covariance matches the sandwich
+#' (Godambe-Huber-White) covariance, which corrects the underestimated posterior variability of the pseudo-likelihood.
+#' All samplers use an adaptive Fisher-preconditioned Metropolis-adjusted Langevin algorithm (FisherMALA).
+#'
 #' @param data data matrix, with rows as samples and columns as variables. Each variable should be rescaled to the range of 0 to m-1, where m is the number of categories for that variable. The baseline category is always the minimum value in the variable. The internal processing will check if the variables are rescaled and will rescale them if necessary. If there are any NAs in the data, they will be removed before optimization (listwise deletion).
-#' @param parinit parinit, initial parameter estimates, a vector of length equal to the number of parameters in the model. If NULL, it will be initialized to a vector of zeros. The number of parameters in the model is calculated as sum(P * (n_categories - 1)) + P * (P - 1) / 2, where P is the number of variables.
-#' @param nsim nsim, number of iterations for the optimization. Default is 1000.
-#' @param burnin burnin, number of burnin iterations for the optimization. Default is 1000.
-#' @param ncores ncores, number of cores to use for parallel computing of the gradient, hessian and likelihood values. If ncores is larger than the number of available cores, it will be set to the number of available cores minus one. Default is 1.
-#' @param thresholds_alpha alpha parameter for the Beta-Prime prior on thresholds (default is 0.5). 
-#' @param thresholds_beta beta parameter for the Beta-Prime prior on thresholds (default is 0.5). 
-#' @param interactions_location location parameter for the Cauchy prior on pairwise interactions (default is 0.0). 
-#' @param interactions_scale scale parameter for the Cauchy prior on pairwise interactions (default is 2.5). 
+#' @param parinit parinit, initial parameter estimates for the optimization that finds the pseudo-posterior mode, a vector of length equal to the number of parameters in the model. If NULL, it will be initialized to a vector of zeros. The number of parameters in the model is calculated as sum(P * (n_categories - 1)) + P * (P - 1) / 2, where P is the number of variables.
+#' @param method the sampler: \code{"core"} (default) samples the CoRe pseudo-posterior with a fixed rescaling
+#'   matrix; \code{"adacore"} adapts the rescaling matrix during burn-in at the running mean of the draws;
+#'   \code{"exact"} samples the posterior based on the full likelihood, whose normalizing constant is computed by
+#'   enumerating all response patterns (only for small networks, see \code{control}); \code{"dmh"} samples the
+#'   posterior based on the full likelihood with the double Metropolis-Hastings algorithm (Liang, 2010). DMH simulates auxiliary data at every
+#'   iteration and is much slower than the other methods (minutes to hours instead of seconds, depending on the
+#'   network size and \code{control$dmh_aux}); \code{"core"} runs at the cost of the pseudo-posterior sampler.
+#' @param scale the covariance to which the pseudo-posterior is rescaled, only used when \code{method = "core"}:
+#'   \code{"ghw"} (default) the sandwich (Godambe-Huber-White) covariance; \code{"mch"} the inverse of the negative
+#'   Hessian of the full log-posterior at the pseudo-posterior mode, estimated by Monte Carlo simulation; \code{"rm"}
+#'   the same Hessian at the full-posterior mode, estimated by a Newton-type Robbins-Monro algorithm (the sampler
+#'   remains centred at the pseudo-posterior mode). \code{"mch"} and \code{"rm"} simulate data from the model and are
+#'   slower.
+#' @param nsim number of posterior draws kept after burn-in. Default is 1000.
+#' @param burnin number of burn-in iterations, after an initial adaptive stage of \code{control$adaptive_stage} iterations. Default is 1000.
+#' @param ncores ncores, number of cores to use for parallel computing of the gradient, hessian and likelihood values of the optimization. If ncores is larger than the number of available cores, it will be set to the number of available cores minus one. Default is 1.
+#' @param thresholds_alpha alpha parameter for the Beta-Prime prior on thresholds (default is 0.5).
+#' @param thresholds_beta beta parameter for the Beta-Prime prior on thresholds (default is 0.5).
+#' @param interactions_location location parameter for the Cauchy prior on pairwise interactions (default is 0.0).
+#' @param interactions_scale scale parameter for the Cauchy prior on pairwise interactions (default is 2.5).
 #' @param sigma2 initial value for the adaptive variance parameter in the FisherMALA sampler (default is 0.1).
 #' @param seed random seed for reproducibility of the MCMC sampler (default is 123). The caller's random number stream is restored on exit.
-#' 
+#' @param control a list of tuning settings, each with a default: \code{adaptive_stage} (500) iterations of the
+#'   initial adaptive stage; \code{max_states} (1e6) largest number of response patterns for \code{method = "exact"};
+#'   \code{dmh_aux} (25000) and \code{dmh_gibbs_iter} (5) auxiliary draws and Gibbs sweeps per iteration of
+#'   \code{method = "dmh"}; \code{mc_draws} (1e5) and \code{mc_gibbs_iter} (5) simulated observations and Gibbs sweeps
+#'   for \code{scale = "mch"} and \code{"rm"}; \code{rm_iter} (50) Robbins-Monro iterations for \code{scale = "rm"}.
+#'
 #' @return an object of class \code{dmrfit_bayes} (also of class \code{dmrfit}), including the posterior draws (\code{draws}), the Savage-Dickey Bayes factors with the effective sample size of each parameter (\code{savage_dickey}), and the multivariate effective sample size of the draws (\code{mess}; Vats, Flegal and Jones, 2019), which is \code{NA} when there are fewer than \code{P + 1} batches of \code{floor(sqrt(nsim))} draws per parameter.
-#' 
-#' @examples 
-#' 
+#'
+#' @references Arena, G. and Marsman, M. (2026). Bayesian inference for discrete Markov random fields through
+#' coordinate rescaling. Manuscript submitted for publication.
+#'
+#' Liang, F. (2010). A double Metropolis-Hastings sampler for spatial models with intractable normalizing constants.
+#' \emph{Journal of Statistical Computation and Simulation}, 80(9), 1007-1022.
+#'
+#' @examples
+#'
 #' # simulate data from a 3-node Ising model with 2 categories per node
 #' set.seed(123)
 #' n <- 1000
@@ -26,9 +54,12 @@
 #' fit <- dmrfit_bayes(data = data, nsim = 500, burnin = 500)
 #' summary(fit)
 #'
-#' @export 
-#' 
-dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncores = 1, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, sigma2 = 0.1, seed = 123) {
+#' # small network: the exact posterior is also available
+#' fit_exact <- dmrfit_bayes(data = data, method = "exact", nsim = 500, burnin = 500)
+#'
+#' @export
+#'
+dmrfit_bayes <- function(data, parinit = NULL, method = c("core", "adacore", "exact", "dmh"), scale = c("ghw", "mch", "rm"), nsim = 1e03, burnin = 1e03, ncores = 1, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, sigma2 = 0.1, seed = 123, control = list()) {
 
     # save the matched call for print and summary methods
     cl <- match.call()
@@ -41,6 +72,18 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
         else if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) rm(".Random.seed", envir = globalenv())
     }, add = TRUE)
     set.seed(seed)
+
+    # --- Method, scale and tuning settings ---
+    method <- match.arg(method)
+    scale_given <- !missing(scale)
+    scale <- match.arg(scale)
+    if (method != "core" && scale_given && scale != "ghw")
+        warning("'scale' is only used when method = \"core\"; it is ignored for method = \"", method, "\".")
+    ctrl <- list(adaptive_stage = 500, max_states = 1e6, dmh_aux = 25000, dmh_gibbs_iter = 5,
+                 mc_draws = 1e5, mc_gibbs_iter = 5, rm_iter = 50)
+    unknown <- setdiff(names(control), names(ctrl))
+    if (length(unknown)) stop("Unknown 'control' settings: ", paste(unknown, collapse = ", "), ".")
+    ctrl[names(control)] <- control
 
     # processing input arguments
 
@@ -67,7 +110,7 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
 
     # rescale the data to the range of 0 to m-1 if necessary
     for(i in 1:ncol(data)) {
-        data[, i] <- data[, i] - min(data[, i]) # baseline category is always the minimum value in the variable 
+        data[, i] <- data[, i] - min(data[, i]) # baseline category is always the minimum value in the variable
     }
 
     # n_categories is calculated as the maximum value in each column of data plus 1, since the categories are assumed to be coded from 0 to m-1
@@ -78,6 +121,13 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
     n_interactions <- P * (P - 1) / 2
     n_pars <- n_thresholds + n_interactions
 
+    # --- Exact sampling enumerates all response patterns: only for small networks ---
+    n_states <- prod(as.numeric(n_categories))
+    if (method == "exact" && n_states > ctrl$max_states)
+        stop("method = \"exact\" enumerates all ", format(n_states, big.mark = ",", scientific = FALSE), " response patterns, ",
+             "more than control$max_states = ", format(ctrl$max_states, big.mark = ",", scientific = FALSE), ". ",
+             "Use method = \"core\" or \"dmh\", or increase control$max_states (memory and time grow with the number of patterns).")
+
     # if parinit is not provided, initialize it to a vector of zeros
     if(is.null(parinit)) {
         parinit <- rep(0.0, n_pars)
@@ -86,11 +136,11 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
         stop(paste("Length of parinit must be equal to the number of parameters in the model:", n_pars))
     }
 
-    # if n_cores is less than 1, set it to 1 or the number of available cores minus one, or the number of cores specified by the user, whichever is smallest
-    ncores <- parallel::detectCores()-1
-    
+    # number of cores: the value given by the user, capped at the number of available cores minus one
+    ncores <- max(1L, min(as.integer(ncores), parallel::detectCores() - 1L), na.rm = TRUE)
 
     # cross-product terms for the pairwise associations
+    data_raw <- data # the P variables only (input of the samplers)
     cross_product_stats <- t(apply(data,1,function(x) {
         S <- x%*%t(x)
         S[lower.tri(S,diag=FALSE)]
@@ -103,33 +153,53 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
         warning("Optimization failed. Returning NULL.")
         return(NULL)
     }
+    mode_pseudo <- as.vector(pmles$argument)
 
-    # transformation matrices
-    current_sale <- chol(pmles$utils$hessian)
-    new_scale <- t(chol(pmles$utils$HW))
-    
-    # run the core sampler 
-    out <- suppressWarnings(tryCatch(expr = cpp_omrf_core_sampler(
-        data = t(data[,1:P, drop = FALSE]), # only the original data (without the cross-product terms) is needed for the core sampler, which computes the pseudo-likelihood and its gradient
-        pars = pmles$argument,
-        n_categories = n_categories,
-        P = P,
-        nsim = nsim,
-        burnin = burnin,
-        pmles = pmles$argument,
-        current_scale = current_sale, # cholesky of hessian matrix of pseudo-likelihood calculate at the 'pmles' 
-        new_scale = new_scale, # transposed cholesky of Godambe-Huber-White sandwich estimator
-        adaptive_stage_n_iter = 500, # iterations for the initial adaptive stage (simple MALA), fixed to 500 for now
-        sigma2 = sigma2, # for ordinal MRF, set this value to [[0.01]] or higher 0.1, by default this is set to 1.0 but with the ordinal MRF the algorithms runs fine with 0.1 or 0.01 (this sigma2 is adaptive and a good starting value is needed, however, it is allowed to vary over iterations)
-        thresholds_alpha = thresholds_alpha,
-        thresholds_beta = thresholds_beta,
-        interactions_location = interactions_location,
-        interactions_scale = interactions_scale
-    ), error = function(e) {NULL}))
-    if(is.null(out)) {
-        warning("Core sampler failed. Returning NULL.")
-        return(NULL)
-    }
+    # --- Sampler arguments shared by all methods ---
+    args <- list(data = data_raw, pars = mode_pseudo, n_categories = n_categories, nsim = nsim, burnin = burnin,
+                 adaptive_stage_n_iter = ctrl$adaptive_stage, sigma2 = sigma2,
+                 thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta,
+                 interactions_location = interactions_location, interactions_scale = interactions_scale,
+                 verbose = FALSE, progress = TRUE)
+
+    # --- Run the sampler ---
+    out <- tryCatch({
+        if (method == "core") {
+            # rescaling matrices: Cholesky factors of the pseudo-posterior curvature and of the target covariance
+            current_scale <- chol(pmles$utils$hessian)
+            target_cov <- switch(scale,
+                ghw = pmles$utils$HW,
+                mch = qr.solve(-cpp_compute_mc_hessian(data = data_raw, pars = mode_pseudo, n_categories = n_categories,
+                                                       L = ctrl$mc_draws, sampler_n_iter = ctrl$mc_gibbs_iter,
+                                                       thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta,
+                                                       interactions_location = interactions_location,
+                                                       interactions_scale = interactions_scale)),
+                rm = qr.solve(-cpp_compute_robbins_monro(data = data_raw, pars_init = mode_pseudo, n_categories = n_categories,
+                                                         thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta,
+                                                         interactions_location = interactions_location,
+                                                         interactions_scale = interactions_scale, L = ctrl$mc_draws,
+                                                         sampler_n_iter = ctrl$mc_gibbs_iter, rm_max_iter = ctrl$rm_iter)$hessian))
+            new_scale <- t(chol((target_cov + t(target_cov)) / 2))
+            do.call(cpp_core_sampler, c(args, list(pmles = mode_pseudo, current_scale = current_scale, new_scale = new_scale)))
+        } else if (method == "adacore") {
+            # AdaCoRe takes the data with the cross-product columns (it recomputes the sandwich covariance)
+            args_ada <- args
+            args_ada$data <- data
+            do.call(cpp_adacore_sampler, c(args_ada, list(pmles = mode_pseudo)))
+        } else if (method == "exact") {
+            patterns <- as.matrix(expand.grid(lapply(n_categories, function(m) 0:(m - 1))))
+            X <- cpp_build_permutations_stats(permutations = patterns, n_pars = n_pars, n_thresholds = n_thresholds,
+                                              n_categories = n_categories)
+            do.call(cpp_exact_sampler, c(args, list(X = X)))
+        } else {
+            do.call(cpp_dmh_sampler, c(args, list(L = ctrl$dmh_aux, inner_sampler_n_iter = ctrl$dmh_gibbs_iter)))
+        }
+    }, error = function(e) {
+        warning("Sampler (method = \"", method, "\") failed: ", conditionMessage(e), " Returning NULL.")
+        NULL
+    })
+    if(is.null(out)) return(NULL)
+    out$draws <- t(out$draws) # parameters by rows
 
     # metadata needed by print/summary
     pmles$call <- cl
@@ -142,6 +212,9 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
     pmles$ncores <- ncores
     pmles$acceptance <- out$acceptance
     pmles$seconds_elapsed <- out$seconds_elapsed
+    pmles$method <- method
+    pmles$scale <- if (method == "core") scale else NA_character_
+    if (!is.null(out$counter_update)) pmles$adacore_updates <- out$counter_update # updates of the rescaling matrix during burn-in
 
     # label the parameter vector
     n_thresholds <- sum(n_categories - 1)
@@ -282,6 +355,8 @@ summary.dmrfit_bayes <- function(object, ...) {
         n_categories     = n_categories,
         acceptance       = object$acceptance,
         seconds_elapsed  = object$seconds_elapsed,
+        method           = object$method,
+        scale            = object$scale,
         nsim             = ncol(object$draws),
         mess             = object$mess,
         savage_dickey    = object$savage_dickey
@@ -323,7 +398,8 @@ print.dmrfit_bayes <- function(x, ...) {
     cat("\nPairwise interactions (posterior mode):\n")
     print(round(pars[inter_idx], 4))
 
-    cat("\nMCMC samples:", ncol(x$draws),
+    cat("\nPosterior:", .method_label(x$method, x$scale), "\n")
+    cat("MCMC samples:", ncol(x$draws),
         " Acceptance rate:", round(x$acceptance, 3),
         " Elapsed:", round(x$seconds_elapsed, 1), "sec\n")
     if (!is.null(x$mess) && !is.na(x$mess))
@@ -352,7 +428,7 @@ print.summary.dmrfit_bayes <- function(x, ...) {
     cat("Discrete Markov Random Field")
     if (all(x$n_categories == 2)) cat(" (Ising)")
     cat("\n")
-    cat("Estimation method: Bayesian (FisherMALA)\n")
+    cat("Estimation method: Bayesian (FisherMALA),", .method_label(x$method, x$scale), "\n")
     cat("Nodes:", x$P, " Observations:", x$N,
         " Parameters:", nrow(x$coefficients), "\n")
     cat("MCMC samples:", x$nsim,
@@ -473,4 +549,21 @@ print.summary.dmrfit_bayes <- function(x, ...) {
     # --- Return the multivariate effective sample size ---
     ratio <- (log_det(stats::cov(x)) - log_det(Sigma)) / p
     return(if (is.na(ratio)) NA_real_ else n * exp(ratio))
+}
+
+#' method_label (internal)
+#' @description Label of the posterior targeted by a dmrfit_bayes fit, for print and summary.
+#' @param method the sampler ("core", "adacore", "exact" or "dmh"; NULL for fits made before the method argument)
+#' @param scale the rescaling covariance of method = "core" ("ghw", "mch" or "rm")
+#' @return a character string
+#' @noRd
+.method_label <- function(method, scale) {
+    if (is.null(method)) return("coordinate-rescaled pseudo-posterior (sandwich covariance)")
+    switch(method,
+           core = paste0("coordinate-rescaled pseudo-posterior (",
+                         switch(scale, ghw = "sandwich covariance", mch = "Monte Carlo Hessian at the pseudo-posterior mode",
+                                rm = "Monte Carlo Hessian at the Robbins-Monro estimate of the full-posterior mode"), ")"),
+           adacore = "coordinate-rescaled pseudo-posterior (sandwich covariance adapted during burn-in)",
+           exact = "full-likelihood posterior (exact normalizing constant)",
+           dmh = "full-likelihood posterior (double Metropolis-Hastings)")
 }
