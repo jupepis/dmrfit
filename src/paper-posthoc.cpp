@@ -105,6 +105,7 @@ Rcpp::List cpp_mc_hessian_correction(const arma::vec& pars,
 // @param thresholds_beta hyperparameter for the beta prior on the thresholds (default is 0.5)
 // @param interactions_location location parameter for the cauchy prior on the interactions (default is 0.0)
 // @param interactions_scale scale parameter for the cauchy prior on the interactions (default is 2.5)
+// @param rm_max_iter    number of Robbins-Monro iterations (Newton-type gain, see cpp_compute_robbins_monro)
 // @return a list with the adjusted draws
 // [[Rcpp::export]]
 Rcpp::List cpp_rm_correction(const arma::vec& pars,
@@ -118,17 +119,13 @@ Rcpp::List cpp_rm_correction(const arma::vec& pars,
                          double thresholds_beta, 
                          double interactions_location, 
                          double interactions_scale,
-                         double rm_step_thresholds = 0.01,
-                         double rm_step_interactions = 0.001,
-                         arma::uword rm_max_iter = 200,
-                         double tolerance = 0.001) {
+                         arma::uword rm_max_iter = 50) {
     arma::wall_clock timer;
     timer.tic();
 
     // Run Robbins-Monro stochastic approximation
-    Rcpp::List rm = cpp_compute_robbins_monro(data, pars, n_categories, thresholds_alpha, thresholds_beta, 
-                                            interactions_location, interactions_scale, rm_step_thresholds, 
-                                            rm_step_interactions, L, sampler_n_iter, rm_max_iter, tolerance);
+    Rcpp::List rm = cpp_compute_robbins_monro(data, pars, n_categories, thresholds_alpha, thresholds_beta,
+                                            interactions_location, interactions_scale, L, sampler_n_iter, rm_max_iter);
     arma::vec pars_star  = Rcpp::as<arma::vec>(rm["pars"]);
     arma::mat hessian_rm = Rcpp::as<arma::mat>(rm["hessian"]);
     arma::mat hessian_rm_sym = 0.5 * (hessian_rm + hessian_rm.t()); // symmetrize the Hessian to avoid numerical issues (because MCMC-based)

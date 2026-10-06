@@ -339,7 +339,9 @@ Rcpp::List cpp_adacore_sampler(const arma::mat &data,
     //             log_prior_curvature_mat(n_pars,n_pars,arma::fill::zeros);
     // arma::vec log_prior_curvature(n_pars,arma::fill::zeros);
 
-    update_target_rescaling(I_d,eta_current,unique_data,frequency,P,N_unique,n_pars,n_thresholds,n_categories,
+    // initial rescaling at the pmles (as in CoRe), not at the starting value: identical when pars = pmles,
+    // and keeps the rescaling well defined for dispersed starting values
+    update_target_rescaling(I_d,pmles,unique_data,frequency,P,N_unique,n_pars,n_thresholds,n_categories,
                             lower_indices,interactions,matrix_indices_sigma,which_stats,category_stats,
                             category_offsets,thresholds_alpha,thresholds_beta,interactions_location,interactions_scale,
                             Score,hessian,invHW,HW,Gamma,invGamma,Lt,invLt,log_prior_curvature,log_prior_curvature_mat);                       

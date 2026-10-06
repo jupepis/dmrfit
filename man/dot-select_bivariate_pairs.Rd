@@ -4,7 +4,7 @@
 \alias{.select_bivariate_pairs}
 \title{select_bivariate_pairs (internal)}
 \usage{
-.select_bivariate_pairs(structure, P, n_thresholds)
+.select_bivariate_pairs(structure, P, n_categories, seed = NULL)
 }
 \arguments{
 \item{structure}{the 0/1 mask of present interactions (from .initialize_structure,
@@ -12,7 +12,12 @@ length P*(P-1)/2, lower-triangle order)}
 
 \item{P}{number of variables}
 
-\item{n_thresholds}{number of threshold parameters}
+\item{n_categories}{number of categories per variable (length P); thresholds are stored
+per variable, consecutively: variable p owns \code{n_categories[p] - 1} thresholds}
+
+\item{seed}{optional integer; if given, the pairs are drawn with this seed (Mersenne-Twister)
+and the caller's RNG state is restored afterwards, so every method evaluated on the same
+replicate gets the same pairs without disturbing the simulation's random streams}
 }
 \value{
 a named list: $interaction_interaction, $threshold_interaction,

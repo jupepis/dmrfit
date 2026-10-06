@@ -125,6 +125,27 @@ double fishermala_core_log_acceptance_ratio(const arma::vec& beta_current,
                                         double interactions_location, 
                                         double interactions_scale);
 
+// Log pseudo-normalizing constant: sum_n freq_n * sum_p log[1 + sum_h exp(mu_ph + h * sum_{j!=p} x_j sigma_pj)] (used by the RWMH samplers)
+double compute_pseudo_logZ(const arma::mat &data,
+                            const arma::vec &frequency,
+                            const arma::vec &pars,
+                            const arma::uvec &n_categories,
+                            const arma::uvec &lower_indices,
+                            const arma::uvec &category_offsets,
+                            arma::uword P,
+                            arma::uword N,
+                            arma::uword n_pars,
+                            arma::uword n_thresholds);
+
+// Log prior (beta-prime on thresholds, cauchy on interactions) (used by the RWMH samplers)
+double compute_log_prior(const arma::vec &pars,
+                        arma::uword n_thresholds,
+                        arma::uword n_pars,
+                        double thresholds_alpha,
+                        double thresholds_beta,
+                        double interactions_location,
+                        double interactions_scale);
+
 // Compute approximate gradient and logZ_ratio using Monte Carlo approximation with L samples from the state space (single-data sample approximation)
 struct ApproximateGradient {
     arma::vec   gradient;         // gradient evaluated at 'pars' (length is n_pars)
@@ -163,18 +184,15 @@ arma::mat cpp_compute_mc_hessian(const arma::mat &data,
                                 double interactions_scale);
 
 Rcpp::List cpp_compute_robbins_monro(const arma::mat &data,
-                                    const arma::vec &pars,
+                                    const arma::vec &pars_init,
                                     const arma::uvec &n_categories,
                                     double thresholds_alpha, 
                                     double thresholds_beta, 
                                     double interactions_location, 
                                     double interactions_scale,
-                                    double rm_step_thresholds = 0.001, // default value is set to 0.001 according to Bouranis et al.
-                                    double rm_step_interactions = 0.001, // default value is set to 0.001 according to Bouranis et al.
-                                    arma::uword L = 1000, // number of simulated networks at each iteration of the RM-algorithm (used to approximate gradient and hessian from the correct model) --> matches DMH's value
-                                    arma::uword sampler_n_iter = 1, // number of iterations of the binary MRF Gibbs sampler (suggested number of iteration is (#nodes)^2)  
-                                    arma::uword rm_max_iter = 200, // max number of iterations
-                                    double tolerance = 0.0001);                            
+                                    arma::uword L, // number of simulated observations per iteration (gradient and Hessian by Monte Carlo)
+                                    arma::uword sampler_n_iter, // Gibbs sweeps per simulated observation
+                                    arma::uword rm_max_iter = 50); // number of iterations (Newton-type gain; see paper-utils.cpp)
 
 arma::mat cpp_build_permutations_stats(const arma::mat &permutations,
                                     arma::uword n_pars,

@@ -5,7 +5,7 @@
 \title{build_conditions}
 \usage{
 build_conditions(
-  P = c(6, 9, 12, 24),
+  P = c(6, 10, 15, 22),
   N = c(500, 1000, 2000, 3000),
   structures = c("full", "random", "smallworld")
 )
@@ -19,7 +19,7 @@ build_conditions(
 }
 \value{
 a data frame of conditions with columns index, P, structure, N, reference ("exact" or "dmh"),
-and dmh_bridge (TRUE only for P = 12, where the "reference" run also produces a DMH-vs-exact
+and dmh_bridge (TRUE only for P = 10, where the "reference" run also produces a DMH-vs-exact
 comparison as a byproduct -- no separate method = "DMH" run is needed or allowed for these rows)
 }
 \description{

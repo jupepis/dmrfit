@@ -51,6 +51,11 @@ double fishermala_dmh_log_acceptance_ratio(const arma::vec& current_pars,
         log_a = 0.0; // This is equivalent to log min{1,acceptance_ratio}
     }
 
+    // NaN guard: a non-finite target (e.g. exp overflow at extreme proposals) is treated as a rejection
+    if(std::isnan(log_a)){
+        log_a = -arma::datum::inf;
+    }
+
     return log_a;
 }
 

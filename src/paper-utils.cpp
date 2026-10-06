@@ -274,6 +274,11 @@ void fishermala_update_preconditioner(arma::mat& R_n,
                                                 arma::uword s, 
                                                 arma::uword adaptive_stage_n_iter) {
 
+        // Non-finite guard: skip the update if the proposed gradient overflowed (otherwise R_n becomes NaN; for a rejected proposal exp(log_a) = 0 but 0 * NaN is still NaN)
+        if(!proposed_gradient.is_finite()){
+            return;
+        }
+
         if((s - adaptive_stage_n_iter) == 0){
             double r_proposed = 1.0 / (1.0 + std::sqrt(lambda / (lambda + arma::dot(proposed_gradient,proposed_gradient))));
             R_n = (1.0 / std::sqrt(lambda)) * (I_d - r_proposed * (proposed_gradient * proposed_gradient.t())/(lambda + (arma::dot(proposed_gradient,proposed_gradient)))); // Proposition 4 Formula (12)
@@ -472,9 +477,63 @@ double fishermala_core_log_acceptance_ratio(const arma::vec& beta_current,
         log_a = 0.0; // This is equivalent to log min{1,acceptance_ratio}
     }
 
+    // NaN guard: a non-finite target (e.g. exp overflow in logZ at extreme proposals) is treated as a rejection
+    if(std::isnan(log_a)){
+        log_a = -arma::datum::inf;
+    }
+
     return log_a;
 }
 
+
+// Log pseudo-normalizing constant: sum_n freq_n * sum_p log[1 + sum_h exp(mu_ph + h * sum_{j!=p} x_j sigma_pj)]
+// (same computation as the logZ part of compute_pseudo_gradient(), without the gradient)
+double compute_pseudo_logZ(const arma::mat &data, // dataset with unique rows of the original data
+                                    const arma::vec &frequency,
+                                    const arma::vec &pars,
+                                    const arma::uvec &n_categories,
+                                    const arma::uvec &lower_indices,
+                                    const arma::uvec &category_offsets,
+                                    arma::uword P,
+                                    arma::uword N,
+                                    arma::uword n_pars,
+                                    arma::uword n_thresholds) {
+
+    arma::mat interactions(P,P);
+    interactions_vec_to_mat(interactions, pars, lower_indices, P, n_thresholds, n_pars);
+
+    double logZ = 0.0;
+    for(arma::uword n = 0; n < N; n++){
+        arma::vec stats_n = data.row(n).t();
+        double logZ_n = 0.0;
+        for(arma::uword p = 0; p < P; p++){
+            double xixj_sigma = arma::dot(stats_n, interactions.col(p)); // diagonal of interactions is 0.0
+            double denom_p = 1.0;
+            for(arma::uword h = 1; h < n_categories(p); h++){
+                arma::uword index_threshold_Xp = h - 1;
+                if(p > 0){
+                    index_threshold_Xp += category_offsets(p - 1);
+                }
+                denom_p += std::exp(pars(index_threshold_Xp) + static_cast<double>(h) * xixj_sigma);
+            }
+            logZ_n += std::log(denom_p);
+        }
+        logZ += frequency(n) * logZ_n;
+    }
+    return logZ;
+}
+
+// Log prior (beta-prime on thresholds, cauchy on interactions) on the original scale
+double compute_log_prior(const arma::vec &pars,
+                                arma::uword n_thresholds,
+                                arma::uword n_pars,
+                                double thresholds_alpha,
+                                double thresholds_beta,
+                                double interactions_location,
+                                double interactions_scale) {
+    return arma::accu(log_beta_prime(pars(arma::span(0, n_thresholds - 1)), thresholds_alpha, thresholds_beta)) +
+           arma::accu(log_dcauchy(pars(arma::span(n_thresholds, n_pars - 1)), interactions_location, interactions_scale));
+}
 
 ApproximateGradient compute_approximate_gradient(
                                     const arma::vec &stats,
@@ -671,7 +730,14 @@ arma::mat cpp_compute_mc_hessian(const arma::mat &data,
    return hessian;
 }
 
-// Robbins-Monro Ordinal MRF
+// Robbins-Monro Ordinal MRF -- Newton-type stochastic approximation of the full-posterior mode
+//   pars_{i+1} = pars_i + 1/(i+1) * M * g_i,   i = 0, ..., rm_max_iter - 1
+// g_i is the Monte Carlo gradient of the full log-posterior at pars_i (observed minus N times the expected sufficient
+// statistics, plus the prior gradient) and M the gain matrix, the inverse negative Hessian of the full log-posterior
+// at pars_init (Monte Carlo, as cpp_compute_mc_hessian). With this gain the step is stable from the first iteration for
+// any N and P (effective gain ~1 in every direction); a scalar gain per parameter block is not, because the curvature
+// N * Cov(stats) grows with N and P. M is computed once, before the first iteration, and kept fixed. Runs a fixed
+// number of iterations; the Hessian returned is evaluated at the final estimate.
 // [[Rcpp::export]]
 Rcpp::List cpp_compute_robbins_monro(const arma::mat &data,
                                     const arma::vec &pars_init,
@@ -680,12 +746,9 @@ Rcpp::List cpp_compute_robbins_monro(const arma::mat &data,
                                     double thresholds_beta, 
                                     double interactions_location, 
                                     double interactions_scale,
-                                    double rm_step_thresholds, // default value is set to 0.001 according to Bouranis et al.
-                                    double rm_step_interactions, // default value is set to 0.001 according to Bouranis et al.
-                                    arma::uword L, // number of simulated networks at each iteration of the RM-algorithm (used to approximate gradient and hessian from the correct model) --> matches DMH's value
-                                    arma::uword sampler_n_iter, // number of iterations of the binary MRF Gibbs sampler (suggested number of iteration is (#nodes)^2)  
-                                    arma::uword rm_max_iter, // max number of iterations
-                                    double tolerance) { // tolerance value used by the stopping rule
+                                    arma::uword L, // number of simulated observations per iteration (gradient and Hessian by Monte Carlo)
+                                    arma::uword sampler_n_iter, // Gibbs sweeps per simulated observation (each started at a random observed row)
+                                    arma::uword rm_max_iter) { // number of iterations
 
     arma::uword n_thresholds = arma::accu(n_categories-1);
     arma::uword H = arma::max(n_categories-1);
@@ -694,7 +757,6 @@ Rcpp::List cpp_compute_robbins_monro(const arma::mat &data,
     arma::uword n_pars = pars_init.n_elem;
     Rcpp::List pars_iterations = Rcpp::List::create();
     arma::vec gradient(n_pars);
-    arma::uword i = 0;
 
     // --- Initialize structures ---
 
@@ -710,11 +772,13 @@ Rcpp::List cpp_compute_robbins_monro(const arma::mat &data,
     arma::vec obs_stats;
     sufficient_statistics_omrf(obs_stats, data, n_categories, P, n_thresholds, n_pars, 1.0);
 
+    // --- Gain matrix: inverse negative Hessian of the full log-posterior at the starting values ---
+    arma::mat hessian_init = cpp_compute_mc_hessian(data, pars_init, n_categories, L, sampler_n_iter, thresholds_alpha, 
+                                                    thresholds_beta, interactions_location, interactions_scale);
+    arma::mat gain_matrix = arma::inv_sympd(-0.5 * (hessian_init + hessian_init.t()));
 
-    double calculated_tolerance = 1000.0;
     arma::vec pars = pars_init;
-    arma::vec old_pars = pars;
-    while((calculated_tolerance > tolerance) && (i < rm_max_iter)){
+    for(arma::uword i = 0; i < rm_max_iter; i++){
         // (0) saving current pars 
         pars_iterations.push_back(pars);
 
@@ -724,22 +788,13 @@ Rcpp::List cpp_compute_robbins_monro(const arma::mat &data,
                                                                             n_thresholds, sampler_n_iter, thresholds_alpha, thresholds_beta,
                                                                             interactions_location, interactions_scale);
         gradient = approximate_gradient.gradient; // extract only the gradient
-        double eps_i_thresholds = rm_step_thresholds / static_cast<double>(i + 1); // we sum +1 because i starts from 0
-        double eps_i_interactions = rm_step_interactions / static_cast<double>(i + 1);
 
-        // (2) next iteration parameters
-        pars(arma::span(0,n_thresholds-1)) += eps_i_thresholds * gradient(arma::span(0, n_thresholds - 1));
-        pars(arma::span(n_thresholds,n_pars-1)) += eps_i_interactions * gradient(arma::span(n_thresholds, n_pars - 1));
-
-        // (3) Update iteration counter
-        i++;
-
-        // (4) Update tolerance and old_pars
-        calculated_tolerance = arma::max(arma::abs(old_pars-pars)); 
-        old_pars = pars;
+        // (2) Newton-type Robbins-Monro step with gain 1/(i+1) (i starts from 0)
+        pars += (gain_matrix * gradient) / static_cast<double>(i + 1);
     }
+    pars_iterations.push_back(pars);
 
-    // --- Approximate Hessian via MCMC at the converged parameters (pars) ---
+    // --- Approximate Hessian via MCMC at the final estimate (pars) ---
     arma::mat hessian = cpp_compute_mc_hessian(data, pars, n_categories, L, sampler_n_iter, thresholds_alpha, 
                                             thresholds_beta, interactions_location, interactions_scale); 
     

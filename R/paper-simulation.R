@@ -2,7 +2,7 @@
     # --- Sampler hyperparameters ---
     nsim = 2e04, # number of posterior draws
     burnin = 4500, # number of burnin draws
-    adaptive_stage_n_iter = 500, # number of iterations for the adaptive stage of the exact sampler (for P <= 12)
+    adaptive_stage_n_iter = 500, # number of iterations for the adaptive stage of the exact sampler (for P <= 10)
     sigma2 = 1.0, # default value for sigma2 (meant to work well for any case; however, for ordinal casa with >2 levels, we set it to 0.001)
 
     # --- Priors hyperparameters ---
@@ -18,10 +18,8 @@
     inner_gibbs_iter = 5, # inner Gibbs iterations for approximating gradient (using warm start value)
 
     # --- Robbins-Monro hyperparameters ---
-    rm_step_thresholds = 0.001, # default value is set to 0.001 according to Bouranis et al.
-    rm_step_interactions = 0.001, # default value is set to 0.001 according to Bouranis et al.
-    rm_max_iter = 200, # max number of iterations
-    tolerance = 0.0001, # tolerance for convergence
+    rm_max_iter = 50, # number of iterations of the Newton-type Robbins-Monro (gain 1/(i+1) times the inverse Monte Carlo Hessian
+                      # of the full log-posterior at the pseudo-posterior mode; see cpp_compute_robbins_monro)
 
     # --- Output control ---
     verbose = FALSE, # whether to print verbose output during the simulation
@@ -36,7 +34,7 @@
 #' @param Q number of random structures to generate (default is 10)
 #' @param Q_nsim number of simulation per random structure to generate (default is 10)
 #' @param nthreads number of threads to use for parallelization, default is 100
-#' @param method one of the following methods: "reference" (exact likelihood for P <= 12 or DMH for P = 24), "PPH" (pseudo posterior including all Post Hoc methods, RM, GHW, and MCH; one run, four methods), "DMH" (double Metropolis-Hastings), "CoRe" (Godambe-Huber-White correction), "CoRe-RM" (Robbins-Monro correction), "CoRe-MCH" (Monte Carlo Hessian correction), "AdaCoRe" (adaptive covariance structure correction)
+#' @param method one of the following methods: "reference" (exact likelihood for P <= 10 or DMH for P > 10), "PPH" (pseudo posterior including all Post Hoc methods, RM, GHW, and MCH; one run, four methods), "DMH" (double Metropolis-Hastings), "CoRe" (Godambe-Huber-White correction), "CoRe-RM" (Robbins-Monro correction), "CoRe-MCH" (Monte Carlo Hessian correction), "AdaCoRe" (adaptive covariance structure correction)
 #' @param folder the folder where the results will be saved
 #' @return  depending on "method", a summary list of results or list of draws, or helpers is saved
 #' @export
@@ -52,8 +50,8 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
     }
 
     # ---- Initialize a parallel cluster ----
-    #cl <- makeCluster(nthreads, type = "FORK") # FORK because we want to share large objects in memory (e.g., the partition function matrix X for P <= 12)
-    cl <- makeCluster(nthreads, type = "FORK", outfile = file.path(Sys.getenv("HOME"), "worker.log"))
+    #cl <- makeCluster(nthreads, type = "FORK") # FORK because we want to share large objects in memory (e.g., the partition function matrix X for P <= 10)
+    cl <- makeCluster(nthreads, type = "FORK", outfile = file.path(Sys.getenv("HOME"), paste0("worker_condition_", as.numeric(condition[["index"]]), "_", method, ".log")))
     registerDoParallel(cl)
 
     # --- Set the random seed for reproducibility across parallel threads ---
@@ -81,10 +79,7 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
     inner_gibbs_iter <- .HYPER$inner_gibbs_iter
 
     # --- Robbins-Monro parameters ----
-    rm_step_thresholds <- .HYPER$rm_step_thresholds
-    rm_step_interactions <- .HYPER$rm_step_interactions
     rm_max_iter <- .HYPER$rm_max_iter
-    tolerance <- .HYPER$tolerance
 
     # ---- Other parameters ----
     verbose <- .HYPER$verbose
@@ -95,7 +90,7 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
     P                       <- as.numeric(condition[["P"]])                  # number of nodes (variables)
     S                       <- as.character(condition[["structure"]])        # structure type
     index_sim               <- as.numeric(condition[["index"]])              # index of the simulation condition
-    reference               <- as.character(condition[["reference"]])        # reference condition (dmh or exact; both only for P = 12)
+    reference               <- as.character(condition[["reference"]])        # reference condition (dmh or exact; both only for P = 10)
     design_condition        <- list(index = index_sim, N = N, P = P, S = S, reference = reference) # list to store the design condition
     proc_data               <- .process_data(data = data, suff_stats = FALSE)   # process data to include sufficient statistics
     data                    <- proc_data$data
@@ -121,7 +116,7 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
                 n_pars_i        <- n_thr_i + n_int_i
                 str_i           <- .initialize_structure(structure = S, p = P, n_categories = ncat_i)
                 X_i <- NULL
-                if(!.equal_categories_check && P <= 12){ # if equal categories case is not satisfied and only for P<=12 where exact likelihood is feasible [[CHECK IF on .equal_categories_check, is it right?]]
+                if(!.equal_categories_check && P <= 10){ # if equal categories case is not satisfied and only for P<=10 where exact likelihood is feasible [[CHECK IF on .equal_categories_check, is it right?]]
                     permutations_i <- expand.grid(sapply(1:P, function(x) list(0:(ncat_i[x]-1)))) 
                     permutations_i <- as.matrix(permutations_i) 
                     X_i <- dmrfit:::cpp_build_permutations_stats(permutations = permutations_i, n_pars = n_pars_i, n_thresholds = n_thr_i, n_categories = ncat_i)
@@ -235,10 +230,10 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
         light_truth_info$design <- list(design_condition = design_condition, n_categories = n_categories, n_thresholds = n_thresholds, Q = Q, Q_nsim = Q_nsim, nthreads = nthreads, index_sim = index_sim, master_seed = master_seed) # attach info on design to the light_truth_info object
         .save_and_move_object(obj = light_truth_info, folder = folder, subfolder = "simulate_data", results_name = paste0("info_data_condition_", index_sim, ".rds"))
  
-        # ---- Step 3: <reference draws> ---- note: exact posterior (for P <= 12) or DMH (for P = 24) 
-        if(P <= 12){ # use exact sampler for P <= 12           
+        # ---- Step 3: <reference draws> ---- note: exact posterior (for P <= 10) or DMH (for P > 10)
+        if(P <= 10){ # use exact sampler for P <= 10           
             X <- NULL
-            if(.equal_categories_check){ # if equal categories case is satisfied and only for P<=12 where exact likelihood is feasible
+            if(.equal_categories_check){ # if equal categories case is satisfied and only for P<=10 where exact likelihood is feasible
                 ncat_P <- rep(n_categories[1], P)
                 permutations <- expand.grid(sapply(1:P, function(x) list(0:(ncat_P[1] - 1)))) 
                 permutations <- as.matrix(permutations) 
@@ -248,6 +243,7 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
                 rm(permutations, n_pars_equal, n_thresholds_equal, ncat_P)
             }
             draws <- foreach(z = 1:n_datasets, .packages = "dmrfit") %dopar% {
+                dmh_metrics <- NULL # DMH-vs-exact metrics of replicate z (only computed for P = 10)
                 # Unpack objects from replicate z
                 sample_z <- samples_ls[[z]] # select replicate z
                 data_z <- sample_z$sample[,1:P]
@@ -271,8 +267,8 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
                 if(save_sigma2_z){
                     .save_and_move_object(obj = reference_draws$exact$sigma2, folder = folder, subfolder = "Exact", results_name = paste0("exact_sigma2_condition_", index_sim, "_sample_", z, ".rds"))
                 }
-                # Reference draws using DMH sampler --> only for P = 12 we also add DMH and return a list with two sets of samples
-                if(P == 12) {
+                # Reference draws using DMH sampler --> only for P = 10 we also add DMH and return a list with two sets of samples
+                if(P == 10) {
                     reference_draws$dmh <- dmrfit:::cpp_dmh_sampler(data = data_z, pars = pars_z, n_categories = n_categories_z, 
                                                                     nsim = nsim, burnin = burnin, L = L_DMH, inner_sampler_n_iter = inner_gibbs_iter,
                                                                     adaptive_stage_n_iter = adaptive_stage_n_iter, sigma2 = sigma2, 
@@ -287,21 +283,26 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
                                                     structure = structure_z, 
                                                     P = P, 
                                                     interactions_location = interactions_location, 
-                                                    interactions_scale = interactions_scale)
-                    # -- Save Metrics (reference to exact) for DMH draws (only for P = 12) --
-                    .save_and_move_object(obj = dmh_metrics, folder = folder, subfolder = "DMH", results_name = paste0("summary_condition_", index_sim, ".rds"))
+                                                    interactions_scale = interactions_scale,
+                                                    n_categories = n_categories_z,
+                                                    pair_seed = .pair_seed(index_sim, z))
                     if(save_sigma2_z){
                         .save_and_move_object(obj = reference_draws$dmh$sigma2, folder = folder, subfolder = "DMH", results_name = paste0("dmh_sigma2_condition_", index_sim, "_sample_", z, ".rds"))
                     }
                 }
                 # ---- Reference draws ----
-                if(P == 12) {
+                if(P == 10) {
                     .save_and_move_object(obj = reference_draws, folder = folder, subfolder = paste0(method, "/condition_", index_sim), results_name = paste0("reference_draws_sample_", z, ".rds"))
                 } else {
                 .save_and_move_object(obj = reference_draws$exact, folder = folder, subfolder = paste0(method, "/condition_", index_sim), results_name = paste0("reference_draws_sample_", z, ".rds"))  
                 }    
+                return(dmh_metrics) # returned to 'draws'
             }
-        } else { # otherwise use DMH for P = 24
+            # -- Save Metrics (reference to exact) for DMH draws, all replicates (only for P = 10) --
+            if(P == 10) {
+                .save_and_move_object(obj = list(summary = draws, master_seed = master_seed), folder = folder, subfolder = "DMH", results_name = paste0("summary_condition_", index_sim, ".rds"))
+            }
+        } else { # otherwise use DMH for P > 10 (P = 15, 22)
             # reference draws using DMH 
             draws <- foreach(z = 1:n_datasets, .packages = "dmrfit") %dopar% {
                 # Unpack objects from replicate z
@@ -376,18 +377,22 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
                                             structure = structure_z, 
                                             P = P, 
                                             interactions_location = interactions_location, 
-                                            interactions_scale = interactions_scale)
+                                            interactions_scale = interactions_scale,
+                                            n_categories = n_categories_z,
+                                            pair_seed = .pair_seed(index_sim, z))
 
             # --- Helpers ---
 
-            # --- Pseudo-posterior estimates (means) ---
-            pmles_z <- apply(draws_pp$draws, 2, mean)
+            # --- Centre of the post hoc corrections: the pseudo-MAP (pmles), as for CoRe ---
+            # (the curvature adjustment rescales the draws around the mode; Hessian, GHW, RM and MCH are evaluated there)
+            pmles_z <- pars_z
 
             # --- Utils for pseudo-posterior draws ---
-            utils_z <- dmrfit:::dmrf_deriv(pars = pmles_z, 
+            t0_scale <- Sys.time()
+            utils_z <- dmrfit:::dmrf_deriv(pars = pmles_z,
                                             data = sample_z$sample, # include sufficient statistics in the data for pseudo-likelihood function
-                                            P = P, 
-                                            n_categories = n_categories_z, 
+                                            P = P,
+                                            n_categories = n_categories_z,
                                             with_prior = TRUE,
                                             ncores = 1L,
                                             thresholds_alpha = thresholds_alpha,
@@ -397,19 +402,19 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
 
             # --- Cholesky of Hessian matrix ---
             chol_hessian_z <- chol(x = utils_z$hessian)
+            scale_elapsed_z <- as.numeric(difftime(Sys.time(), t0_scale, units = "secs"))
 
             # --- Post hoc methods: RM, GHW, MCH ---
 
             # ---- RM (Robbins-Monro) ----
             draws_rm <- dmrfit:::cpp_rm_correction(pars = pmles_z, draws = draws_pp$draws, data = data_z, n_categories = n_categories_z,
-                                                        chol_hessian = chol_hessian_z, L = L, sampler_n_iter = inner_gibbs_iter, 
-                                                        thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta, 
-                                                        interactions_location = interactions_location, interactions_scale = interactions_scale, 
-                                                        rm_step_thresholds = rm_step_thresholds, rm_step_interactions = rm_step_interactions, 
-                                                        rm_max_iter = rm_max_iter, tolerance = tolerance)
+                                                        chol_hessian = chol_hessian_z, L = L, sampler_n_iter = inner_gibbs_iter,
+                                                        thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta,
+                                                        interactions_location = interactions_location, interactions_scale = interactions_scale,
+                                                        rm_max_iter = rm_max_iter)
 
-            # Adjust elapsed time estimate (including RM correction time)
-            draws_rm$seconds_elapsed <- draws_pp$seconds_elapsed + draws_rm$seconds_elapsed
+            # Adjust elapsed time estimate (including Hessian/current_scale computation and RM correction time)
+            draws_rm$seconds_elapsed <- scale_elapsed_z + draws_pp$seconds_elapsed + draws_rm$seconds_elapsed
 
             # Metrics for RM draws
             metrics$RM <- .compute_metrics(x = draws_rm, 
@@ -420,7 +425,9 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
                                             structure = structure_z, 
                                             P = P, 
                                             interactions_location = interactions_location, 
-                                            interactions_scale = interactions_scale)
+                                            interactions_scale = interactions_scale,
+                                            n_categories = n_categories_z,
+                                            pair_seed = .pair_seed(index_sim, z))
             
             # Free space
             rm(draws_rm)
@@ -428,8 +435,8 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
             # ---- GHW (Godambe-Huber-White correction) ----
             draws_ghw <- dmrfit:::cpp_ghw_correction(pars = pmles_z ,draws = draws_pp$draws, chol_hessian = chol_hessian_z, GHW = utils_z$HW) # [[utils_z$HW may be utils_z$GHW]]
 
-            # Adjust elapsed time estimate (including GHW correction time)
-            draws_ghw$seconds_elapsed <- draws_pp$seconds_elapsed + draws_ghw$seconds_elapsed
+            # Adjust elapsed time estimate (including Hessian/current_scale computation and GHW correction time)
+            draws_ghw$seconds_elapsed <- scale_elapsed_z + draws_pp$seconds_elapsed + draws_ghw$seconds_elapsed
 
             # Metrics for GHW draws
             metrics$GHW <- .compute_metrics(x = draws_ghw, 
@@ -440,7 +447,9 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
                                             structure = structure_z, 
                                             P = P, 
                                             interactions_location = interactions_location, 
-                                            interactions_scale = interactions_scale)
+                                            interactions_scale = interactions_scale,
+                                            n_categories = n_categories_z,
+                                            pair_seed = .pair_seed(index_sim, z))
 
             # Free space
             rm(draws_ghw)
@@ -451,8 +460,8 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
                                                             thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta, 
                                                             interactions_location = interactions_location, interactions_scale = interactions_scale)
 
-            # Adjust elapsed time estimate (including MCH correction time)
-            draws_mch$seconds_elapsed <- draws_pp$seconds_elapsed + draws_mch$seconds_elapsed
+            # Adjust elapsed time estimate (including Hessian/current_scale computation and MCH correction time)
+            draws_mch$seconds_elapsed <- scale_elapsed_z + draws_pp$seconds_elapsed + draws_mch$seconds_elapsed
 
             # Metrics for MCH draws
             metrics$MCH <- .compute_metrics(x = draws_mch, 
@@ -463,7 +472,9 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
                                             structure = structure_z, 
                                             P = P, 
                                             interactions_location = interactions_location, 
-                                            interactions_scale = interactions_scale)
+                                            interactions_scale = interactions_scale,
+                                            n_categories = n_categories_z,
+                                            pair_seed = .pair_seed(index_sim, z))
            
             # Free space
             rm(draws_mch)
@@ -494,10 +505,11 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
             save_sigma2_z <- sample_z$save_sigma2
 
             # --- Compute utils for the current replicate z ---
-            utils_z <- dmrfit:::dmrf_deriv(pars = pars_z, 
+            t0_scale <- Sys.time()
+            utils_z <- dmrfit:::dmrf_deriv(pars = pars_z,
                                             data = sample_z$sample, # include sufficient statistics in the data for pseudo-likelihood function
-                                            P = P, 
-                                            n_categories = n_categories_z, 
+                                            P = P,
+                                            n_categories = n_categories_z,
                                             with_prior = TRUE,
                                             ncores = 1L,
                                             thresholds_alpha = thresholds_alpha,
@@ -510,6 +522,7 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
 
             # --- New scale = Godambe-Huber-White matrix ---
             new_scale_z <- t(chol(utils_z$HW))
+            scale_elapsed_z <- as.numeric(difftime(Sys.time(), t0_scale, units = "secs"))
 
             # --- Remove utils_z to free space ---
             rm(utils_z)
@@ -531,20 +544,25 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
                                                     interactions_scale = interactions_scale,
                                                     verbose = verbose,
                                                     progress = progress)
-            
+
+            # Adjust elapsed time estimate (including current_scale/new_scale computation time)
+            draws_core$seconds_elapsed <- scale_elapsed_z + draws_core$seconds_elapsed
+
             # --- Load reference draws for replicate z ---
             ref_z <- readRDS(paste0(folder, "reference/condition_", index_sim, "/reference_draws_sample_", z, ".rds")) # load reference draws for replicate z
 
             # --- Compute metrics ---
-            metrics <- .compute_metrics(x = draws_core, 
-                                        reference = ref_z, 
-                                        method = "CoRe", 
+            metrics <- .compute_metrics(x = draws_core,
+                                        reference = ref_z,
+                                        method = "CoRe",
                                         n_pars = n_pars_z, 
                                         n_thresholds = n_thresholds_z, 
                                         structure = structure_z, 
                                         P = P, 
                                         interactions_location = interactions_location, 
-                                        interactions_scale = interactions_scale)
+                                        interactions_scale = interactions_scale,
+                                        n_categories = n_categories_z,
+                                        pair_seed = .pair_seed(index_sim, z))
 
             return(metrics)
         }
@@ -570,10 +588,11 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
             save_sigma2_z <- sample_z$save_sigma2
 
             # --- Compute utils for the current replicate z ---
-            utils_z <- dmrfit:::dmrf_deriv(pars = pars_z, 
+            t0_scale <- Sys.time()
+            utils_z <- dmrfit:::dmrf_deriv(pars = pars_z,
                                             data = sample_z$sample, # include sufficient statistics in the data for pseudo-likelihood function
-                                            P = P, 
-                                            n_categories = n_categories_z, 
+                                            P = P,
+                                            n_categories = n_categories_z,
                                             with_prior = TRUE,
                                             ncores = 1L,
                                             thresholds_alpha = thresholds_alpha,
@@ -595,23 +614,21 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
                                                                     thresholds_beta = thresholds_beta, 
                                                                     interactions_location = interactions_location, 
                                                                     interactions_scale = interactions_scale,
-                                                                    rm_step_thresholds = rm_step_thresholds, 
-                                                                    rm_step_interactions = rm_step_interactions,
-                                                                    L = L, 
+                                                                    L = L,
                                                                     sampler_n_iter = inner_gibbs_iter,
-                                                                    rm_max_iter = rm_max_iter, 
-                                                                    tolerance = tolerance) 
+                                                                    rm_max_iter = rm_max_iter)
             new_scale_z <- t(chol(qr.solve(-robbins_monro_ls$hessian)))
+            scale_elapsed_z <- as.numeric(difftime(Sys.time(), t0_scale, units = "secs"))
 
             # --- Compute CoRe-RM draws ---
             draws_core_rm <- dmrfit:::cpp_core_sampler(data = data_z,
-                                                        pars = pars_z, 
+                                                        pars = pars_z,
                                                         n_categories = n_categories_z,
-                                                        pmles = pars_z, 
+                                                        pmles = pars_z, # pivot at the pseudo-posterior mode, as CoRe and CoRe-MCH (the RM estimate enters only through the Hessian)
                                                         current_scale = current_scale_z,   
                                                         new_scale = new_scale_z, 
                                                         nsim = nsim, 
-                                                        burnin = burnin, 
+                                                         burnin = burnin, 
                                                         adaptive_stage_n_iter = adaptive_stage_n_iter, 
                                                         sigma2 = sigma2,
                                                         thresholds_alpha = thresholds_alpha, 
@@ -620,20 +637,25 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
                                                         interactions_scale = interactions_scale,
                                                         verbose = verbose,
                                                         progress = progress)
-            
+
+            # Adjust elapsed time estimate (including current_scale/new_scale computation time)
+            draws_core_rm$seconds_elapsed <- scale_elapsed_z + draws_core_rm$seconds_elapsed
+
             # --- Load reference draws for replicate z ---
             ref_z <- readRDS(paste0(folder, "reference/condition_", index_sim, "/reference_draws_sample_", z, ".rds")) # load reference draws for replicate z
 
             # --- Compute metrics ---
-            metrics <- .compute_metrics(x = draws_core_rm, 
-                                        reference = ref_z, 
-                                        method = "CoRe-RM", 
+            metrics <- .compute_metrics(x = draws_core_rm,
+                                        reference = ref_z,
+                                        method = "CoRe-RM",
                                         n_pars = n_pars_z, 
                                         n_thresholds = n_thresholds_z,
                                         structure = structure_z, 
                                         P = P, 
                                         interactions_location = interactions_location, 
-                                        interactions_scale = interactions_scale)
+                                        interactions_scale = interactions_scale,
+                                        n_categories = n_categories_z,
+                                        pair_seed = .pair_seed(index_sim, z))
             return(metrics)
         }
 
@@ -658,10 +680,11 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
             save_sigma2_z <- sample_z$save_sigma2
 
             # --- Compute utils for the current replicate z ---
-            utils_z <- dmrfit:::dmrf_deriv(pars = pars_z, 
+            t0_scale <- Sys.time()
+            utils_z <- dmrfit:::dmrf_deriv(pars = pars_z,
                                             data = sample_z$sample, # include sufficient statistics in the data for pseudo-likelihood function
-                                            P = P, 
-                                            n_categories = n_categories_z, 
+                                            P = P,
+                                            n_categories = n_categories_z,
                                             with_prior = TRUE,
                                             ncores = 1L,
                                             thresholds_alpha = thresholds_alpha,
@@ -684,8 +707,9 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
                                                             thresholds_alpha = thresholds_alpha, 
                                                             thresholds_beta = thresholds_beta, 
                                                             interactions_location = interactions_location, 
-                                                            interactions_scale = interactions_scale)                            
+                                                            interactions_scale = interactions_scale)
             new_scale_z <- t(chol(qr.solve(-mc_hessian_z)))
+            scale_elapsed_z <- as.numeric(difftime(Sys.time(), t0_scale, units = "secs"))
 
             # --- Compute CoRe-MCH draws ---
             draws_core_mch <- dmrfit:::cpp_core_sampler(data = data_z,
@@ -704,20 +728,25 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
                                                         interactions_scale = interactions_scale,
                                                         verbose = verbose,
                                                         progress = progress)
-            
+
+            # Adjust elapsed time estimate (including current_scale/new_scale computation time)
+            draws_core_mch$seconds_elapsed <- scale_elapsed_z + draws_core_mch$seconds_elapsed
+
             # --- Load reference draws for replicate z ---
             ref_z <- readRDS(paste0(folder, "reference/condition_", index_sim, "/reference_draws_sample_", z, ".rds")) # load reference draws for replicate z
 
             # --- Compute metrics ---
-            metrics <- .compute_metrics(x = draws_core_mch, 
-                                        reference = ref_z, 
-                                        method = "CoRe-MCH", 
+            metrics <- .compute_metrics(x = draws_core_mch,
+                                        reference = ref_z,
+                                        method = "CoRe-MCH",
                                         n_pars = n_pars_z, 
                                         n_thresholds = n_thresholds_z, 
                                         structure = structure_z, 
                                         P = P, 
                                         interactions_location = interactions_location, 
-                                        interactions_scale = interactions_scale)
+                                        interactions_scale = interactions_scale,
+                                        n_categories = n_categories_z,
+                                        pair_seed = .pair_seed(index_sim, z))
 
             return(metrics)
         }
@@ -771,7 +800,9 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
                                         structure = structure_z, 
                                         P = P, 
                                         interactions_location = interactions_location, 
-                                        interactions_scale = interactions_scale)           
+                                        interactions_scale = interactions_scale,
+                                        n_categories = n_categories_z,
+                                        pair_seed = .pair_seed(index_sim, z))           
 
             return(metrics)
         }
@@ -779,8 +810,8 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
         cat(paste(Sys.time()," - AdaCoRe draws done. \n",sep=""))
     }
 
-    # DMH only for P != 12
-    if(method == "DMH" && P != 12){
+    # DMH only for P < 10
+    if(method == "DMH" && P < 10){
 
         # --- Compute DMH draws ---
         summary_ls <- foreach(z = seq_along(samples_ls), .packages = "dmrfit") %dopar% {
@@ -816,7 +847,9 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
                                         structure = structure_z, 
                                         P = P, 
                                         interactions_location = interactions_location, 
-                                        interactions_scale = interactions_scale)               
+                                        interactions_scale = interactions_scale,
+                                        n_categories = n_categories_z,
+                                        pair_seed = .pair_seed(index_sim, z))               
 
             return(metrics)
         }
@@ -824,8 +857,8 @@ simulation <- function(data, condition, master_seed, folder = "pl_project/", Q =
         # --- Metrics for DMH draws done ---
         cat(paste(Sys.time()," - DMH draws done. \n",sep=""))
         
-    } else if(method == "DMH" && P == 12){
-        stop("For P = 12, use method = 'reference' to obtain exact and DMH draws. This is a current design choice that reflects the paper's narrative.")
+    } else if(method == "DMH" && P >= 10){
+        stop("For P = 10, use method = 'reference' to obtain exact and DMH draws (the bridge already yields both); for P = 15 or P = 22, use method = 'reference' to obtain DMH draws (exact draws are computationally infeasible at that scale). This is a current design choice that reflects the paper's narrative.")
     }
  
     # save results object [[NOTE HERE: probably will have to check if .save_and_move_object() works fine in the line below]]

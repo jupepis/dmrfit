@@ -30,7 +30,7 @@ simulation(
 
 \item{nthreads}{number of threads to use for parallelization, default is 100}
 
-\item{method}{one of the following methods: "reference" (exact likelihood for P <= 12 or DMH for P = 24), "PPH" (pseudo posterior including all Post Hoc methods, RM, GHW, and MCH; one run, four methods), "DMH" (double Metropolis-Hastings), "CoRe" (Godambe-Huber-White correction), "CoRe-RM" (Robbins-Monro correction), "CoRe-MCH" (Monte Carlo Hessian correction), "AdaCoRe" (adaptive covariance structure correction)}
+\item{method}{one of the following methods: "reference" (exact likelihood for P <= 10 or DMH for P > 10), "PPH" (pseudo posterior including all Post Hoc methods, RM, GHW, and MCH; one run, four methods), "DMH" (double Metropolis-Hastings), "CoRe" (Godambe-Huber-White correction), "CoRe-RM" (Robbins-Monro correction), "CoRe-MCH" (Monte Carlo Hessian correction), "AdaCoRe" (adaptive covariance structure correction)}
 }
 \value{
 depending on "method", a summary list of results or list of draws, or helpers is saved

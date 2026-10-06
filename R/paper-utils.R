@@ -188,12 +188,20 @@
 #' @param results_name the file name to save under (no path components)
 #' @return NULL
 #' @noRd
-.save_and_move_object <- function(obj, folder, subfolder, results_name){ 
+.save_and_move_object <- function(obj, folder, subfolder, results_name){
     save_path <- paste0(folder, subfolder, "/")
-    cp_from      <- paste0('cp "$TMPDIR"/', save_path)
-    cp_to        <- paste0(' "$HOME"/', save_path)
-    saveRDS(obj,file = paste0(save_path, results_name)) 
-    system(command = paste(cp_from, results_name, cp_to,sep="")) 
+    # jobs copy only their inputs to $TMPDIR, so the output folder may not exist yet
+    dir.create(save_path, recursive = TRUE, showWarnings = FALSE)
+    saveRDS(obj,file = paste0(save_path, results_name))
+    # copy to the same path under $HOME (Snellius: the job runs in $TMPDIR)
+    src <- file.path(Sys.getenv("TMPDIR"), save_path, results_name)
+    if (nzchar(Sys.getenv("TMPDIR")) && file.exists(src)) {
+        dest_dir <- file.path(Sys.getenv("HOME"), save_path)
+        dir.create(dest_dir, recursive = TRUE, showWarnings = FALSE)
+        if (!file.copy(src, dest_dir, overwrite = TRUE)) {
+            warning("Could not copy ", src, " to ", dest_dir)
+        }
+    }
 }
 
 #' build_conditions
@@ -202,22 +210,22 @@
 #' @param N sample sizes; a vector applied to every P, or a function of P returning the sample sizes for that P
 #' @param structures character vector of graph structures ("full", "random", "smallworld")
 #' @return a data frame of conditions with columns index, P, structure, N, reference ("exact" or "dmh"),
-#'   and dmh_bridge (TRUE only for P = 12, where the "reference" run also produces a DMH-vs-exact
+#'   and dmh_bridge (TRUE only for P = 10, where the "reference" run also produces a DMH-vs-exact
 #'   comparison as a byproduct -- no separate method = "DMH" run is needed or allowed for these rows)
 #' @export
-build_conditions <- function(P = c(6, 9, 12, 24), N = c(500, 1000, 2000, 3000), structures = c("full", "random", "smallworld")) {
+build_conditions <- function(P = c(6, 10, 15, 22), N = c(500, 1000, 2000, 3000), structures = c("full", "random", "smallworld")) {
   base <- expand.grid(P = P, structure = structures, N = N,
                       stringsAsFactors = FALSE)
 
     # This function selects the reference method for a given number of nodes in the network (network size)
     .reference_for_p <- function(p) {
-        if (p <= 12) "exact"   # exact is generated for P <= 12; for P = 12 this run also yields DMH as a byproduct (see dmh_bridge)
-        else         "dmh"     # p = 24 (and any p > 12)
+        if (p <= 10) "exact"   # exact is generated for P <= 10; for P = 10 this run also yields DMH as a byproduct (see dmh_bridge)
+        else         "dmh"     # p = 15, 22 (and any p > 10)
     }
 
   conditions <- cbind(base, reference = vapply(base$P, .reference_for_p, character(1L)),
                        row.names = NULL)
-  conditions$dmh_bridge <- conditions$P == 12
+  conditions$dmh_bridge <- conditions$P == 10
 
   # number the runnable rows -- one per P/N/structure combination, no fan-out
   conditions <- cbind(index = seq_len(nrow(conditions)), conditions)
@@ -236,12 +244,30 @@ build_conditions <- function(P = c(6, 9, 12, 24), N = c(500, 1000, 2000, 3000), 
 #' @param structure the 0/1 mask of present interactions (from .initialize_structure,
 #'   length P*(P-1)/2, lower-triangle order)
 #' @param P number of variables
-#' @param n_thresholds number of threshold parameters
+#' @param n_categories number of categories per variable (length P); thresholds are stored
+#'   per variable, consecutively: variable p owns `n_categories[p] - 1` thresholds
+#' @param seed optional integer; if given, the pairs are drawn with this seed (Mersenne-Twister)
+#'   and the caller's RNG state is restored afterwards, so every method evaluated on the same
+#'   replicate gets the same pairs without disturbing the simulation's random streams
 #' @return a named list: $interaction_interaction, $threshold_interaction,
 #'   $threshold_threshold -- each a length-2 integer vector of parameter
 #'   indices (1-based, into the full n_pars-length parameter vector), or NULL
 #'   if no valid pair exists for that category
-.select_bivariate_pairs <- function(structure, P, n_thresholds) {
+.select_bivariate_pairs <- function(structure, P, n_categories, seed = NULL) {
+
+    # Draw the pairs with a fixed seed without touching the caller's RNG stream
+    if (!is.null(seed)) {
+        had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+        if (had_seed) old_seed <- get(".Random.seed", envir = globalenv(), inherits = FALSE)
+        on.exit({
+            if (had_seed) assign(".Random.seed", old_seed, envir = globalenv())
+            else if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) rm(".Random.seed", envir = globalenv())
+        }, add = TRUE)
+        set.seed(seed, kind = "Mersenne-Twister", normal.kind = "Inversion", sample.kind = "Rejection")
+    }
+
+    n_thresholds <- sum(n_categories - 1)
+    thr_owner <- rep(seq_len(P), times = n_categories - 1)   # variable owning each threshold index
 
     # Generate the lower-triangle indices for the interactions
      lower_indices <- { # same as the function sigma_lower_tri_indices() in paper-utils.cpp
@@ -293,8 +319,8 @@ build_conditions <- function(P = c(6, 9, 12, 24), N = c(500, 1000, 2000, 3000), 
         picked_edge <- present[sample(length(present), 1)]
         ij <- lower_indices[, picked_edge]
         node <- ij[sample(2, 1)]                 # pick one of the edge's two endpoints
-        thr_idx <- node                            # HOOK: adapt to your actual threshold indexing
-        # (if multiple thresholds per variable -- ordinal case -- pick one, e.g. the first)
+        node_thr <- which(thr_owner == node)       # threshold indices of that variable
+        thr_idx <- node_thr[sample(length(node_thr), 1)]   # one of its thresholds (ordinal: several)
         out$threshold_interaction <- c(thr_idx, n_thresholds + picked_edge)
     }
 
@@ -388,7 +414,7 @@ bivariate_overlapping_index <- function(d1, d2, n_grid = 128) {
 }
 
 # .compute_metrics_utils (internal) only works one replicate (z) because it will be run within the foreach() for each method
-.compute_metrics_utils <- function(x, reference, method, n_pars, n_thresholds, structure, P, interactions_location, interactions_scale) {
+.compute_metrics_utils <- function(x, reference, method, n_pars, n_thresholds, structure, P, interactions_location, interactions_scale, n_categories, pair_seed = NULL) {
 
     # compute_metrics() is called within each replicate (inside foreach):
     # 1. posterior quantities (mean, median, sd, map)
@@ -466,6 +492,7 @@ bivariate_overlapping_index <- function(d1, d2, n_grid = 128) {
     # --- Metric: marginal and bivariate overlapping index (only for methods that are not exact) ---
     metric_marginal <- NULL
     metric_bivariate <- NULL
+    pairs <- NULL
     if(method != "exact"){ # we need to load the exact draws from the rds files
 
         # --- Marginal metric: for each parameter, compute the marginal overlapping index between the posterior draws and the exact draws
@@ -479,7 +506,7 @@ bivariate_overlapping_index <- function(d1, d2, n_grid = 128) {
         }  
 
         # --- Bivariate metric: for a random but motivated selection of pairs of parameters (not all of them because expensive; see '.select_bivariate_pairs' for more details on the selection): computes the bivariate overlapping index between the posterior draws and the exact draws
-        pairs <- .select_bivariate_pairs(structure, P, n_thresholds)  # computed once per condition/truth, passed in
+        pairs <- .select_bivariate_pairs(structure, P, n_categories, seed = pair_seed)  # same pairs for every method on a replicate when pair_seed is fixed
         metric_bivariate <- lapply(pairs, function(pr) {
             if (is.null(pr)) return(NA_real_)
             bivariate_overlapping_index(d1 = x$draws[, pr], d2 = reference$draws[, pr])
@@ -496,12 +523,13 @@ bivariate_overlapping_index <- function(d1, d2, n_grid = 128) {
         ESS = ESS,
         log_sd_density_ratio = log_sd_density_ratio,
         metric_marginal = metric_marginal,
-        metric_bivariate = metric_bivariate
+        metric_bivariate = metric_bivariate,
+        bivariate_pairs = pairs   # parameter indices used for metric_bivariate (NULL if no reference)
     ))
 }
 
 # .compute_metrics
-.compute_metrics <- function(x, reference, method, n_pars, n_thresholds, structure, P, interactions_location, interactions_scale) {
+.compute_metrics <- function(x, reference, method, n_pars, n_thresholds, structure, P, interactions_location, interactions_scale, n_categories, pair_seed = NULL) {
     # compute_metrics() is called within each replicate (inside foreach):
     # 1. posterior quantities (mean, median, sd, map)
     # 2. acceptance rate (if applicable)
@@ -514,7 +542,7 @@ bivariate_overlapping_index <- function(d1, d2, n_grid = 128) {
 
     metrics <- NULL
 
-    if(all(names(reference) %in% c("exact", "dmh")) && P == 12) { # if P = 12
+    if(all(names(reference) %in% c("exact", "dmh")) && P == 10) { # if P = 10 (the exact+DMH bridge condition)
         # reference is a list of two elements (exact and dmh)
         metrics <- lapply(reference, function(ref) {
             .compute_metrics_utils(x = x, reference = ref,
@@ -523,16 +551,20 @@ bivariate_overlapping_index <- function(d1, d2, n_grid = 128) {
                                    structure = structure,
                                    P = P,
                                    interactions_location = interactions_location,
-                                   interactions_scale = interactions_scale)
+                                   interactions_scale = interactions_scale,
+                                   n_categories = n_categories,
+                                   pair_seed = pair_seed)
         })
-    } else { # if P != 12
+    } else { # if P != 10
         metrics <- .compute_metrics_utils(x = x, reference = reference,
                                             method = method, n_pars = n_pars,
                                             n_thresholds = n_thresholds,
                                             structure = structure,
                                             P = P,
                                             interactions_location = interactions_location,
-                                            interactions_scale = interactions_scale)
+                                            interactions_scale = interactions_scale,
+                                            n_categories = n_categories,
+                                            pair_seed = pair_seed)
     }
 
     return(metrics)
@@ -540,3 +572,9 @@ bivariate_overlapping_index <- function(d1, d2, n_grid = 128) {
 
 # .process_metrics (internal) --  to be written as post processing function when results are in
 
+
+# .pair_seed (internal): deterministic seed for the bivariate-overlap pairs of replicate z in
+# condition index_sim, so every method (and the P = 10 DMH-vs-exact check) uses the same pairs
+.pair_seed <- function(index_sim, z) {
+    as.integer(index_sim) * 1000L + as.integer(z)
+}

@@ -29,6 +29,10 @@ cpp_core_sampler <- function(data, pars, n_categories, pmles, current_scale, new
     .Call(`_dmrfit_cpp_core_sampler`, data, pars, n_categories, pmles, current_scale, new_scale, nsim, burnin, adaptive_stage_n_iter, sigma2, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, verbose, progress)
 }
 
+cpp_rmmh_core_sampler <- function(data, pars, n_categories, pmles, current_scale, new_scale, nsim, burnin, sigma2 = -1.0, tune_sigma2 = FALSE, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, verbose = FALSE, progress = TRUE) {
+    .Call(`_dmrfit_cpp_rmmh_core_sampler`, data, pars, n_categories, pmles, current_scale, new_scale, nsim, burnin, sigma2, tune_sigma2, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, verbose, progress)
+}
+
 cpp_dmh_sampler <- function(data, pars, n_categories, nsim, burnin, L = 25000L, inner_sampler_n_iter = 5L, adaptive_stage_n_iter = 500L, sigma2 = 1.0, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, verbose = FALSE, progress = TRUE) {
     .Call(`_dmrfit_cpp_dmh_sampler`, data, pars, n_categories, nsim, burnin, L, inner_sampler_n_iter, adaptive_stage_n_iter, sigma2, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, verbose, progress)
 }
@@ -45,12 +49,16 @@ cpp_mc_hessian_correction <- function(pars, draws, data, chol_hessian, n_categor
     .Call(`_dmrfit_cpp_mc_hessian_correction`, pars, draws, data, chol_hessian, n_categories, L, sampler_n_iter, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale)
 }
 
-cpp_rm_correction <- function(pars, draws, data, n_categories, chol_hessian, L, sampler_n_iter, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, rm_step_thresholds = 0.01, rm_step_interactions = 0.001, rm_max_iter = 200L, tolerance = 0.001) {
-    .Call(`_dmrfit_cpp_rm_correction`, pars, draws, data, n_categories, chol_hessian, L, sampler_n_iter, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, rm_step_thresholds, rm_step_interactions, rm_max_iter, tolerance)
+cpp_rm_correction <- function(pars, draws, data, n_categories, chol_hessian, L, sampler_n_iter, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, rm_max_iter = 50L) {
+    .Call(`_dmrfit_cpp_rm_correction`, pars, draws, data, n_categories, chol_hessian, L, sampler_n_iter, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, rm_max_iter)
 }
 
 cpp_pseudo_sampler <- function(data, pars, n_categories, nsim, burnin, adaptive_stage_n_iter = 500L, sigma2 = 1.0, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, verbose = FALSE, progress = TRUE) {
     .Call(`_dmrfit_cpp_pseudo_sampler`, data, pars, n_categories, nsim, burnin, adaptive_stage_n_iter, sigma2, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, verbose, progress)
+}
+
+cpp_rmmh_pseudo_sampler <- function(data, pars, n_categories, proposal_chol, nsim, burnin, sigma2 = -1.0, tune_sigma2 = FALSE, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, verbose = FALSE, progress = TRUE) {
+    .Call(`_dmrfit_cpp_rmmh_pseudo_sampler`, data, pars, n_categories, proposal_chol, nsim, burnin, sigma2, tune_sigma2, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, verbose, progress)
 }
 
 cpp_gibbs_sampler_omrf <- function(mu, sigma, n_categories, N, P, iter, X_start, save_iter) {
@@ -61,8 +69,8 @@ cpp_compute_mc_hessian <- function(data, pars, n_categories, L, sampler_n_iter, 
     .Call(`_dmrfit_cpp_compute_mc_hessian`, data, pars, n_categories, L, sampler_n_iter, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale)
 }
 
-cpp_compute_robbins_monro <- function(data, pars_init, n_categories, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, rm_step_thresholds, rm_step_interactions, L, sampler_n_iter, rm_max_iter, tolerance) {
-    .Call(`_dmrfit_cpp_compute_robbins_monro`, data, pars_init, n_categories, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, rm_step_thresholds, rm_step_interactions, L, sampler_n_iter, rm_max_iter, tolerance)
+cpp_compute_robbins_monro <- function(data, pars_init, n_categories, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, L, sampler_n_iter, rm_max_iter) {
+    .Call(`_dmrfit_cpp_compute_robbins_monro`, data, pars_init, n_categories, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, L, sampler_n_iter, rm_max_iter)
 }
 
 cpp_build_permutations_stats <- function(permutations, n_pars, n_thresholds, n_categories) {

@@ -51,6 +51,11 @@ double fishermala_pseudo_log_acceptance_ratio(const arma::vec& current_pars,
         log_a = 0.0; // This is equivalent to log min{1,acceptance_ratio}
     }
 
+    // NaN guard: a non-finite target (e.g. exp overflow in logZ at extreme proposals) is treated as a rejection
+    if(std::isnan(log_a)){
+        log_a = -arma::datum::inf;
+    }
+
     return log_a;
 }
 
@@ -238,3 +243,179 @@ Rcpp::List cpp_pseudo_sampler(const arma::mat &data,
     return out;
 }
 
+
+// Pseudo posterior sampler with Gaussian random walk Metropolis-Hastings proposal (fixed scale during the reported run)
+// Proposal: proposed_pars = current_pars + sqrt(sigma2) * proposal_chol * z, z ~ N(0, I), 
+// i.e. N(0, sigma2 * Sigma) with Sigma = proposal_chol * proposal_chol.t() (e.g. the inverse Hessian of the pseudo-likelihood at the pmles)
+// If tune_sigma2 = true, sigma2 is tuned during burnin only (Robbins-Monro on log(sigma2), target acceptance 0.234) and then frozen, 
+// so no adaptation happens during the reported chain.
+// @param data matrix of size [N x P] with the observed data
+// @param pars vector of size [n_pars] with the initial values of the parameters, in order [thresholds,interactions]
+// @param n_categories vector of size [P] with the number of categories for each node
+// @param proposal_chol matrix of size [n_pars x n_pars] such that proposal_chol * proposal_chol.t() is the proposal covariance Sigma
+// @param nsim number of iterations after burnin
+// @param burnin number of burnin iterations
+// @param sigma2 scale of the random walk proposal; if sigma2 <= 0 (default) the Roberts-Rosenthal rule sigma2 = 2.38^2 / n_pars is used
+// @param tune_sigma2 whether to tune sigma2 during burnin (pilot tuning, frozen afterwards; default is false)
+// @param thresholds_alpha hyperparameter for the beta prior on the thresholds (default is 0.5)
+// @param thresholds_beta hyperparameter for the beta prior on the thresholds (default is 0.5)
+// @param interactions_location location parameter for the cauchy prior on the interactions (default is 0.0)
+// @param interactions_scale scale parameter for the cauchy prior on the interactions (default is 2.5)
+// @param verbose whether to print out the progress of each iteration (default is false). Also, verbose = true only if progress = false
+// @param progress whether to show a progress bar (default is true)
+// @return a list with the draws
+// [[Rcpp::export]]
+Rcpp::List cpp_rmmh_pseudo_sampler(const arma::mat &data,
+                                const arma::vec &pars, 
+                                const arma::uvec &n_categories,
+                                const arma::mat &proposal_chol,
+                                arma::uword nsim, 
+                                arma::uword burnin, 
+                                double sigma2 = -1.0,
+                                bool tune_sigma2 = false,
+                                double thresholds_alpha = 0.5, 
+                                double thresholds_beta = 0.5, 
+                                double interactions_location = 0.0, 
+                                double interactions_scale = 2.5,
+                                bool verbose = false,
+                                bool progress = true) {
+
+    // --- Number of observations, variables, categories, and parameters ---
+    arma::uword P = data.n_cols;
+    arma::uword n_thresholds = arma::accu(n_categories - 1);
+    arma::uword n_pars = pars.n_elem;
+
+    // --- Number of total iterations (including burnin) ---
+    nsim += burnin;
+    arma::uword past_burnin = burnin;
+    arma::uword n_keep = nsim - past_burnin;
+
+    // --- Compute sufficient statistics for the observed data ---
+    arma::vec obs_stats;
+    sufficient_statistics_omrf(obs_stats, data, n_categories, P, n_thresholds, n_pars, 2.0);
+
+    // --- Find unique rows of the data and their frequencies ---
+    arma::mat unique_data;
+    arma::vec frequency;
+    get_data_unique(unique_data, frequency, data);
+    arma::uword N_unique = unique_data.n_rows;
+
+    // --- Preallocate draws ---
+    arma::mat draws(n_pars, n_keep, arma::fill::zeros);
+
+    // --- Random walk scale (Roberts-Rosenthal rule by default) and pilot-tuning parameters ---
+    if(sigma2 <= 0.0) sigma2 = 2.38 * 2.38 / static_cast<double>(n_pars);
+    double sigma2_init      = sigma2;
+    double sd_rw            = std::sqrt(sigma2);
+    double target_ar        = 0.234;   // optimal acceptance rate for RWM proposals
+    double tuning_accepted  = 0.0;     // acceptance counter during burnin
+
+    // --- Initialize counters ---
+    arma::uword s           = 1,
+                rejected    = 0,
+                accepted    = 0;
+
+    // --- Setting starting values ---
+    arma::vec current_pars = pars;
+
+    // --- Initialize structures used by compute_pseudo_logZ() ---
+    arma::uvec lower_indices = arma::trimatl_ind(arma::size(P, P), -1);
+    arma::uvec category_offsets;
+    category_offset_map(category_offsets, n_categories, P);
+
+    // --- Log pseudo-posterior (up to a constant) at current parameters ---
+    double log_post_current = arma::dot(current_pars, obs_stats) 
+                            - compute_pseudo_logZ(unique_data, frequency, current_pars, n_categories, lower_indices, category_offsets, P, N_unique, n_pars, n_thresholds)
+                            + compute_log_prior(current_pars, n_thresholds, n_pars, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale);
+
+    // --- Start timer for the chain ---
+    arma::wall_clock timer_chain;
+    timer_chain.tic();
+
+    // --- Progress bar setup (only if progress == true) ---
+    arma::uword print_every = 0;
+    Progress p(nsim, progress);
+    if (progress) {
+        print_every = std::max<arma::uword>(1, nsim / 100);
+    }
+
+    // --- Start sampling ---
+    while(s < nsim){
+
+        if (progress && Progress::check_abort()) {
+            Rcpp::stop("Sampler aborted by user.");
+        }
+
+        // (1) Propose new parameters (Gaussian random walk)
+        // (we use Rcpp for reproducibility, using same R's RNG)
+        arma::vec z = Rcpp::as<arma::vec>(Rcpp::rnorm(n_pars, 0.0, 1.0));
+        arma::vec proposed_pars = current_pars + sd_rw * (proposal_chol * z);
+
+        // (2) Log pseudo-posterior at proposed parameters
+        double log_post_proposed = arma::dot(proposed_pars, obs_stats) 
+                                - compute_pseudo_logZ(unique_data, frequency, proposed_pars, n_categories, lower_indices, category_offsets, P, N_unique, n_pars, n_thresholds)
+                                + compute_log_prior(proposed_pars, n_thresholds, n_pars, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale);
+
+        // (3) Compute acceptance ratio (symmetric proposal)
+        double log_a = log_post_proposed - log_post_current;
+        log_a = std::isnan(log_a) ? -arma::datum::inf : std::min(0.0, log_a);
+
+        // (4) Pilot tuning of sigma2 during burnin only (frozen afterwards)
+        if(s < past_burnin){
+            tuning_accepted += std::exp(log_a);
+            if(tune_sigma2){
+                double gain = 1.0 / std::pow(static_cast<double>(s), 0.6); // decaying Robbins-Monro gain
+                sigma2 = std::exp(std::log(sigma2) + gain * (std::exp(log_a) - target_ar));
+                sd_rw = std::sqrt(sigma2);
+            }
+        }
+
+        // (5) MH step: accept or reject the proposed parameters
+        double u = R::runif(0.0, 1.0);
+
+        if(u < std::exp(log_a)){
+            current_pars        = proposed_pars;
+            log_post_current    = log_post_proposed;
+            if(s >= past_burnin){
+                draws.col(s - past_burnin) = proposed_pars;
+                accepted++;
+            }
+        }
+        else{
+            if(s >= past_burnin){
+                draws.col(s - past_burnin) = current_pars;
+                rejected++;
+            }
+        }
+
+        // --- Print progress if verbose == true ---
+        if (verbose && !progress) {
+            Rcpp::Rcout << "(" << accepted << " of " << (accepted + rejected) << ") || iteration " << s
+                        << " || acceptance = " << std::exp(log_a) << "\n";
+        }
+
+        if (progress && s % print_every == 0) p.increment(print_every); // Update progress bar
+
+        s++; // Increment counter
+    }
+
+    if (progress) {
+        Rcpp::Rcout << "\n";
+    }
+
+    double time = timer_chain.toc(); // time elapsed (in seconds)
+
+    // --- Calculate acceptance probability ---
+    double acceptance_probability = static_cast<double>(accepted)/(static_cast<double>(accepted) + static_cast<double>(rejected));
+
+    Rcpp::List out = Rcpp::List::create(
+        Rcpp::Named("draws") = draws.t(),
+        Rcpp::Named("acceptance") = acceptance_probability,
+        Rcpp::Named("seconds_elapsed") = time,
+        Rcpp::Named("sigma2") = sigma2, // scale used in the reported run
+        Rcpp::Named("sigma2_init") = sigma2_init,
+        Rcpp::Named("burnin_acceptance") = (past_burnin > 1) ? tuning_accepted / static_cast<double>(past_burnin - 1) : NA_REAL
+    );
+
+    return out;
+}
