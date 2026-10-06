@@ -23,6 +23,12 @@ expect_true(all(is.finite(fit$argument)))
 # data coded from 1 (as in rads2) and from 0 give the same fit (the baseline category is the minimum)
 expect_equal(as.vector(dmrfit(as.matrix(X) - 1L, with_prior = TRUE)$argument), as.vector(fit$argument))
 
+# --- parallel computation (OpenMP): two cores give the same estimates, Hessian and sandwich covariance as one
+fit_1 <- dmrfit(X, with_prior = TRUE, ncores = 1)
+fit_2 <- dmrfit(X, with_prior = TRUE, ncores = 2)
+expect_identical(fit_2$argument, fit_1$argument)
+expect_identical(fit_2$utils, fit_1$utils)
+
 # --- constrained estimation: absent edges stay at zero
 S <- matrix(1, 4, 4); diag(S) <- 0; S[1, 2] <- S[2, 1] <- 0
 fit_s <- dmrfit(X, structure = S)

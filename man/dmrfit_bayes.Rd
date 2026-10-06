@@ -46,7 +46,7 @@ slower.}
 
 \item{burnin}{number of burn-in iterations, after an initial adaptive stage of \code{control$adaptive_stage} iterations. Default is 1000.}
 
-\item{ncores}{number of cores used to compute the gradient, Hessian and pseudolikelihood in parallel when finding the pseudo-posterior mode. It is capped at the number of available cores minus one. Default is 1.}
+\item{ncores}{number of cores used to compute the gradient, Hessian and pseudolikelihood in parallel when finding the pseudo-posterior mode. It is capped at the number of available cores minus one, and has no effect when the package was built without OpenMP support. Default is 1.}
 
 \item{thresholds_alpha}{alpha parameter for the Beta-Prime prior on thresholds (default is 0.5).}
 
@@ -76,7 +76,7 @@ Bayesian inference for a discrete Markov random field (Ising or ordinal) by Mark
 By default, the posterior is approximated by the coordinate-rescaled (CoRe) pseudo-posterior of Arena and Marsman
 (2026): the pseudo-posterior rescaled around its mode so that its covariance matches the sandwich
 (Godambe-Huber-White) covariance, which corrects the underestimated posterior variability of the pseudolikelihood.
-All samplers use an adaptive Fisher-preconditioned Metropolis-adjusted Langevin algorithm (FisherMALA).
+All samplers use the Fisher adaptive Metropolis-adjusted Langevin algorithm (FisherMALA; Titsias, 2023).
 }
 \examples{
 
@@ -101,6 +101,10 @@ coordinate rescaling. Manuscript submitted for publication.
 
 Liang, F. (2010). A double Metropolis-Hastings sampler for spatial models with intractable normalizing constants.
 \emph{Journal of Statistical Computation and Simulation}, 80(9), 1007-1022.
+
+Titsias, M. K. (2023). Optimal preconditioning and Fisher adaptive Langevin sampling. In \emph{Proceedings of
+the 37th International Conference on Neural Information Processing Systems} (NIPS '23). Red Hook, NY, USA: Curran
+Associates.
 
 Vats, D., Flegal, J. M., and Jones, G. L. (2019). Multivariate output analysis for Markov chain Monte Carlo.
 \emph{Biometrika}, 106(2), 321-337.

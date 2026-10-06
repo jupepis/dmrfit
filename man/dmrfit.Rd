@@ -36,7 +36,7 @@ dmrfit(
 
 \item{oversampling}{multiplier for the number of proposal draws in the BSIR step (default is 10). The total number of proposal draws is \code{M * oversampling}. Only used when \code{savage_dickey = TRUE}.}
 
-\item{ncores}{number of cores used to compute the gradient, Hessian and pseudolikelihood in parallel. It is capped at the number of available cores minus one. Default is 1.}
+\item{ncores}{number of cores used to compute the gradient, Hessian and pseudolikelihood in parallel. It is capped at the number of available cores minus one, and has no effect when the package was built without OpenMP support. Default is 1.}
 
 \item{thresholds_alpha}{alpha parameter for the Beta-Prime prior on thresholds (default is 0.5). Only used when \code{with_prior = TRUE}.}
 

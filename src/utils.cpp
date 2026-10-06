@@ -95,12 +95,10 @@ Rcpp::List dmrf_deriv(
     arma::cube hessian_cube(n_pars,n_pars,N,arma::fill::zeros);
     arma::cube square_score_cube(n_pars,n_pars,N,arma::fill::zeros);
 
-    // # pragma omp parallel for if(ncores>1) private() shared() ... parallelize here (??) the for loop over people
-    // loop over people  
+    // loop over people, in parallel over ncores threads: each person writes only to its own entries of loglik_vec,
+    // gradient_mat, square_score_cube and hessian_cube, which are summed after the loop
     #ifdef _OPENMP
-    omp_set_dynamic(0);         
-    omp_set_num_threads(ncores); // number of threads for all consecutive parallel regions
-    #pragma omp parallel for if(ncores>1) private(n,p,h,i,j) shared(N,P,n_thresholds,n_pars,data,n_categories,thresholds,interactions_vec,interactions,matrix_indices_sigma,category_stats,which_stats,loglik_vec,gradient_mat,hessian_cube)
+    #pragma omp parallel for num_threads(ncores) if(ncores > 1) private(p, h, i, j)
     #endif
     for(n = 0; n < N; n++){
         // select n-th person statistics
@@ -389,12 +387,9 @@ double cpp_npseudologlik(
     // creating empty objects where to save loglik, gradient and hessian computed per each person (statistical unit) , this is useful for the parallelization step
     arma::vec loglik_vec(N,arma::fill::zeros);
 
-    // # pragma omp parallel for if(ncores>1) private() shared() ... parallelize here (??) the for loop over people
-    // loop over people  
+    // loop over people, in parallel over ncores threads: each person writes only to its own entry of loglik_vec
     #ifdef _OPENMP
-    omp_set_dynamic(0);         
-    omp_set_num_threads(ncores); // number of threads for all consecutive parallel regions
-    #pragma omp parallel for if(ncores>1) private(n,p,h,i,j) shared(N,P,n_thresholds,n_pars,data,n_categories,thresholds,interactions_vec,interactions,loglik_vec)
+    #pragma omp parallel for num_threads(ncores) if(ncores > 1) private(p, h)
     #endif
     for(n = 0; n < N; n++){
         // select n-th person statistics

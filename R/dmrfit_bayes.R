@@ -4,7 +4,7 @@
 #' By default, the posterior is approximated by the coordinate-rescaled (CoRe) pseudo-posterior of Arena and Marsman
 #' (2026): the pseudo-posterior rescaled around its mode so that its covariance matches the sandwich
 #' (Godambe-Huber-White) covariance, which corrects the underestimated posterior variability of the pseudolikelihood.
-#' All samplers use an adaptive Fisher-preconditioned Metropolis-adjusted Langevin algorithm (FisherMALA).
+#' All samplers use the Fisher adaptive Metropolis-adjusted Langevin algorithm (FisherMALA; Titsias, 2023).
 #'
 #' @param data data matrix, with rows as samples and columns as variables. Each variable should be rescaled to the range of 0 to m-1, where m is the number of categories for that variable. The baseline category is always the minimum value in the variable. The internal processing will check if the variables are rescaled and will rescale them if necessary. If there are any NAs in the data, they will be removed before optimization (listwise deletion).
 #' @param parinit initial parameter values for the optimization that finds the pseudo-posterior mode, a vector of length equal to the number of parameters in the model, \code{sum(n_categories - 1) + P * (P - 1) / 2}, where \code{P} is the number of variables. If NULL (default), a vector of zeros.
@@ -23,7 +23,7 @@
 #'   slower.
 #' @param nsim number of posterior draws kept after burn-in. Default is 1000.
 #' @param burnin number of burn-in iterations, after an initial adaptive stage of \code{control$adaptive_stage} iterations. Default is 1000.
-#' @param ncores number of cores used to compute the gradient, Hessian and pseudolikelihood in parallel when finding the pseudo-posterior mode. It is capped at the number of available cores minus one. Default is 1.
+#' @param ncores number of cores used to compute the gradient, Hessian and pseudolikelihood in parallel when finding the pseudo-posterior mode. It is capped at the number of available cores minus one, and has no effect when the package was built without OpenMP support. Default is 1.
 #' @param thresholds_alpha alpha parameter for the Beta-Prime prior on thresholds (default is 0.5).
 #' @param thresholds_beta beta parameter for the Beta-Prime prior on thresholds (default is 0.5).
 #' @param interactions_location location parameter for the Cauchy prior on pairwise interactions (default is 0.0).
@@ -44,6 +44,10 @@
 #'
 #' Liang, F. (2010). A double Metropolis-Hastings sampler for spatial models with intractable normalizing constants.
 #' \emph{Journal of Statistical Computation and Simulation}, 80(9), 1007-1022.
+#'
+#' Titsias, M. K. (2023). Optimal preconditioning and Fisher adaptive Langevin sampling. In \emph{Proceedings of
+#' the 37th International Conference on Neural Information Processing Systems} (NIPS '23). Red Hook, NY, USA: Curran
+#' Associates.
 #'
 #' Vats, D., Flegal, J. M., and Jones, G. L. (2019). Multivariate output analysis for Markov chain Monte Carlo.
 #' \emph{Biometrika}, 106(2), 321-337.
