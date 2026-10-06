@@ -39,7 +39,7 @@ dmrfit_bayes(
 
 \item{sigma2}{initial value for the adaptive variance parameter in the FisherMALA sampler (default is 0.1).}
 
-\item{seed}{random seed for reproducibility of the BSIR step (default is 123).}
+\item{seed}{random seed for reproducibility of the MCMC sampler (default is 123). The caller's random number stream is restored on exit.}
 }
 \value{
 dmrfit S3 class object
