@@ -1,0 +1,12 @@
+The dmrfit package is licensed under the MIT license (see the LICENSE file), with one exception:
+
+data/rads2.rda (the dataset 'rads2') is derived from "S1 Data. Reynolds Adolescent Depression Scale", supporting
+information of Ramos-Vera, C., Quispe Callo, G., Basauri Delgado, M., Vallejos Saldarriaga, J., and Saintila, J.
+(2023). Factorial and network structure of the Reynolds Adolescent Depression Scale (RADS-2) in Peruvian adolescents.
+PLOS ONE, 18(5), e0286081. https://doi.org/10.1371/journal.pone.0286081.s001
+
+It is licensed under the Creative Commons Attribution 4.0 International license (CC BY 4.0,
+https://creativecommons.org/licenses/by/4.0/). Changes from the original: 25 of the 30 items were kept (items 2, 10,
+23, 25 and 29, and the age and sex of the respondents, were removed), the items were renamed from A<k> to D<k>, and
+items D1, D5 and D12 were reverse-coded (5 - x). The item clusters stored with the data are those reported in the
+article above. See ?rads2.
