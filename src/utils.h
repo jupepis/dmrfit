@@ -38,4 +38,7 @@ double cpp_npseudologlik(const arma::vec &pars,
                     const double &interactions_scale = 2.5);
 
 
+// function to find the unique rows of the observed data matrix and their frequencies
+void get_data_unique(arma::mat& unique_data, arma::vec& frequency, const arma::mat& data);
+
 #endif

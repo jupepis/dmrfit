@@ -1,4 +1,6 @@
 #include <string>
+#include <map>
+#include <vector>
 #include <RcppArmadillo.h>
 #include "utils.h"
 #include "priors.h"
@@ -447,4 +449,38 @@ double cpp_npseudologlik(
         loglik -= (arma::accu(log_beta_prime(thresholds, thresholds_alpha, thresholds_beta)) + arma::accu(log_dcauchy(interactions_vec, interactions_location, interactions_scale)));
     }
    return loglik;
+}
+
+
+// Deduplicate rows of `data`, returning unique rows and their frequencies
+void get_data_unique(arma::mat& unique_data, arma::vec& frequency, const arma::mat& data) {
+    arma::uword N = data.n_rows;
+    arma::uword P = data.n_cols;
+
+    // Count each distinct row with a std::map keyed by the row itself (as a vector of integers;
+    // the values are small non-negative integers 0..m-1), keeping the order of first appearance.
+    std::map<std::vector<int>, arma::uword> row_counts;
+    std::vector<std::vector<int>> row_order;   // preserves first-seen order
+
+    for (arma::uword n = 0; n < N; n++) {
+        std::vector<int> row(P);
+        for (arma::uword p = 0; p < P; p++) row[p] = static_cast<int>(data(n, p));
+
+        auto it = row_counts.find(row);
+        if (it == row_counts.end()) {
+            row_counts[row] = 1;
+            row_order.push_back(row);
+        } else {
+            it->second++;
+        }
+    }
+
+    arma::uword n_unique = row_order.size();
+    unique_data.set_size(n_unique, P);
+    frequency.set_size(n_unique);
+
+    for (arma::uword i = 0; i < n_unique; i++) {
+        for (arma::uword p = 0; p < P; p++) unique_data(i, p) = static_cast<double>(row_order[i][p]);
+        frequency(i) = static_cast<double>(row_counts[row_order[i]]);
+    }
 }

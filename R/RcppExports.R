@@ -17,6 +17,42 @@ cpp_optimize_profile <- function(data, parinit, which_parconstr, parconstr, n_ca
     .Call(`_dmrfit_cpp_optimize_profile`, data, parinit, which_parconstr, parconstr, n_categories, P, f_term, m_term, n_iter_max, rinit, rmax, with_prior, epsilon, ncores, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale)
 }
 
+cpp_adacore_sampler <- function(data, pars, n_categories, pmles, nsim, burnin, adaptive_stage_n_iter = 500L, sigma2 = 1.0, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, verbose = FALSE, progress = TRUE) {
+    .Call(`_dmrfit_cpp_adacore_sampler`, data, pars, n_categories, pmles, nsim, burnin, adaptive_stage_n_iter, sigma2, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, verbose, progress)
+}
+
+cpp_core_sampler <- function(data, pars, n_categories, pmles, current_scale, new_scale, nsim, burnin, adaptive_stage_n_iter = 500L, sigma2 = 1.0, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, verbose = FALSE, progress = TRUE) {
+    .Call(`_dmrfit_cpp_core_sampler`, data, pars, n_categories, pmles, current_scale, new_scale, nsim, burnin, adaptive_stage_n_iter, sigma2, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, verbose, progress)
+}
+
+cpp_dmh_sampler <- function(data, pars, n_categories, nsim, burnin, L = 25000L, inner_sampler_n_iter = 5L, adaptive_stage_n_iter = 500L, sigma2 = 1.0, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, verbose = FALSE, progress = TRUE) {
+    .Call(`_dmrfit_cpp_dmh_sampler`, data, pars, n_categories, nsim, burnin, L, inner_sampler_n_iter, adaptive_stage_n_iter, sigma2, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, verbose, progress)
+}
+
+cpp_exact_sampler <- function(data, pars, n_categories, X, nsim, burnin, adaptive_stage_n_iter = 500L, sigma2 = 1.0, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, verbose = FALSE, progress = TRUE) {
+    .Call(`_dmrfit_cpp_exact_sampler`, data, pars, n_categories, X, nsim, burnin, adaptive_stage_n_iter, sigma2, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, verbose, progress)
+}
+
+cpp_pseudo_sampler <- function(data, pars, n_categories, nsim, burnin, adaptive_stage_n_iter = 500L, sigma2 = 1.0, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, verbose = FALSE, progress = TRUE) {
+    .Call(`_dmrfit_cpp_pseudo_sampler`, data, pars, n_categories, nsim, burnin, adaptive_stage_n_iter, sigma2, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, verbose, progress)
+}
+
+cpp_gibbs_sampler_omrf <- function(mu, sigma, n_categories, N, P, iter, X_start, save_iter) {
+    .Call(`_dmrfit_cpp_gibbs_sampler_omrf`, mu, sigma, n_categories, N, P, iter, X_start, save_iter)
+}
+
+cpp_compute_mc_hessian <- function(data, pars, n_categories, L, sampler_n_iter, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale) {
+    .Call(`_dmrfit_cpp_compute_mc_hessian`, data, pars, n_categories, L, sampler_n_iter, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale)
+}
+
+cpp_compute_robbins_monro <- function(data, pars_init, n_categories, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, L, sampler_n_iter, rm_max_iter) {
+    .Call(`_dmrfit_cpp_compute_robbins_monro`, data, pars_init, n_categories, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, L, sampler_n_iter, rm_max_iter)
+}
+
+cpp_build_permutations_stats <- function(permutations, n_pars, n_thresholds, n_categories) {
+    .Call(`_dmrfit_cpp_build_permutations_stats`, permutations, n_pars, n_thresholds, n_categories)
+}
+
 cpp_mvnrnd_arma <- function(mu, Sigma, n) {
     .Call(`_dmrfit_cpp_mvnrnd_arma`, mu, Sigma, n)
 }
