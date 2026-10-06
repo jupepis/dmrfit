@@ -1,4 +1,6 @@
 #include <string>
+#include <map>
+#include <vector>
 #include <RcppArmadillo.h>
 #include "utils.h"
 #include "priors.h"
@@ -447,4 +449,116 @@ double cpp_npseudologlik(
         loglik -= (arma::accu(log_beta_prime(thresholds, thresholds_alpha, thresholds_beta)) + arma::accu(log_dcauchy(interactions_vec, interactions_location, interactions_scale)));
     }
    return loglik;
+}
+
+
+// Deduplicate rows of `data`, returning unique rows and their frequencies
+void get_data_unique(arma::mat& unique_data, arma::vec& frequency, const arma::mat& data) {
+    arma::uword N = data.n_rows;
+    arma::uword P = data.n_cols;
+
+    // Count each distinct row with a std::map keyed by the row itself (as a vector of integers;
+    // the values are small non-negative integers 0..m-1), keeping the order of first appearance.
+    std::map<std::vector<int>, arma::uword> row_counts;
+    std::vector<std::vector<int>> row_order;   // preserves first-seen order
+
+    for (arma::uword n = 0; n < N; n++) {
+        std::vector<int> row(P);
+        for (arma::uword p = 0; p < P; p++) row[p] = static_cast<int>(data(n, p));
+
+        auto it = row_counts.find(row);
+        if (it == row_counts.end()) {
+            row_counts[row] = 1;
+            row_order.push_back(row);
+        } else {
+            it->second++;
+        }
+    }
+
+    arma::uword n_unique = row_order.size();
+    unique_data.set_size(n_unique, P);
+    frequency.set_size(n_unique);
+
+    for (arma::uword i = 0; i < n_unique; i++) {
+        for (arma::uword p = 0; p < P; p++) unique_data(i, p) = static_cast<double>(row_order[i][p]);
+        frequency(i) = static_cast<double>(row_counts[row_order[i]]);
+    }
+}
+
+
+// function to calculate the negative pseudologlikelihood (with or without prior) of a discrete MRF model at many parameter
+// vectors at once (one per column of pars_draws), used by the Savage-Dickey BSIR step of dmrfit(). Same value as
+// cpp_npseudologlik() at each column, computed with matrix operations over the unique response patterns of the data
+// (weighted by their frequencies) and a stabilized log-sum-exp in the normalizing constants of the full conditionals.
+// [[Rcpp::export]]
+arma::vec cpp_npseudologlik_draws(
+    const arma::mat &pars_draws, // matrix of size [n_pars x M], one parameter vector [thresholds, interactions] per column
+    const arma::mat &data, // matrix of size [N x P] with the data (categories coded 0, ..., m-1), without cross-products
+    const arma::uvec &n_categories,
+    const bool &with_prior,
+    const double &thresholds_alpha,
+    const double &thresholds_beta,
+    const double &interactions_location,
+    const double &interactions_scale)
+{
+    arma::uword P = n_categories.n_elem;
+    arma::uword n_thresholds = arma::accu(n_categories - 1);
+    arma::uword n_pars = pars_draws.n_rows;
+    arma::uword M = pars_draws.n_cols;
+
+    // --- Unique response patterns and their frequencies ---
+    arma::mat X;
+    arma::vec frequency;
+    get_data_unique(X, frequency, data);
+    arma::uword U = X.n_rows;
+
+    // --- Position of the first threshold of each variable in the parameter vector ---
+    arma::uvec offset(P, arma::fill::zeros);
+    for (arma::uword p = 1; p < P; p++) offset(p) = offset(p - 1) + n_categories(p - 1) - 1;
+
+    // --- Count of each observed threshold over the unique patterns, weighted by their frequencies ---
+    arma::vec threshold_counts(n_thresholds, arma::fill::zeros);
+    for (arma::uword u = 0; u < U; u++) {
+        for (arma::uword p = 0; p < P; p++) {
+            arma::uword x = static_cast<arma::uword>(X(u, p));
+            if (x > 0) threshold_counts(offset(p) + x - 1) += frequency(u);
+        }
+    }
+
+    // lower-triangle indices (column-major, as in cpp_npseudologlik) of the interaction parameters
+    arma::uvec lower_indices = arma::trimatl_ind(arma::size(P, P), -1);
+
+    arma::vec out(M);
+    for (arma::uword m = 0; m < M; m++) {
+        Rcpp::checkUserInterrupt();
+        arma::vec thresholds = pars_draws(arma::span(0, n_thresholds - 1), m);
+        arma::vec interactions_vec = pars_draws(arma::span(n_thresholds, n_pars - 1), m);
+        arma::mat lower(P, P, arma::fill::zeros);
+        lower(lower_indices) = interactions_vec;
+        arma::mat interactions = arma::symmatl(lower); // symmetric, zero diagonal
+
+        // --- Rest scores sum_{j != p} x_j sigma_pj of every pattern and variable ---
+        arma::mat rest = X * interactions; // [U x P]
+
+        // --- Numerator: observed thresholds and interactions (x' Sigma x = sum_{i<j} 2 x_i x_j sigma_ij) ---
+        double loglik = arma::dot(threshold_counts, thresholds) + arma::dot(frequency, arma::sum(X % rest, 1));
+
+        // --- Normalizing constants of the full conditionals: log(1 + sum_h exp(mu_ph + h * rest_p)), stabilized ---
+        for (arma::uword p = 0; p < P; p++) {
+            arma::uword H = n_categories(p) - 1;
+            arma::mat eta(U, H + 1, arma::fill::zeros); // column 0: baseline category (eta = 0)
+            for (arma::uword h = 1; h <= H; h++) eta.col(h) = thresholds(offset(p) + h - 1) + static_cast<double>(h) * rest.col(p);
+            arma::vec eta_max = arma::max(eta, 1);
+            arma::vec log_norm = eta_max + arma::log(arma::sum(arma::exp(eta.each_col() - eta_max), 1));
+            loglik -= arma::dot(frequency, log_norm);
+        }
+
+        // --- Prior ---
+        if (with_prior) {
+            loglik += arma::accu(log_beta_prime(thresholds, thresholds_alpha, thresholds_beta)) +
+                      arma::accu(log_dcauchy(interactions_vec, interactions_location, interactions_scale));
+        }
+        out(m) = -loglik;
+    }
+    return out;
 }

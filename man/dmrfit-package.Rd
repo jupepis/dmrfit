@@ -3,13 +3,14 @@
 \docType{package}
 \name{dmrfit-package}
 \alias{dmrfit-package}
-\title{dmrfit: Optimization Tools for Discrete Markov Random Fields}
+\title{dmrfit: Scalable Bayesian Inference for Discrete Markov Random Fields}
 \description{
-Estimation of discrete Markov Random Fields through the pseudolikelihood, for both Ising models (Ising, 1925, \doi{10.1007/BF02980577}) and Ordinal Markov Random Fields (Marsman, M., van den Bergh, D., and Haslbeck, J. M. B, 2025, \doi{10.1017/psy.2024.4}). Point estimates, either maximum pseudolikelihood or maximum a posteriori, are obtained through a trust region optimization algorithm, with robust standard errors from the Huber-White sandwich estimator, for both full and constrained network structures. Bayesian inference corrects the pseudo-posterior through coordinate rescaling, which matches its covariance to the sandwich covariance, and samples from it with an adaptive Fisher-preconditioned Metropolis-adjusted Langevin algorithm. Savage-Dickey Bayes factors test each pairwise interaction, computed either by sampling importance resampling or from the posterior draws.
+Estimation of discrete Markov Random Fields through the pseudolikelihood, for both Ising models (Ising, 1925, \doi{10.1007/BF02980577}) and Ordinal Markov Random Fields (Marsman, M., van den Bergh, D., and Haslbeck, J. M. B, 2025, \doi{10.1017/psy.2024.4}). Point estimates, either maximum pseudolikelihood or maximum a posteriori, are obtained through a trust region optimization algorithm, with robust standard errors from the Huber-White sandwich estimator, for both full and constrained network structures. Bayesian inference corrects the pseudo-posterior through coordinate rescaling, which matches its covariance to the sandwich covariance, and samples from it with an adaptive Fisher-preconditioned Metropolis-adjusted Langevin algorithm. For comparison, the posterior based on the full likelihood can also be sampled, exactly for small networks or with the double Metropolis-Hastings algorithm. Savage-Dickey Bayes factors test each pairwise interaction, computed either by sampling importance resampling or from the posterior draws.
 }
 \seealso{
 Useful links:
 \itemize{
+  \item \url{https://jupepis.github.io/dmrfit/}
   \item \url{https://github.com/jupepis/dmrfit}
   \item Report bugs at \url{https://github.com/jupepis/dmrfit/issues}
 }

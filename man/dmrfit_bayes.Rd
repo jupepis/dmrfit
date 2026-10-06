@@ -2,11 +2,13 @@
 % Please edit documentation in R/dmrfit_bayes.R
 \name{dmrfit_bayes}
 \alias{dmrfit_bayes}
-\title{dmrfit_bayes}
+\title{Posterior sampling for discrete Markov random fields}
 \usage{
 dmrfit_bayes(
   data,
   parinit = NULL,
+  method = c("core", "adacore", "exact", "dmh"),
+  scale = c("ghw", "mch", "rm"),
   nsim = 1000,
   burnin = 1000,
   ncores = 1,
@@ -15,19 +17,36 @@ dmrfit_bayes(
   interactions_location = 0,
   interactions_scale = 2.5,
   sigma2 = 0.1,
-  seed = 123
+  seed = 123,
+  progress = TRUE,
+  control = list()
 )
 }
 \arguments{
 \item{data}{data matrix, with rows as samples and columns as variables. Each variable should be rescaled to the range of 0 to m-1, where m is the number of categories for that variable. The baseline category is always the minimum value in the variable. The internal processing will check if the variables are rescaled and will rescale them if necessary. If there are any NAs in the data, they will be removed before optimization (listwise deletion).}
 
-\item{parinit}{parinit, initial parameter estimates, a vector of length equal to the number of parameters in the model. If NULL, it will be initialized to a vector of zeros. The number of parameters in the model is calculated as sum(P * (n_categories - 1)) + P * (P - 1) / 2, where P is the number of variables.}
+\item{parinit}{initial parameter values for the optimization that finds the pseudo-posterior mode, a vector of length equal to the number of parameters in the model, \code{sum(n_categories - 1) + P * (P - 1) / 2}, where \code{P} is the number of variables. If NULL (default), a vector of zeros.}
 
-\item{nsim}{nsim, number of iterations for the optimization. Default is 1000.}
+\item{method}{the sampler: \code{"core"} (default) samples the CoRe pseudo-posterior with a fixed rescaling
+matrix; \code{"adacore"} adapts the rescaling matrix during burn-in at the running mean of the draws;
+\code{"exact"} samples the posterior based on the full likelihood, whose normalizing constant is computed by
+enumerating all response patterns (only for small networks, see \code{control}); \code{"dmh"} samples the
+posterior based on the full likelihood with the double Metropolis-Hastings algorithm (Liang, 2010). DMH simulates auxiliary data at every
+iteration and is much slower than the other methods (minutes to hours instead of seconds, depending on the
+network size and \code{control$dmh_aux}); \code{"core"} runs at the cost of the pseudo-posterior sampler.}
 
-\item{burnin}{burnin, number of burnin iterations for the optimization. Default is 1000.}
+\item{scale}{the covariance to which the pseudo-posterior is rescaled, only used when \code{method = "core"}:
+\code{"ghw"} (default) the sandwich (Godambe-Huber-White) covariance; \code{"mch"} the inverse of the negative
+Hessian of the full log-posterior at the pseudo-posterior mode, estimated by Monte Carlo simulation; \code{"rm"}
+the same Hessian at the full-posterior mode, estimated by a Newton-type Robbins-Monro algorithm (the sampler
+remains centered at the pseudo-posterior mode). \code{"mch"} and \code{"rm"} simulate data from the model and are
+slower.}
 
-\item{ncores}{ncores, number of cores to use for parallel computing of the gradient, hessian and likelihood values. If ncores is larger than the number of available cores, it will be set to the number of available cores minus one. Default is 1.}
+\item{nsim}{number of posterior draws kept after burn-in. Default is 1000.}
+
+\item{burnin}{number of burn-in iterations, after an initial adaptive stage of \code{control$adaptive_stage} iterations. Default is 1000.}
+
+\item{ncores}{number of cores used to compute the gradient, Hessian and pseudolikelihood in parallel when finding the pseudo-posterior mode. It is capped at the number of available cores minus one. Default is 1.}
 
 \item{thresholds_alpha}{alpha parameter for the Beta-Prime prior on thresholds (default is 0.5).}
 
@@ -40,21 +59,52 @@ dmrfit_bayes(
 \item{sigma2}{initial value for the adaptive variance parameter in the FisherMALA sampler (default is 0.1).}
 
 \item{seed}{random seed for reproducibility of the MCMC sampler (default is 123). The caller's random number stream is restored on exit.}
+
+\item{progress}{logical, whether to show a progress bar while sampling (default is TRUE).}
+
+\item{control}{a list of tuning settings, each with a default: \code{adaptive_stage} (500) iterations of the
+initial adaptive stage; \code{max_states} (1e6) largest number of response patterns for \code{method = "exact"};
+\code{dmh_aux} (25000) and \code{dmh_gibbs_iter} (5) auxiliary draws and Gibbs sweeps per iteration of
+\code{method = "dmh"}; \code{mc_draws} (1e5) and \code{mc_gibbs_iter} (5) simulated observations and Gibbs sweeps
+for \code{scale = "mch"} and \code{"rm"}; \code{rm_iter} (50) Robbins-Monro iterations for \code{scale = "rm"}.}
 }
 \value{
-an object of class \code{dmrfit_bayes} (also of class \code{dmrfit}), including the posterior draws (\code{draws}), the Savage-Dickey Bayes factors with the effective sample size of each parameter (\code{savage_dickey}), and the multivariate effective sample size of the draws (\code{mess}; Vats, Flegal and Jones, 2019), which is \code{NA} when there are fewer than \code{P + 1} batches of \code{floor(sqrt(nsim))} draws per parameter.
+an object of class \code{dmrfit_bayes} (also of class \code{dmrfit}), including the pseudo-posterior mode (\code{argument}), the posterior draws (\code{draws}, a matrix with parameters by rows and iterations by columns), the acceptance rate (\code{acceptance}), the sampling method and scale (\code{method}, \code{scale}), the Savage-Dickey Bayes factors with the effective sample size of each parameter (\code{savage_dickey}), and the multivariate effective sample size of the draws (\code{mess}; Vats, Flegal and Jones, 2019), which is \code{NA} when there are fewer than \code{P + 1} batches of \code{floor(sqrt(nsim))} draws per parameter.
 }
 \description{
-Fit a discrete Markov Random Field model via pseudo-likelihood estimation. The optimization is performed using the Coordinate Rescaling sampler implemented by Arena and Marsman (2026).
+Bayesian inference for a discrete Markov random field (Ising or ordinal) by Markov chain Monte Carlo.
+By default, the posterior is approximated by the coordinate-rescaled (CoRe) pseudo-posterior of Arena and Marsman
+(2026): the pseudo-posterior rescaled around its mode so that its covariance matches the sandwich
+(Godambe-Huber-White) covariance, which corrects the underestimated posterior variability of the pseudolikelihood.
+All samplers use an adaptive Fisher-preconditioned Metropolis-adjusted Langevin algorithm (FisherMALA).
 }
 \examples{
 
-# simulate data from a 3-node Ising model with 2 categories per node
+# binary responses of 1000 observations on 3 nodes (independent, for illustration)
 set.seed(123)
 n <- 1000
 P <- 3
-data <- matrix(rbinom(n * P, size = 1, prob = c(0.2, 0.5, 0.3)[rep(1:P, each = n)]), nrow = n, ncol = P)
-fit <- dmrfit_bayes(data = data, nsim = 500, burnin = 500)
+prob <- c(0.2, 0.5, 0.3)[rep(1:P, each = n)]
+data <- matrix(rbinom(n * P, size = 1, prob = prob), nrow = n, ncol = P)
+fit <- dmrfit_bayes(data = data, nsim = 500, burnin = 500, progress = FALSE)
+fit
 summary(fit)
 
+# small network: the exact posterior is also available
+fit_exact <- dmrfit_bayes(data = data, method = "exact", nsim = 500, burnin = 500, progress = FALSE)
+summary(fit_exact)
+
+}
+\references{
+Arena, G. and Marsman, M. (2026). Bayesian inference for discrete Markov random fields through
+coordinate rescaling. Manuscript submitted for publication.
+
+Liang, F. (2010). A double Metropolis-Hastings sampler for spatial models with intractable normalizing constants.
+\emph{Journal of Statistical Computation and Simulation}, 80(9), 1007-1022.
+
+Vats, D., Flegal, J. M., and Jones, G. L. (2019). Multivariate output analysis for Markov chain Monte Carlo.
+\emph{Biometrika}, 106(2), 321-337.
+}
+\seealso{
+\code{\link{dmrfit}} for point estimation and Bayes factors by sampling importance resampling.
 }
