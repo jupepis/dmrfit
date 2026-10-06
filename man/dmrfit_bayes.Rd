@@ -76,7 +76,7 @@ Bayesian inference for a discrete Markov random field (Ising or ordinal) by Mark
 By default, the posterior is approximated by the coordinate-rescaled (CoRe) pseudo-posterior of Arena and Marsman
 (2026): the pseudo-posterior rescaled around its mode so that its covariance matches the sandwich
 (Godambe-Huber-White) covariance, which corrects the underestimated posterior variability of the pseudolikelihood.
-All samplers use the Fisher adaptive Metropolis-adjusted Langevin algorithm (FisherMALA; Titsias, 2023).
+All samplers use the Fisher adaptive Metropolis-adjusted Langevin algorithm (FisherMALA; Titsias, 2024).
 }
 \examples{
 
@@ -102,7 +102,7 @@ coordinate rescaling. Manuscript submitted for publication.
 Liang, F. (2010). A double Metropolis-Hastings sampler for spatial models with intractable normalizing constants.
 \emph{Journal of Statistical Computation and Simulation}, 80(9), 1007-1022.
 
-Titsias, M. K. (2023). Optimal preconditioning and Fisher adaptive Langevin sampling. In \emph{Proceedings of
+Titsias, M. K. (2024). Optimal preconditioning and Fisher adaptive Langevin sampling. In \emph{Proceedings of
 the 37th International Conference on Neural Information Processing Systems} (NIPS '23). Red Hook, NY, USA: Curran
 Associates.
 

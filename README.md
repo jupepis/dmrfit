@@ -26,7 +26,7 @@
 - Gradient, Hessian and pseudolikelihood evaluations parallelized over `ncores`.
 
 **`dmrfit_bayes()`: posterior sampling**
-- Draws from the coordinate-rescaled pseudo-posterior (`method = "core"`, default; Arena and Marsman, 2026), which corrects the underestimated posterior variability of the pseudolikelihood. All methods use an adaptive Fisher-preconditioned MALA sampler.
+- Draws from the coordinate-rescaled pseudo-posterior (`method = "core"`, default; Arena and Marsman, 2026), which corrects the underestimated posterior variability of the pseudolikelihood. All methods use the Fisher adaptive Metropolis-adjusted Langevin algorithm (FisherMALA; Titsias, 2024).
 - The pseudo-posterior is rescaled to the sandwich covariance (`scale = "ghw"`, default), or to the inverse of a Monte Carlo estimate of the Hessian of the full log-posterior, at the pseudo-posterior mode (`scale = "mch"`) or at the Robbins-Monro estimate of the full-posterior mode (`scale = "rm"`).
 - `method = "adacore"` adapts the rescaling during burn-in; `method = "exact"` samples the full-likelihood posterior for small networks, with the normalizing constant computed by enumeration; `method = "dmh"` samples it with the double Metropolis-Hastings algorithm (Liang, 2010), which is much slower.
 - Posterior summaries (means, standard deviations, 95% credible intervals) and Savage-Dickey Bayes factors for each pairwise interaction, computed from the posterior draws.
@@ -86,5 +86,6 @@ When opening an issue, please, use a descriptive title that clearly states the i
 Markov random field. _Psychometrika_, 90:146–182.
 - Ramos-Vera, C., Quispe Callo, G., Basauri Delgado, M., Vallejos Saldarriaga, J., and Saintila, J. (2023). Factorial and network structure of the Reynolds Adolescent Depression Scale (RADS-2) in Peruvian adolescents. _PLOS ONE_, 18(5):e0286081.
 - Skare, Ø., Bølviken, E., and Holden, L. (2003). Improved sampling-importance resampling and reduced bias importance sampling. _Scandinavian Journal of Statistics_, 30(4):719–737.
+- Titsias, M. K. (2024). Optimal preconditioning and Fisher adaptive Langevin sampling. In _Proceedings of the 37th International Conference on Neural Information Processing Systems_ (NIPS '23). Red Hook, NY, USA: Curran Associates.
 
 <br />
