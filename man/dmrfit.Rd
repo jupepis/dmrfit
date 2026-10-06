@@ -30,9 +30,9 @@ dmrfit(
 
 \item{with_prior}{with_prior, logical, whether to include the prior in the optimization. If TRUE, a Beta-Prime and a Cauchy prior are applied to thresholds and pairwise associations respectively. If FALSE, no prior is applied. Default is FALSE}
 
-\item{savage_dickey}{logical, whether to compute the Savage-Dickey density ratio Bayes factor for each pairwise interaction via Bayesian Sampling Importance Resampling (BSIR). Only available when \code{with_prior = TRUE}. Default is FALSE.}
+\item{savage_dickey}{logical, whether to compute the Savage-Dickey density ratio Bayes factor for each pairwise interaction via Bayesian Sampling Importance Resampling (BSIR) from the coordinate-rescaled pseudo-posterior: the pseudo-posterior rescaled around its mode to the sandwich (Godambe-Huber-White) covariance, which corrects the underestimated posterior variability of the pseudo-likelihood. The proposal is a multivariate t with the sandwich covariance. When zero lies beyond all resampled draws of an interaction, its density at zero cannot be estimated from the draws: the Bayes factor is then reported at the floor \code{1/(10 * M)} and flagged in \code{savage_dickey$zero_beyond_draws}. Only available when \code{with_prior = TRUE}. Default is FALSE.}
 
-\item{M}{number of importance samples for the BSIR step (default is 1000). Only used when \code{savage_dickey = TRUE}.}
+\item{M}{number of draws resampled in the BSIR step (default is 1000). Only used when \code{savage_dickey = TRUE}.}
 
 \item{oversampling}{multiplier for the number of proposal draws in the BSIR step (default is 10). The total number of proposal samples is \code{M * oversampling}. Only used when \code{savage_dickey = TRUE}.}
 

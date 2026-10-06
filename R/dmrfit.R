@@ -6,8 +6,8 @@
 #' @param parinit parinit, initial parameter estimates, a vector of length equal to the number of parameters in the model. If NULL, it will be initialized to a vector of zeros. The number of parameters in the model is calculated as sum(P * (n_categories - 1)) + P * (P - 1) / 2, where P is the number of variables.
 #' @param structure network structure, P x P matrix, with 0 for no edge and 1 for edge. If NULL, then fully connected graph is assumed. Default is NULL
 #' @param with_prior with_prior, logical, whether to include the prior in the optimization. If TRUE, a Beta-Prime and a Cauchy prior are applied to thresholds and pairwise associations respectively. If FALSE, no prior is applied. Default is FALSE
-#' @param savage_dickey logical, whether to compute the Savage-Dickey density ratio Bayes factor for each pairwise interaction via Bayesian Sampling Importance Resampling (BSIR). Only available when \code{with_prior = TRUE}. Default is FALSE.
-#' @param M number of importance samples for the BSIR step (default is 1000). Only used when \code{savage_dickey = TRUE}.
+#' @param savage_dickey logical, whether to compute the Savage-Dickey density ratio Bayes factor for each pairwise interaction via Bayesian Sampling Importance Resampling (BSIR) from the coordinate-rescaled pseudo-posterior: the pseudo-posterior rescaled around its mode to the sandwich (Godambe-Huber-White) covariance, which corrects the underestimated posterior variability of the pseudo-likelihood. The proposal is a multivariate t with the sandwich covariance. When zero lies beyond all resampled draws of an interaction, its density at zero cannot be estimated from the draws: the Bayes factor is then reported at the floor \code{1/(10 * M)} and flagged in \code{savage_dickey$zero_beyond_draws}. Only available when \code{with_prior = TRUE}. Default is FALSE.
+#' @param M number of draws resampled in the BSIR step (default is 1000). Only used when \code{savage_dickey = TRUE}.
 #' @param oversampling multiplier for the number of proposal draws in the BSIR step (default is 10). The total number of proposal samples is \code{M * oversampling}. Only used when \code{savage_dickey = TRUE}.
 #' @param ncores ncores, number of cores to use for parallel computing of the gradient, hessian and likelihood values. If ncores is larger than the number of available cores, it will be set to the number of available cores minus one. Default is 1.
 #' @param thresholds_alpha alpha parameter for the Beta-Prime prior on thresholds (default is 0.5). Only used when \code{with_prior = TRUE}.
@@ -41,8 +41,14 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
     if (savage_dickey && !with_prior)
         stop("savage_dickey = TRUE requires with_prior = TRUE.")
     
-    # set random seed for reproducibility of the BSIR step
+    # --- Random seed for the BSIR step (the caller's random state is restored on exit) ---
     if(savage_dickey){
+        had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+        if (had_seed) old_seed <- get(".Random.seed", envir = globalenv(), inherits = FALSE)
+        on.exit({
+            if (had_seed) assign(".Random.seed", old_seed, envir = globalenv())
+            else if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) rm(".Random.seed", envir = globalenv())
+        }, add = TRUE)
         set.seed(seed)
     }
 
@@ -108,10 +114,10 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
     data <- cbind(data, 2.0 * cross_product_stats)
 
     if(is.null(structure)) {
-        pmles <- suppressWarnings(tryCatch(expr = dmrfit:::optimize(data = data, parinit = parinit, n_categories =  n_categories, P = P, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps), n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = with_prior, epsilon = 1e-06, ncores = ncores, thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta, interactions_location = interactions_location, interactions_scale = interactions_scale), error = function(e) {NULL}))
+        pmles <- suppressWarnings(tryCatch(expr = cpp_optimize(data = data, parinit = parinit, n_categories =  n_categories, P = P, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps), n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = with_prior, epsilon = 1e-06, ncores = ncores, thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta, interactions_location = interactions_location, interactions_scale = interactions_scale), error = function(e) {NULL}))
     } else {
         structure_input_optimize <- c(rep(1, n_thresholds), structure[lower.tri(structure, diag = FALSE)])
-        pmles <- suppressWarnings(tryCatch(expr = dmrfit:::optimize_with_structure(data = data, parinit = parinit, n_categories =  n_categories, P = P, structure = structure_input_optimize, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps) , n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = with_prior, epsilon = 1e-06, ncores = ncores, thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta, interactions_location = interactions_location, interactions_scale = interactions_scale), error = function(e) {NULL}))
+        pmles <- suppressWarnings(tryCatch(expr = cpp_optimize_with_structure(data = data, parinit = parinit, n_categories =  n_categories, P = P, structure = structure_input_optimize, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps) , n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = with_prior, epsilon = 1e-06, ncores = ncores, thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta, interactions_location = interactions_location, interactions_scale = interactions_scale), error = function(e) {NULL}))
     }
 
     if(is.null(pmles)) {
@@ -168,7 +174,7 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
 
         # draw M samples from proposal
         M_importance <- M * oversampling
-        Z <- dmrfit:::mvnrnd_arma(mu = rep(0, n_pars_free), Sigma = Sigma_free, n = M_importance)
+        Z <- cpp_mvnrnd_arma(mu = rep(0, n_pars_free), Sigma = Sigma_free, n = M_importance)
         V <- rchisq(n = M_importance, df = proposal_df)
         samples_free <- sweep(Z, 2, sqrt(proposal_df/V), "*")
         samples_free <- sweep(samples_free, 1, pars_free, "+")  # n_pars_free x M_importance
@@ -185,10 +191,25 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
         mahal <- colSums(solve_L^2)
         log_q <- lgamma((proposal_df + n_pars_free)/2) - lgamma(proposal_df/2) - (n_pars_free/2) * log(proposal_df*pi) - 0.5*log_det_Sigma - ((proposal_df + n_pars_free)/2) * log(1 + mahal/proposal_df)
 
+        # --- Target: the coordinate-rescaled (CoRe) pseudo-posterior ---
+        # Its covariance is the sandwich covariance Sigma (the covariance of the proposal). Each proposal draw beta is
+        # mapped back to the pseudo-posterior scale,
+        # eta = A^{-1} (beta - pars) + pars with A^{-1} = R^{-1} L^{-T} (R'R = H, the curvature of the negative log
+        # pseudo-posterior at the mode; L'L = Sigma), and the pseudo-posterior is evaluated there. The Jacobian of the
+        # map is constant and cancels when the weights are normalized. Proposal and target thus share the same scale and
+        # the weights only correct for the differences in shape (a proposal with the sandwich covariance against the
+        # pseudo-posterior itself is too wide in every direction, and its weights degenerate as the dimension grows).
+        H <- pmles$utils$hessian
+        H_free <- if (nrow(H) == n_pars) H[free_idx, free_idx, drop = FALSE] else H
+        R_H <- chol((H_free + t(H_free)) / 2)
+        eta_free <- backsolve(R_H, solve_L) + pars_free # solve_L = L^{-T} (beta - pars), computed for log_q above
+        eta <- matrix(0, n_pars, M_importance)
+        eta[free_idx, ] <- eta_free
+
         log_target <- numeric(M_importance)
         for(m in seq_len(M_importance)){
-            log_target[m] <- -dmrfit:::npseudologlik(
-                pars = samples[, m],
+            log_target[m] <- -cpp_npseudologlik(
+                pars = eta[, m],
                 data = data,
                 P = P,
                 n_categories = n_categories,
@@ -201,37 +222,48 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
             )
         }
 
-        irlw <- (log_target - max(log_target) + min(log_q)) - log_q # rescaling log weights for numerical stability
-        s_irlw <- log(sum(exp(irlw)) - exp(irlw)) # ISIR (Skare et al., 2003 Scandinavian Journal of Statistics)
-        irlw <- irlw - s_irlw
-        w <- exp(irlw)
+        # --- Importance weights on the log scale, shifted by their maximum (the largest weight is 1) ---
+        log_w <- log_target - log_q
+        log_w[!is.finite(log_w)] <- -Inf
+        if (all(log_w == -Inf))
+            stop("Savage-Dickey: all importance weights are zero (non-finite pseudo-posterior at every proposal draw).")
+        w <- exp(log_w - max(log_w))
+        w_sum <- sum(w)
+        ess <- w_sum^2 / sum(w^2) # effective sample size of the importance sample (out of M * oversampling draws)
+        if (ess < M / 10)
+            warning("Savage-Dickey: the effective sample size of the importance sample (", round(ess, 1), ") is less than ",
+                    "a tenth of M (", M, "); the Bayes factors may be unreliable. Consider increasing 'oversampling'.")
 
-        # resample from the proposal samples according to the importance weights
-        idx <- sample(x = 1:M_importance, size = M, replace = TRUE, prob = w)
+        # --- ISIR weights w_i / sum_{j != i} w_j (Skare et al., 2003, Scandinavian Journal of Statistics) ---
+        # The denominator is bounded away from zero when a single draw carries almost all the weight
+        w_isir <- w / pmax(w_sum - w, .Machine$double.xmin)
+
+        # --- Resample the proposal draws (on the CoRe scale) according to the importance weights ---
+        idx <- sample(x = seq_len(M_importance), size = M, replace = TRUE, prob = w_isir)
         sir_samples <- samples[, idx, drop = FALSE]
-
-        # ESS via determinant ratio on free parameters
-        sir_var <- cov(t(sir_samples[free_idx, , drop = FALSE]))
-        logdetX <- determinant(sir_var, logarithm = TRUE)
-        logdetZ <- determinant(Sigma_free, logarithm = TRUE)
-        logX <- as.numeric(logdetX$modulus)
-        logZ <- as.numeric(logdetZ$modulus)
-        ess <- M * exp((logX - logZ) / n_pars_free)
 
         log_prior_at_zero <- dcauchy(0, location = interactions_location, scale = interactions_scale, log = TRUE)
 
         bf_01 <- numeric(length(free_inter_idx))
         names(bf_01) <- names(pars)[free_inter_idx]
 
+        # --- Savage-Dickey density ratio at zero for each free interaction ---
+        # When zero lies beyond all resampled draws, the density at zero cannot be estimated from the draws (a kernel
+        # estimate there only extrapolates the tail of the nearest kernel): BF_01 is then reported at a floor and flagged
+        bf_floor <- 1 / (10 * M)
+        zero_beyond_draws <- logical(length(free_inter_idx))
+        names(zero_beyond_draws) <- names(bf_01)
+
         for (k in seq_along(free_inter_idx)){
             j <- free_inter_idx[k]
             sir_samples_j <- sir_samples[j, ]
+            zero_beyond_draws[k] <- 0 < min(sir_samples_j) || 0 > max(sir_samples_j)
+            if (zero_beyond_draws[k]) { bf_01[k] <- bf_floor; next }
             bf_01[k] <- tryCatch({
-                range_j <- range(sir_samples_j)
-                d <- density(sir_samples_j, n = 1024, from = min(range_j), to = max(range_j))
-                log_post_at_zero <- log(approx(x = d$x, y = d$y, xout = 0.0)$y)
-                log_post_at_zero <- ifelse(is.na(log_post_at_zero), log(.Machine$double.eps), log_post_at_zero)
-                log_post_at_zero <- ifelse(log_post_at_zero == Inf, -log(.Machine$double.eps), log_post_at_zero)
+                # Gaussian kernel density estimate of the marginal posterior at zero, on the log scale (log-sum-exp)
+                h <- stats::bw.nrd0(sir_samples_j)
+                log_k <- stats::dnorm(0, mean = sir_samples_j, sd = h, log = TRUE)
+                log_post_at_zero <- max(log_k) + log(mean(exp(log_k - max(log_k))))
                 exp(log_post_at_zero - log_prior_at_zero)
             }, error = function(e) {
                 warning("Savage-Dickey: density estimation failed for ", names(pars)[j],
@@ -250,7 +282,10 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
             interactions_location = interactions_location,
             interactions_scale = interactions_scale,
             ess = ess,
-            M = M
+            M = M,
+            n_proposals = M_importance,
+            zero_beyond_draws = zero_beyond_draws,
+            bf_floor = bf_floor
         )
     }
 
@@ -427,11 +462,21 @@ print.summary.dmrfit <- function(x, ...) {
         cat("\nSavage-Dickey density ratio  [prior: Cauchy(",sd$interactions_location,",",
             sd$interactions_scale, ")]\n")
         cat("H0: sigma = 0 for each pairwise interaction\n\n")
-        tbl <- cbind(Estimate = sd$estimate, SE = sd$se,
-                     BF_01 = sd$bf_01, `Pr(=0|x)` = sd$pr_null)
-        print(round(tbl, 4))
+        tbl <- data.frame(Estimate = round(sd$estimate, 4), SE = round(sd$se, 4),
+                          BF_01 = formatC(sd$bf_01, format = "g", digits = 4),
+                          `Pr(=0|x)` = formatC(sd$pr_null, format = "g", digits = 4),
+                          check.names = FALSE)
+        floored <- if (is.null(sd$zero_beyond_draws)) rep(FALSE, nrow(tbl)) else sd$zero_beyond_draws
+        tbl$BF_01[floored] <- paste0("< ", formatC(sd$bf_floor, format = "g", digits = 2))
+        tbl$`Pr(=0|x)`[floored] <- paste0("< ", formatC(sd$bf_floor, format = "g", digits = 2))
+        rownames(tbl) <- names(sd$estimate)
+        print(tbl)
+        if (any(floored))
+            cat("\n'<': zero lies beyond all resampled draws, so BF_01 is only bounded (very strong evidence for an",
+                "interaction).\n")
         cat("\nSIR samples:", sd$M,
-            "  Effective sample size:", round(sd$ess, 1), "\n")
+            "  Effective sample size of the importance sample:", round(sd$ess, 1),
+            if (!is.null(sd$n_proposals)) paste0("(of ", sd$n_proposals, " proposal draws)"), "\n")
     }
 
     invisible(x)

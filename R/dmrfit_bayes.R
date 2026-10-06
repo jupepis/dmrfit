@@ -12,9 +12,9 @@
 #' @param interactions_location location parameter for the Cauchy prior on pairwise interactions (default is 0.0). 
 #' @param interactions_scale scale parameter for the Cauchy prior on pairwise interactions (default is 2.5). 
 #' @param sigma2 initial value for the adaptive variance parameter in the FisherMALA sampler (default is 0.1).
-#' @param seed random seed for reproducibility of the BSIR step (default is 123).
+#' @param seed random seed for reproducibility of the MCMC sampler (default is 123). The caller's random number stream is restored on exit.
 #' 
-#' @return dmrfit S3 class object
+#' @return an object of class \code{dmrfit_bayes} (also of class \code{dmrfit}), including the posterior draws (\code{draws}), the Savage-Dickey Bayes factors with the effective sample size of each parameter (\code{savage_dickey}), and the multivariate effective sample size of the draws (\code{mess}; Vats, Flegal and Jones, 2019), which is \code{NA} when there are fewer than \code{P + 1} batches of \code{floor(sqrt(nsim))} draws per parameter.
 #' 
 #' @examples 
 #' 
@@ -32,6 +32,15 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
 
     # save the matched call for print and summary methods
     cl <- match.call()
+
+    # --- Random seed for the sampler (the caller's random state is restored on exit) ---
+    had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+    if (had_seed) old_seed <- get(".Random.seed", envir = globalenv(), inherits = FALSE)
+    on.exit({
+        if (had_seed) assign(".Random.seed", old_seed, envir = globalenv())
+        else if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) rm(".Random.seed", envir = globalenv())
+    }, add = TRUE)
+    set.seed(seed)
 
     # processing input arguments
 
@@ -89,7 +98,7 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
     data <- cbind(data, 2.0 * cross_product_stats)
 
     # finding the PMLEs via optimization of the pseudo-likelihood with trust region method
-    pmles <- suppressWarnings(tryCatch(expr = dmrfit:::optimize(data = data, parinit = parinit, n_categories =  n_categories, P = P, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps), n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = TRUE, epsilon = 1e-06, ncores = ncores, thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta, interactions_location = interactions_location, interactions_scale = interactions_scale), error = function(e) {NULL}))
+    pmles <- suppressWarnings(tryCatch(expr = cpp_optimize(data = data, parinit = parinit, n_categories =  n_categories, P = P, f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps), n_iter_max = 100, rinit = 1.0, rmax = 10.0, with_prior = TRUE, epsilon = 1e-06, ncores = ncores, thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta, interactions_location = interactions_location, interactions_scale = interactions_scale), error = function(e) {NULL}))
     if(is.null(pmles)) {
         warning("Optimization failed. Returning NULL.")
         return(NULL)
@@ -100,7 +109,7 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
     new_scale <- t(chol(pmles$utils$HW))
     
     # run the core sampler 
-    out <- suppressWarnings(tryCatch(expr = dmrfit:::omrf_core_sampler(
+    out <- suppressWarnings(tryCatch(expr = cpp_omrf_core_sampler(
         data = t(data[,1:P, drop = FALSE]), # only the original data (without the cross-product terms) is needed for the core sampler, which computes the pseudo-likelihood and its gradient
         pars = pmles$argument,
         n_categories = n_categories,
@@ -143,7 +152,7 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
         lapply((j + 1):P, function(i) paste0("sigma[", i, ",", j, "]"))
     }))
     par_names <- c(thresh_names, inter_names)
-    names(pmles$argument) <- par_names
+    pmles$argument <- setNames(as.vector(pmles$argument), par_names) # plain named vector (the optimizer returns a one-column matrix)
 
     # label the posterior draws
     rownames(out$draws) <- par_names
@@ -160,15 +169,23 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
     bf_01 <- numeric(length(inter_idx))
     names(bf_01) <- par_names[inter_idx]
 
+    # --- Savage-Dickey density ratio at zero for each interaction ---
+    # When zero lies beyond all posterior draws, the density at zero cannot be estimated from the draws (a kernel
+    # estimate there only extrapolates the tail of the nearest kernel): BF_01 is then reported at a floor and flagged
+    bf_floor <- 1 / (10 * nsim)
+    zero_beyond_draws <- logical(length(inter_idx))
+    names(zero_beyond_draws) <- names(bf_01)
+
     for (k in seq_along(inter_idx)) {
         j <- inter_idx[k]
         draws_j <- out$draws[j, ]
+        zero_beyond_draws[k] <- 0 < min(draws_j) || 0 > max(draws_j)
+        if (zero_beyond_draws[k]) { bf_01[k] <- bf_floor; next }
         bf_01[k] <- tryCatch({
-            range_j <- range(draws_j)
-            d <- density(draws_j, n = 1024, from = range_j[1], to = range_j[2])
-            log_post_at_zero <- log(approx(x = d$x, y = d$y, xout = 0.0)$y)
-            log_post_at_zero <- ifelse(is.na(log_post_at_zero), log(.Machine$double.eps), log_post_at_zero)
-            log_post_at_zero <- ifelse(log_post_at_zero == Inf, -log(.Machine$double.eps), log_post_at_zero)
+            # Gaussian kernel density estimate of the marginal posterior at zero, on the log scale (log-sum-exp)
+            h <- stats::bw.nrd0(draws_j)
+            log_k <- stats::dnorm(0, mean = draws_j, sd = h, log = TRUE)
+            log_post_at_zero <- max(log_k) + log(mean(exp(log_k - max(log_k))))
             exp(log_post_at_zero - log_prior_at_zero)
         }, error = function(e) {
             warning("Savage-Dickey: density estimation failed for ", par_names[j],
@@ -179,13 +196,12 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
 
     pr_null <- bf_01 / (1 + bf_01) # this is the Pr(=0|x)
 
-    # ESS via determinant ratio
-    draws_cov <- cov(t(out$draws))  # n_pars x n_pars covariance of posterior draws
-    Sigma <- pmles$utils$HW         # reference covariance (Huber-White)
-
-    logdetX <- as.numeric(determinant(draws_cov, logarithm = TRUE)$modulus)
-    logdetZ <- as.numeric(determinant(Sigma, logarithm = TRUE)$modulus)
-    ess <- nsim * exp((logdetX - logdetZ) / n_pars)
+    # --- Effective sample size of the posterior draws, per parameter (autocorrelation-based) ---
+    ess <- apply(out$draws, 1, .ess_mcmc)
+    names(ess) <- par_names
+    if (min(ess[inter_idx]) < 100)
+        warning("Savage-Dickey: the smallest effective sample size of the interactions is ", round(min(ess[inter_idx]), 1),
+                "; the Bayes factors may be unreliable. Consider increasing 'nsim'.")
 
     pmles$savage_dickey <- list(
         bf_01 = bf_01,
@@ -194,12 +210,17 @@ dmrfit_bayes <- function(data, parinit = NULL, nsim = 1e03, burnin = 1e03, ncore
         se = se[inter_idx],
         interactions_location = interactions_location,
         interactions_scale = interactions_scale,
-        ess = ess,  # rough ESS approximation
-        M = nsim
+        ess = ess,  # effective sample size of the posterior draws of each parameter
+        M = nsim,
+        zero_beyond_draws = zero_beyond_draws,
+        bf_floor = bf_floor
     )
 
     # store posterior draws
     pmles$draws <- out$draws
+
+    # --- Multivariate effective sample size of the posterior draws (Vats, Flegal and Jones, 2019) ---
+    pmles$mess <- .mess_mcmc(out$draws)
 
     return(structure(pmles, class = c("dmrfit_bayes", "dmrfit")))
 }
@@ -262,6 +283,7 @@ summary.dmrfit_bayes <- function(object, ...) {
         acceptance       = object$acceptance,
         seconds_elapsed  = object$seconds_elapsed,
         nsim             = ncol(object$draws),
+        mess             = object$mess,
         savage_dickey    = object$savage_dickey
     )
     class(out) <- c("summary.dmrfit_bayes", "summary.dmrfit")
@@ -304,6 +326,8 @@ print.dmrfit_bayes <- function(x, ...) {
     cat("\nMCMC samples:", ncol(x$draws),
         " Acceptance rate:", round(x$acceptance, 3),
         " Elapsed:", round(x$seconds_elapsed, 1), "sec\n")
+    if (!is.null(x$mess) && !is.na(x$mess))
+        cat("Multivariate effective sample size:", round(x$mess, 1), "\n")
     cat("\n")
     invisible(x)
 }
@@ -334,6 +358,8 @@ print.summary.dmrfit_bayes <- function(x, ...) {
     cat("MCMC samples:", x$nsim,
         " Acceptance rate:", round(x$acceptance, 3),
         " Elapsed:", round(x$seconds_elapsed, 1), "sec\n")
+    if (!is.null(x$mess) && !is.na(x$mess))
+        cat("Multivariate effective sample size:", round(x$mess, 1), "\n")
     cat(paste0(rep("-", min(60, getOption("width"))), collapse = ""), "\n")
 
     cat("\nThresholds:\n")
@@ -349,16 +375,102 @@ print.summary.dmrfit_bayes <- function(x, ...) {
         cat("\nSavage-Dickey density ratio  [prior: Cauchy(", sd$interactions_location, ",",
             sd$interactions_scale, ")]\n")
         cat("H0: sigma = 0 for each pairwise interaction\n\n")
-        tbl <- cbind(
-            `Post.Mode` = sd$estimate,
-            `Post.SD`   = sd$se,
-            `BF_01`     = sd$bf_01,
-            `Pr(=0|x)`  = sd$pr_null
+        tbl <- data.frame(
+            `Post.Mode` = round(sd$estimate, 4),
+            `Post.SD`   = round(sd$se, 4),
+            `BF_01`     = formatC(sd$bf_01, format = "g", digits = 4),
+            `Pr(=0|x)`  = formatC(sd$pr_null, format = "g", digits = 4),
+            check.names = FALSE
         )
-        print(round(tbl, 4))
-        cat("\nMCMC samples:", sd$M,
-            "  Effective sample size:", round(sd$ess, 1), "\n")
+        floored <- if (is.null(sd$zero_beyond_draws)) rep(FALSE, nrow(tbl)) else sd$zero_beyond_draws
+        tbl$BF_01[floored] <- paste0("< ", formatC(sd$bf_floor, format = "g", digits = 2))
+        tbl$`Pr(=0|x)`[floored] <- paste0("< ", formatC(sd$bf_floor, format = "g", digits = 2))
+        rownames(tbl) <- names(sd$estimate)
+        print(tbl)
+        if (any(floored))
+            cat("\n'<': zero lies beyond all posterior draws, so BF_01 is only bounded (very strong evidence for an",
+                "interaction).\n")
+        ess_inter <- sd$ess[names(sd$estimate)]
+        if (length(ess_inter) && all(!is.na(ess_inter))) {
+            cat("\nMCMC samples:", sd$M, "  Effective sample size of the interactions: min",
+                round(min(ess_inter), 1), ", median", round(stats::median(ess_inter), 1), "\n")
+        } else {
+            cat("\nMCMC samples:", sd$M, "\n")
+        }
     }
 
     invisible(x)
+}
+
+#' ess_mcmc (internal)
+#' @description Effective sample size of a single chain of draws, from its autocorrelations summed with Geyer's
+#'   initial positive sequence (sums of pairs of consecutive autocorrelations, up to the first non-positive pair).
+#'   The autocorrelations are computed through the fast Fourier transform.
+#' @param x numeric vector, the draws of one parameter
+#' @return the effective sample size (NA for fewer than 4 draws or constant draws)
+#' @noRd
+.ess_mcmc <- function(x) {
+
+    n <- length(x)
+    if (n < 4 || stats::var(x) == 0) return(NA_real_)
+
+    # --- Autocorrelations at lags 0, ..., n - 1 (zero-padded to avoid wrap-around) ---
+    xc <- x - mean(x)
+    m <- 2^ceiling(log2(2 * n))
+    f <- stats::fft(c(xc, rep(0, m - n)))
+    acov <- Re(stats::fft(Mod(f)^2, inverse = TRUE))[seq_len(n)] / m
+    rho <- acov / acov[1]
+
+    # --- Integrated autocorrelation time (Geyer's initial positive sequence) ---
+    tau <- -1
+    for (k in seq(1, n - 1, by = 2)) {
+        pair <- rho[k] + rho[k + 1]
+        if (is.na(pair) || pair <= 0) break
+        tau <- tau + 2 * pair
+    }
+
+    # --- Return the effective sample size ---
+    return(n / max(tau, 1 / n))
+}
+
+#' mess_mcmc (internal)
+#' @description Multivariate effective sample size of a chain of draws (Vats, Flegal and Jones, 2019, Biometrika),
+#'   n * (det(Lambda) / det(Sigma))^(1/p), with Lambda the sample covariance of the draws and Sigma the asymptotic
+#'   covariance of their mean. Sigma includes the autocorrelation of the chain, so the ratio shrinks when the chain
+#'   mixes slowly. Sigma is estimated by lugsail batch means (Vats and Flegal, 2022), 2 * Sigma_b - Sigma_{b/3} with
+#'   batch size b = floor(sqrt(n)), which corrects the underestimation of plain batch means for slowly mixing chains;
+#'   plain batch means are used when the lugsail estimate is not positive definite.
+#' @param draws matrix of size [p x n] with the draws (parameters by rows)
+#' @return the multivariate effective sample size (NA when there are not more batches than parameters, i.e. Sigma is
+#'   singular)
+#' @noRd
+.mess_mcmc <- function(draws) {
+
+    p <- nrow(draws)
+    n <- ncol(draws)
+    b <- floor(sqrt(n))
+    if (floor(n / b) <= p || floor(b / 3) < 1) return(NA_real_)
+    x <- t(draws)
+
+    # --- Batch-means estimate of Sigma with batch size b ---
+    sigma_bm <- function(b) {
+        a <- floor(n / b)
+        batch_means <- rowsum(x[seq_len(a * b), , drop = FALSE], rep(seq_len(a), each = b), reorder = FALSE) / b
+        b * stats::cov(batch_means)
+    }
+
+    # --- Log-determinant (NA if the matrix is not positive definite) ---
+    log_det <- function(m) {
+        d <- determinant(m, logarithm = TRUE)
+        if (d$sign <= 0) NA_real_ else as.numeric(d$modulus)
+    }
+
+    # --- Lugsail estimate of Sigma, plain batch means as fallback ---
+    Sigma_b <- sigma_bm(b)
+    Sigma <- 2 * Sigma_b - sigma_bm(floor(b / 3))
+    if (is.na(log_det(Sigma)) || any(eigen(Sigma, symmetric = TRUE, only.values = TRUE)$values <= 0)) Sigma <- Sigma_b
+
+    # --- Return the multivariate effective sample size ---
+    ratio <- (log_det(stats::cov(x)) - log_det(Sigma)) / p
+    return(if (is.na(ratio)) NA_real_ else n * exp(ratio))
 }

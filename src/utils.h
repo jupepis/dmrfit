@@ -11,7 +11,7 @@
 arma::mat rnorm_arma(int nrow, int ncol);
 
 // Generate n multivariate normal samples
-arma::mat mvnrnd_arma(const arma::vec &mu, const arma::mat &Sigma, int n);
+arma::mat cpp_mvnrnd_arma(const arma::vec &mu, const arma::mat &Sigma, int n);
 
 // function to calculate the negative pseudologlikelihood and its derivatives (gradient and hessian) for a discrete MRF model, used by the optimization algorithm
 Rcpp::List dmrf_deriv(const arma::vec &pars,
@@ -26,7 +26,7 @@ Rcpp::List dmrf_deriv(const arma::vec &pars,
                       const double &interactions_scale = 2.5);
 
 // function to calculate the negative pseudologlikelihood for a discrete MRF model
-double npseudologlik(const arma::vec &pars,
+double cpp_npseudologlik(const arma::vec &pars,
                     const arma::mat &data,
                     const arma::uword &P,
                     const arma::uvec &n_categories,

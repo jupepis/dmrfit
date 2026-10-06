@@ -39,10 +39,10 @@ dmrfit_bayes(
 
 \item{sigma2}{initial value for the adaptive variance parameter in the FisherMALA sampler (default is 0.1).}
 
-\item{seed}{random seed for reproducibility of the BSIR step (default is 123).}
+\item{seed}{random seed for reproducibility of the MCMC sampler (default is 123). The caller's random number stream is restored on exit.}
 }
 \value{
-dmrfit S3 class object
+an object of class \code{dmrfit_bayes} (also of class \code{dmrfit}), including the posterior draws (\code{draws}), the Savage-Dickey Bayes factors with the effective sample size of each parameter (\code{savage_dickey}), and the multivariate effective sample size of the draws (\code{mess}; Vats, Flegal and Jones, 2019), which is \code{NA} when there are fewer than \code{P + 1} batches of \code{floor(sqrt(nsim))} draws per parameter.
 }
 \description{
 Fit a discrete Markov Random Field model via pseudo-likelihood estimation. The optimization is performed using the Coordinate Rescaling sampler implemented by Arena and Marsman (2026).

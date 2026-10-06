@@ -13,7 +13,7 @@ arma::mat rnorm_arma(int nrow, int ncol) {
 
 // Generate n multivariate normal samples
 // [[Rcpp::export]]
-arma::mat mvnrnd_arma(const arma::vec &mu, const arma::mat &Sigma, int n) {
+arma::mat cpp_mvnrnd_arma(const arma::vec &mu, const arma::mat &Sigma, int n) {
   int p = mu.n_elem;
   arma::mat Z = rnorm_arma(p, n);   // each column is a sample
   arma::mat C = arma::chol(Sigma, "lower");
@@ -31,6 +31,7 @@ arma::mat mvnrnd_arma(const arma::vec &mu, const arma::mat &Sigma, int n) {
 // "hessian" is the negative hessian value (its inverse returns the matrix of variances and covariances of the model parameters)
 // "HW" is the Huber-White sandwich variance estimator (it is already a matrix of variances and covariances)
 // note: loglik, gradient and hessian are used by the trust algorithm to find the MPLEs
+// [[Rcpp::export]]
 Rcpp::List dmrf_deriv(
     const arma::vec &pars,
     const arma::mat &data, // this is already the matrix of sufficient statistics, by row (person) it looks like: {X_1, ..., X_P,2X_1X_2,...,2X_{P-1}X_P}
@@ -352,7 +353,7 @@ Rcpp::List dmrf_deriv(
 
 // function to calculate the negative pseudologlikelihood for a discrete MRF model
 // [[Rcpp::export]]
-double npseudologlik(
+double cpp_npseudologlik(
     const arma::vec &pars,
     const arma::mat &data, // this is already the matrix of sufficient statistics, by row (person) it looks like: {X_1, ..., X_P,2X_1X_2,...,2X_{P-1}X_P}
     const arma::uword &P,
