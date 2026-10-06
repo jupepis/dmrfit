@@ -5,7 +5,7 @@
 \alias{dmrfit-package}
 \title{dmrfit: Optimization Tools for Discrete Markov Random Fields}
 \description{
-A set of tools designed for estimating discrete Markov Random Fields via pseudolikelihood, for both Ising models (Ising, 1925, \doi{10.1007/BF02980577}) and Ordinal Markov Random Fields (Marsman, M., van den Bergh, D., and Haslbeck, J. M. B, 2025, \doi{10.1017/psy.2024.4}). Parameters are estimated through a trust region optimization algorithm, with robust standard error estimation. The package supports both full network estimation, where all edges are included, and constrained network estimation, where only a specified subset of edges is considered.
+Estimation of discrete Markov Random Fields through the pseudolikelihood, for both Ising models (Ising, 1925, \doi{10.1007/BF02980577}) and Ordinal Markov Random Fields (Marsman, M., van den Bergh, D., and Haslbeck, J. M. B, 2025, \doi{10.1017/psy.2024.4}). Point estimates, either maximum pseudolikelihood or maximum a posteriori, are obtained through a trust region optimization algorithm, with robust standard errors from the Huber-White sandwich estimator, for both full and constrained network structures. Bayesian inference corrects the pseudo-posterior through coordinate rescaling, which matches its covariance to the sandwich covariance, and samples from it with an adaptive Fisher-preconditioned Metropolis-adjusted Langevin algorithm. Savage-Dickey Bayes factors test each pairwise interaction, computed either by sampling importance resampling or from the posterior draws.
 }
 \seealso{
 Useful links:
