@@ -8,15 +8,7 @@
 A data frame with 917 rows (adolescents) and 25 integer columns (items), with values 1 to 4. Higher values
 indicate more frequent depressive symptoms for every item. The columns keep the item numbering of the RADS-2
 (\code{D1}, \code{D3}, ..., \code{D30}). The attribute \code{"clusters"} is a named character vector giving the
-cluster of each item:
-\describe{
-\item{Dysphoria}{D3, D6, D7, D8, D16, D21, D26}
-\item{Anhedonia/Negative Affect}{D1, D5, D12}
-\item{Negative Self-Assessment}{D4, D9, D13, D14, D15, D19, D20, D30}
-\item{Somatic Complaint}{D11, D17, D18, D22, D24, D27, D28}
-}
-Subsetting the data frame (e.g. \code{rads2[, 1:10]}) drops the attribute; retrieve it first with
-\code{attr(rads2, "clusters")}.
+cluster of each item (see Details).
 }
 \source{
 Ramos-Vera, C., Quispe Callo, G., Basauri Delgado, M., Vallejos Saldarriaga, J., and Saintila, J. (2023).
@@ -34,6 +26,16 @@ Reynolds Adolescent Depression Scale, second edition (RADS-2), each answered on 
 from Ramos-Vera et al. (2023), who also grouped the items into four clusters (stored with the data).
 }
 \details{
+The items are grouped into four clusters (Ramos-Vera et al., 2023), stored in \code{attr(rads2, "clusters")}:
+\itemize{
+\item Dysphoria: D3, D6, D7, D8, D16, D21, D26
+\item Anhedonia/Negative Affect: D1, D5, D12
+\item Negative Self-Assessment: D4, D9, D13, D14, D15, D19, D20, D30
+\item Somatic Complaint: D11, D17, D18, D22, D24, D27, D28
+}
+Subsetting the data frame (e.g. \code{rads2[, 1:10]}) drops the attribute; retrieve it first with
+\code{attr(rads2, "clusters")}.
+
 The data are derived from "S1 Data" of Ramos-Vera et al. (2023), with the following changes: the 25 items of
 the four-factor version were kept (items 2, 10, 23, 25 and 29, and the age and sex of the respondents, were removed),
 the items were renamed from \code{A<k>} to \code{D<k>}, and the positively worded items \code{D1}, \code{D5} and
