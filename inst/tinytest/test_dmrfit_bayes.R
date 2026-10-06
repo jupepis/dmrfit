@@ -9,6 +9,8 @@ quiet_fit <- function(...) suppressWarnings(dmrfit_bayes(X, nsim = 600, burnin =
 expect_error(dmrfit_bayes(X, method = "pseudo"))
 expect_error(dmrfit_bayes(X, scale = "other"))
 expect_error(dmrfit_bayes(X, control = list(foo = 1)), "Unknown 'control' settings: foo")
+expect_error(dmrfit_bayes(as.matrix(X) + 0.5), "non-negative integers")
+expect_error(dmrfit_bayes(X, parinit = rep(0, 3)), "Length of parinit")
 expect_error(dmrfit_bayes(rads2[, 1:12], method = "exact"), "control\\$max_states")
 expect_warning(dmrfit_bayes(X, method = "exact", scale = "mch", nsim = 50, burnin = 50, progress = FALSE), "only used when method")
 expect_warning(dmrfit_bayes(X, sigma2 = 2, nsim = 50, burnin = 50, progress = FALSE), "greater than 1.0")
@@ -43,6 +45,11 @@ expect_warning(dmrfit_bayes(X, nsim = 20, burnin = 10, progress = FALSE, control
 # --- the posterior targeted by the fit is stated by print() and summary()
 expect_stdout(print(fits$exact), "full-likelihood posterior")
 expect_stdout(print(summary(fits$core)), "coordinate-rescaled pseudo-posterior")
+# labels of the methods and scales not run above
+expect_true(grepl("double Metropolis-Hastings", dmrfit:::.method_label("dmh", "ghw")))
+expect_true(grepl("adapted during burn-in", dmrfit:::.method_label("adacore", "ghw")))
+expect_true(grepl("Robbins-Monro", dmrfit:::.method_label("core", "rm")))
+expect_true(grepl("sandwich covariance", dmrfit:::.method_label(NULL, NULL)))
 
 # --- Savage-Dickey Bayes factors and effective sample sizes
 sd <- fits$core$savage_dickey

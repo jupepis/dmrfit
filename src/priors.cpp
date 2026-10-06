@@ -25,20 +25,6 @@ arma::vec log_dcauchy(
     return -arma::log(x);
 }
 
-// log density of the Cauchy distribution evaluated at scalar x
-double log_pdf_cauchy(
-    double x, 
-    double l, // location parameter
-    double gamma // scale parameter
-    ){
-    x -= l;
-    x /= gamma;
-    x *= x;
-    x += 1.0;
-    x *= (gamma*arma::datum::pi);
-    return -std::log(x);
-}
-
 // Cauchy : log first derivative
 arma::vec log_dcauchy_first_derivative(
     arma::vec x, 
@@ -63,15 +49,6 @@ arma::vec log_dcauchy_second_derivative(
 
 
 // log beta-prime : function, first and second derivative
-
-// log density of the beta-prime distribution with parameters alpha and beta, evaluated at scalar x 
-double log_pdf_beta_prime(
-    double x, // note: reparametrization y = exp(x) 
-    double alpha,
-    double beta
-    ){
-    return alpha*x-(alpha+beta)*std::log(1.0+std::exp(x))-std::log(Beta_fun(alpha,beta));
-}
 
 // log density of the beta-prime distribution with parameters alpha and beta, evaluated at vector x 
 arma::vec log_beta_prime(

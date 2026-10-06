@@ -27,6 +27,10 @@ expect_equal(as.vector(dmrfit(as.matrix(X) - 1L, with_prior = TRUE)$argument), a
 S <- matrix(1, 4, 4); diag(S) <- 0; S[1, 2] <- S[2, 1] <- 0
 fit_s <- dmrfit(X, structure = S)
 expect_equal(unname(fit_s$argument["sigma[2,1]"]), 0)
+# Savage-Dickey Bayes factors only for the free interactions
+fit_s_sd <- dmrfit(X, structure = S, with_prior = TRUE, savage_dickey = TRUE, M = 500)
+expect_equal(names(fit_s_sd$savage_dickey$bf_01), setdiff(names(fit_s$argument)[-(1:12)], "sigma[2,1]"))
+expect_stdout(print(summary(fit_s_sd)), "constrained")
 
 # --- Savage-Dickey Bayes factors
 set.seed(10)

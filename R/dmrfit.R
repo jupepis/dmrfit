@@ -1,37 +1,59 @@
-#' @title dmrfit
-#' 
-#' @description Fit a discrete Markov Random Field model via pseudo-likelihood estimation. The optimization is performed using the trust region algorithm
-#' 
+#' @title Point estimation and Bayes factors for discrete Markov random fields
+#'
+#' @description Fits a discrete Markov random field (Ising or ordinal) through the pseudolikelihood. The estimates
+#' maximize the pseudolikelihood, or the pseudo-posterior with \code{with_prior = TRUE}, and are obtained with a
+#' trust region algorithm; the standard errors come from the Huber-White sandwich estimator. Optionally, Savage-Dickey
+#' Bayes factors are computed for each pairwise interaction from the coordinate-rescaled pseudo-posterior (Arena and
+#' Marsman, 2026).
+#'
 #' @param data data matrix, with rows as samples and columns as variables. Each variable should be rescaled to the range of 0 to m-1, where m is the number of categories for that variable. The baseline category is always the minimum value in the variable. The internal processing will check if the variables are rescaled and will rescale them if necessary. If there are any NAs in the data, they will be removed before optimization (listwise deletion).
-#' @param parinit parinit, initial parameter estimates, a vector of length equal to the number of parameters in the model. If NULL, it will be initialized to a vector of zeros. The number of parameters in the model is calculated as sum(P * (n_categories - 1)) + P * (P - 1) / 2, where P is the number of variables.
-#' @param structure network structure, P x P matrix, with 0 for no edge and 1 for edge. If NULL, then fully connected graph is assumed. Default is NULL
-#' @param with_prior with_prior, logical, whether to include the prior in the optimization. If TRUE, a Beta-Prime and a Cauchy prior are applied to thresholds and pairwise associations respectively. If FALSE, no prior is applied. Default is FALSE
-#' @param savage_dickey logical, whether to compute the Savage-Dickey density ratio Bayes factor for each pairwise interaction via Bayesian Sampling Importance Resampling (BSIR) from the coordinate-rescaled pseudo-posterior: the pseudo-posterior rescaled around its mode to the sandwich (Godambe-Huber-White) covariance, which corrects the underestimated posterior variability of the pseudo-likelihood. The proposal is a multivariate t with the sandwich covariance. When zero lies beyond all resampled draws of an interaction, its density at zero cannot be estimated from the draws: the Bayes factor is then reported at the floor \code{1/(10 * M)} and flagged in \code{savage_dickey$zero_beyond_draws}. Only available when \code{with_prior = TRUE}. Default is FALSE.
+#' @param parinit initial parameter values for the optimization, a vector of length equal to the number of parameters in the model, \code{sum(n_categories - 1) + P * (P - 1) / 2}, where \code{P} is the number of variables. If NULL (default), a vector of zeros.
+#' @param structure network structure, a P x P symmetric matrix with 1 for an edge and 0 for no edge. If NULL (default), the network is fully connected.
+#' @param with_prior logical, whether to include the prior in the optimization: a Beta-Prime prior on the thresholds and a Cauchy prior on the pairwise interactions. Default is FALSE.
+#' @param savage_dickey logical, whether to compute the Savage-Dickey density ratio Bayes factor for each pairwise interaction via Bayesian Sampling Importance Resampling (BSIR) from the coordinate-rescaled pseudo-posterior: the pseudo-posterior rescaled around its mode to the sandwich (Godambe-Huber-White) covariance, which corrects the underestimated posterior variability of the pseudolikelihood. The proposal is a multivariate t with the sandwich covariance. When zero lies beyond all resampled draws of an interaction, its density at zero cannot be estimated from the draws: the Bayes factor is then reported at the floor \code{1/(10 * M)} and flagged in \code{savage_dickey$zero_beyond_draws}. Only available when \code{with_prior = TRUE}. Default is FALSE.
 #' @param M number of draws resampled in the BSIR step (default is 1000). Only used when \code{savage_dickey = TRUE}.
-#' @param oversampling multiplier for the number of proposal draws in the BSIR step (default is 10). The total number of proposal samples is \code{M * oversampling}. Only used when \code{savage_dickey = TRUE}.
-#' @param ncores ncores, number of cores to use for parallel computing of the gradient, hessian and likelihood values. If ncores is larger than the number of available cores, it will be set to the number of available cores minus one. Default is 1.
+#' @param oversampling multiplier for the number of proposal draws in the BSIR step (default is 10). The total number of proposal draws is \code{M * oversampling}. Only used when \code{savage_dickey = TRUE}.
+#' @param ncores number of cores used to compute the gradient, Hessian and pseudolikelihood in parallel. It is capped at the number of available cores minus one. Default is 1.
 #' @param thresholds_alpha alpha parameter for the Beta-Prime prior on thresholds (default is 0.5). Only used when \code{with_prior = TRUE}.
 #' @param thresholds_beta beta parameter for the Beta-Prime prior on thresholds (default is 0.5). Only used when \code{with_prior = TRUE}.
 #' @param interactions_location location parameter for the Cauchy prior on pairwise interactions (default is 0.0). Only used when \code{with_prior = TRUE}.
 #' @param interactions_scale scale parameter for the Cauchy prior on pairwise interactions (default is 2.5). Only used when \code{with_prior = TRUE}.
-#' @param proposal_df degrees of freedom for the multivariate t proposal distribution in the BSIR step (default is 5). Only used when \code{savage_dickey = TRUE}. 
-#' @param seed random seed for reproducibility of the BSIR step (default is 123). Only used when \code{savage_dickey = TRUE}.
-#' 
-#' @return dmrfit S3 class object
-#' 
-#' @examples 
-#' 
-#' # simulate data from a 3-node Ising model with 2 categories per node
+#' @param proposal_df degrees of freedom for the multivariate t proposal distribution in the BSIR step (default is 5). Only used when \code{savage_dickey = TRUE}.
+#' @param seed random seed for reproducibility of the BSIR step (default is 123). The caller's random number stream is restored on exit. Only used when \code{savage_dickey = TRUE}.
+#'
+#' @return an object of class \code{dmrfit}, a list including the estimates (\code{argument}), the value, gradient,
+#'   Hessian and sandwich covariance of the objective at the estimates (\code{utils}), the matched call
+#'   (\code{call}), the data dimensions (\code{P}, \code{N}, \code{n_categories}), and, with
+#'   \code{savage_dickey = TRUE}, the Savage-Dickey Bayes factors with the importance-sampling effective sample
+#'   size (\code{savage_dickey}).
+#'
+#' @references Arena, G. and Marsman, M. (2026). Bayesian inference for discrete Markov random fields through
+#' coordinate rescaling. Manuscript submitted for publication.
+#'
+#' Skare, Ø., Bølviken, E., and Holden, L. (2003). Improved sampling-importance resampling and reduced bias importance
+#' sampling. \emph{Scandinavian Journal of Statistics}, 30(4), 719-737.
+#'
+#' @seealso \code{\link{dmrfit_bayes}} for posterior sampling.
+#'
+#' @examples
+#'
+#' # binary responses of 1000 observations on 3 nodes (independent, for illustration)
 #' set.seed(123)
 #' n <- 1000
 #' P <- 3
-#' structure <- matrix(c(0, 1, 0, 1, 0, 1, 0, 1, 0), nrow = P)
-#' data <- matrix(rbinom(n * P, size = 1, prob = c(0.2, 0.5, 0.3)[rep(1:P, each = n)]), nrow = n, ncol = P)
-#' fit <- dmrfit(data, structure = structure, with_prior = TRUE, savage_dickey = TRUE, M = 10000, ncores = 2)
+#' prob <- c(0.2, 0.5, 0.3)[rep(1:P, each = n)]
+#' data <- matrix(rbinom(n * P, size = 1, prob = prob), nrow = n, ncol = P)
+#' fit <- dmrfit(data, with_prior = TRUE, savage_dickey = TRUE)
+#' fit
 #' summary(fit)
 #'
-#' @export 
-#' 
+#' # constrained network: no edge between nodes 1 and 3
+#' structure <- matrix(c(0, 1, 0, 1, 0, 1, 0, 1, 0), nrow = P)
+#' fit_constrained <- dmrfit(data, structure = structure)
+#' summary(fit_constrained)
+#'
+#' @export
+#'
 dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, savage_dickey = FALSE, M = 1000, oversampling = 10, ncores = 1, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, proposal_df = 5, seed = 123) {
 
     # save the matched call for print and summary methods
@@ -101,10 +123,8 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
         }   
     }
 
-    # if n_cores is less than 1, set it to 1 or the number of available cores minus one, or the number of cores specified by the user, whichever is smallest
-    if(ncores < 1) {
-        ncores <- min(c(ncores,parallel::detectCores()-1, 1))
-    }
+    # number of cores: the value given by the user, capped at the number of available cores minus one
+    ncores <- max(1L, min(as.integer(ncores), parallel::detectCores() - 1L), na.rm = TRUE)
 
     # cross-product terms for the pairwise associations
     cross_product_stats <- t(apply(data,1,function(x) {
@@ -434,7 +454,7 @@ print.summary.dmrfit <- function(x, ...) {
     cat("Discrete Markov Random Field")
     if (all(x$n_categories == 2)) cat(" (Ising)")
     cat("\n")
-    cat("Estimation method: maximum pseudo-likelihood")
+    cat("Estimation method: maximum pseudolikelihood")
     if (x$with_prior) cat(" (with prior)")
     cat("\n")
     if (x$structured) cat("Network structure: constrained\n")

@@ -1,6 +1,6 @@
 <!-- Top banner -->
 <p align="center">
-  <img src="man/figures/dmrfit_banner.svg" width="100%" alt="dmrfit: Optimization Tools for Discrete Markov Random Fields">
+  <img src="man/figures/dmrfit_banner.svg" width="100%" alt="dmrfit: Scalable Bayesian Inference for Discrete Markov Random Fields">
 </p>
 
 <!-- badges: start -->
@@ -25,7 +25,9 @@
 - Gradient, Hessian and pseudolikelihood evaluations parallelized over `ncores`.
 
 **`dmrfit_bayes()`: posterior sampling**
-- Draws from the coordinate-rescaled pseudo-posterior with an adaptive Fisher-preconditioned MALA sampler (Arena and Marsman, 2026), which corrects the underestimated posterior variability of the pseudolikelihood.
+- Draws from the coordinate-rescaled pseudo-posterior (`method = "core"`, default; Arena and Marsman, 2026), which corrects the underestimated posterior variability of the pseudolikelihood. All methods use an adaptive Fisher-preconditioned MALA sampler.
+- The pseudo-posterior is rescaled to the sandwich covariance (`scale = "ghw"`, default), or to the inverse of a Monte Carlo estimate of the Hessian of the full log-posterior, at the pseudo-posterior mode (`scale = "mch"`) or at the Robbins-Monro estimate of the full-posterior mode (`scale = "rm"`).
+- `method = "adacore"` adapts the rescaling during burn-in; `method = "exact"` samples the full-likelihood posterior for small networks, with the normalizing constant computed by enumeration; `method = "dmh"` samples it with the double Metropolis-Hastings algorithm (Liang, 2010), which is much slower.
 - Posterior summaries (means, standard deviations, 95% credible intervals) and Savage-Dickey Bayes factors for each pairwise interaction, computed from the posterior draws.
 
 Both functions return objects with `print()` and `summary()` methods.
@@ -78,6 +80,7 @@ When opening an issue, please, use a descriptive title that clearly states the i
 - Ising, E. (1925). Beitrag zur theorie des ferromagnetismus. _Zeitschrift für Physik_, 31(1):253–258.
 - Fletcher, R. (1987). _Practical Methods of Optimization_. 2nd ed. Chichester: Wiley.
 - Nocedal, J. and Wright, S.J. (1999). _Numerical Optimization_. New York: Springer.
+- Liang, F. (2010). A double Metropolis-Hastings sampler for spatial models with intractable normalizing constants. _Journal of Statistical Computation and Simulation_, 80(9):1007–1022.
 - Marsman, M., van den Bergh, D., and Haslbeck, J. M. B. (2025). Bayesian analysis of the ordinal
 Markov random field. _Psychometrika_, 90:146–182.
 - Ramos-Vera, C., Quispe Callo, G., Basauri Delgado, M., Vallejos Saldarriaga, J., and Saintila, J. (2023). Factorial and network structure of the Reynolds Adolescent Depression Scale (RADS-2) in Peruvian adolescents. _PLOS ONE_, 18(5):e0286081.

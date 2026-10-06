@@ -60,3 +60,15 @@ S <- dmrfit:::cpp_build_permutations_stats(permutations = patterns, n_pars = n_p
 expect_equal(dim(S), c(prod(n_categories), n_pars))
 # each pattern has one threshold indicator per variable not in the baseline category
 expect_equal(rowSums(S[, seq_len(n_thresholds)]), rowSums(patterns > 0))
+
+# --- Gibbs sampler: without interactions the nodes are independent, with category probabilities proportional to
+# exp(threshold of the category), the baseline category 0 having threshold 0
+mu <- matrix(c(-1, 0.5, 0, 1, -0.5, 0.5), nrow = 2, byrow = TRUE)
+set.seed(1)
+gibbs <- dmrfit:::cpp_gibbs_sampler_omrf(mu = mu, sigma = matrix(0, 2, 2), n_categories = c(4L, 4L), N = 20000L,
+                                         P = 2L, iter = 5L, X_start = NULL, save_iter = FALSE)
+expect_equal(dim(gibbs$X), c(20000L, 2L))
+for (p in 1:2) {
+    expect_equal(as.vector(table(factor(gibbs$X[, p], levels = 0:3))) / 20000,
+                 exp(c(0, mu[p, ])) / sum(exp(c(0, mu[p, ]))), tolerance = 0.02)
+}

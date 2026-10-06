@@ -128,27 +128,6 @@ double fishermala_core_log_acceptance_ratio(const arma::vec& beta_current,
                                         double interactions_location, 
                                         double interactions_scale);
 
-// Log pseudo-normalizing constant: sum_n freq_n * sum_p log[1 + sum_h exp(mu_ph + h * sum_{j!=p} x_j sigma_pj)] (used by the RWMH samplers)
-double compute_pseudo_logZ(const arma::mat &data,
-                            const arma::vec &frequency,
-                            const arma::vec &pars,
-                            const arma::uvec &n_categories,
-                            const arma::uvec &lower_indices,
-                            const arma::uvec &category_offsets,
-                            arma::uword P,
-                            arma::uword N,
-                            arma::uword n_pars,
-                            arma::uword n_thresholds);
-
-// Log prior (beta-prime on thresholds, cauchy on interactions) (used by the RWMH samplers)
-double compute_log_prior(const arma::vec &pars,
-                        arma::uword n_thresholds,
-                        arma::uword n_pars,
-                        double thresholds_alpha,
-                        double thresholds_beta,
-                        double interactions_location,
-                        double interactions_scale);
-
 // Compute approximate gradient and logZ_ratio using Monte Carlo approximation with L samples from the state space (single-data sample approximation)
 struct ApproximateGradient {
     arma::vec   gradient;         // gradient evaluated at 'pars' (length is n_pars)

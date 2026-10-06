@@ -486,55 +486,6 @@ double fishermala_core_log_acceptance_ratio(const arma::vec& beta_current,
 }
 
 
-// Log pseudo-normalizing constant: sum_n freq_n * sum_p log[1 + sum_h exp(mu_ph + h * sum_{j!=p} x_j sigma_pj)]
-// (same computation as the logZ part of compute_pseudo_gradient(), without the gradient)
-double compute_pseudo_logZ(const arma::mat &data, // dataset with unique rows of the original data
-                                    const arma::vec &frequency,
-                                    const arma::vec &pars,
-                                    const arma::uvec &n_categories,
-                                    const arma::uvec &lower_indices,
-                                    const arma::uvec &category_offsets,
-                                    arma::uword P,
-                                    arma::uword N,
-                                    arma::uword n_pars,
-                                    arma::uword n_thresholds) {
-
-    arma::mat interactions(P,P);
-    interactions_vec_to_mat(interactions, pars, lower_indices, P, n_thresholds, n_pars);
-
-    double logZ = 0.0;
-    for(arma::uword n = 0; n < N; n++){
-        arma::vec stats_n = data.row(n).t();
-        double logZ_n = 0.0;
-        for(arma::uword p = 0; p < P; p++){
-            double xixj_sigma = arma::dot(stats_n, interactions.col(p)); // diagonal of interactions is 0.0
-            double denom_p = 1.0;
-            for(arma::uword h = 1; h < n_categories(p); h++){
-                arma::uword index_threshold_Xp = h - 1;
-                if(p > 0){
-                    index_threshold_Xp += category_offsets(p - 1);
-                }
-                denom_p += std::exp(pars(index_threshold_Xp) + static_cast<double>(h) * xixj_sigma);
-            }
-            logZ_n += std::log(denom_p);
-        }
-        logZ += frequency(n) * logZ_n;
-    }
-    return logZ;
-}
-
-// Log prior (beta-prime on thresholds, cauchy on interactions) on the original scale
-double compute_log_prior(const arma::vec &pars,
-                                arma::uword n_thresholds,
-                                arma::uword n_pars,
-                                double thresholds_alpha,
-                                double thresholds_beta,
-                                double interactions_location,
-                                double interactions_scale) {
-    return arma::accu(log_beta_prime(pars(arma::span(0, n_thresholds - 1)), thresholds_alpha, thresholds_beta)) +
-           arma::accu(log_dcauchy(pars(arma::span(n_thresholds, n_pars - 1)), interactions_location, interactions_scale));
-}
-
 ApproximateGradient compute_approximate_gradient(
                                     const arma::vec &stats,
                                     const arma::mat &data,
