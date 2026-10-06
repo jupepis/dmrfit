@@ -1,7 +1,7 @@
 #' @title Reynolds Adolescent Depression Scale (RADS-2) responses of Peruvian adolescents
 #'
 #' @description Responses of 917 adolescents from Lima (Peru) to the 25 items retained in the four-factor version of the
-#' Reynolds Adolescent Depression Scale, second edition (RADS-2), each answered on a four-point scale. The data come
+#' Reynolds Adolescent Depression Scale, second edition (RADS-2), each answered on a four-point Likert scale. The data come
 #' from Ramos-Vera et al. (2023), who also grouped the items into four clusters (stored with the data).
 #'
 #' @format A data frame with 917 rows (adolescents) and 25 integer columns (items), with values 1 to 4. Higher values
