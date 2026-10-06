@@ -5,14 +5,14 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Optimization Tools for Discrete Markov Random Fields • dmrfit</title>
+<title>Scalable Bayesian Inference for Discrete Markov Random Fields • dmrfit</title>
 <!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script><!-- Bootstrap --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha256-bZLfwXAP04zRMK2BjiO8iu9pf4FbLqX6zitd+tIvLhE=" crossorigin="anonymous">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script><!-- bootstrap-toc --><link rel="stylesheet" href="bootstrap-toc.css">
 <script src="bootstrap-toc.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="pkgdown.css" rel="stylesheet">
-<script src="pkgdown.js"></script><meta property="og:title" content="Optimization Tools for Discrete Markov Random Fields">
-<meta property="og:description" content="Estimation of discrete Markov Random Fields through the pseudolikelihood, for both Ising models (Ising, 1925, &lt;doi:10.1007/BF02980577&gt;) and Ordinal Markov Random Fields (Marsman, M., van den Bergh, D., and Haslbeck, J. M. B, 2025, &lt;doi:10.1017/psy.2024.4&gt;). Point estimates, either maximum pseudolikelihood or maximum a posteriori, are obtained through a trust region optimization algorithm, with robust standard errors from the Huber-White sandwich estimator, for both full and constrained network structures. Bayesian inference corrects the pseudo-posterior through coordinate rescaling, which matches its covariance to the sandwich covariance, and samples from it with an adaptive Fisher-preconditioned Metropolis-adjusted Langevin algorithm. Savage-Dickey Bayes factors test each pairwise interaction, computed either by sampling importance resampling or from the posterior draws.">
+<script src="pkgdown.js"></script><meta property="og:title" content="Scalable Bayesian Inference for Discrete Markov Random Fields">
+<meta property="og:description" content="Estimation of discrete Markov Random Fields through the pseudolikelihood, for both Ising models (Ising, 1925, &lt;doi:10.1007/BF02980577&gt;) and Ordinal Markov Random Fields (Marsman, M., van den Bergh, D., and Haslbeck, J. M. B, 2025, &lt;doi:10.1017/psy.2024.4&gt;). Point estimates, either maximum pseudolikelihood or maximum a posteriori, are obtained through a trust region optimization algorithm, with robust standard errors from the Huber-White sandwich estimator, for both full and constrained network structures. Bayesian inference corrects the pseudo-posterior through coordinate rescaling, which matches its covariance to the sandwich covariance, and samples from it with an adaptive Fisher-preconditioned Metropolis-adjusted Langevin algorithm. For comparison, the posterior based on the full likelihood can also be sampled, exactly for small networks or with the double Metropolis-Hastings algorithm. Savage-Dickey Bayes factors test each pairwise interaction, computed either by sampling importance resampling or from the posterior draws.">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
@@ -64,7 +64,7 @@
   <div class="contents col-md-9">
 
 <p align="center">
-<img src="reference/figures/dmrfit_banner.svg" width="100%" alt="dmrfit: Optimization Tools for Discrete Markov Random Fields"></p>
+<img src="reference/figures/dmrfit_banner.svg" width="100%" alt="dmrfit: Scalable Bayesian Inference for Discrete Markov Random Fields"></p>
 <!-- badges: start -->
 
 <p><br></p>
@@ -74,7 +74,7 @@
 <h2 id="main-functionalities">Main functionalities<a class="anchor" aria-label="anchor" href="#main-functionalities"></a>
 </h2>
 <p><strong><code><a href="reference/dmrfit.html">dmrfit()</a></code>: point estimation and Bayes factors</strong> - Maximum pseudolikelihood estimation, or maximum a posteriori estimation with <code>with_prior = TRUE</code> (Beta-Prime prior on the thresholds, Cauchy prior on the pairwise interactions), through a trust region algorithm (Fletcher, 1987; Nocedal and Wright, 1999). - Robust standard errors from the Huber-White sandwich estimator. - Constrained estimation with <code>structure</code>, a P x P adjacency matrix of the edges to include. - Savage-Dickey Bayes factors for each pairwise interaction with <code>savage_dickey = TRUE</code>, computed by sampling importance resampling from the coordinate-rescaled pseudo-posterior (Skare et al., 2003). - Gradient, Hessian and pseudolikelihood evaluations parallelized over <code>ncores</code>.</p>
-<p><strong><code><a href="reference/dmrfit_bayes.html">dmrfit_bayes()</a></code>: posterior sampling</strong> - Draws from the coordinate-rescaled pseudo-posterior with an adaptive Fisher-preconditioned MALA sampler (Arena and Marsman, 2026), which corrects the underestimated posterior variability of the pseudolikelihood. - Posterior summaries (means, standard deviations, 95% credible intervals) and Savage-Dickey Bayes factors for each pairwise interaction, computed from the posterior draws.</p>
+<p><strong><code><a href="reference/dmrfit_bayes.html">dmrfit_bayes()</a></code>: posterior sampling</strong> - Draws from the coordinate-rescaled pseudo-posterior (<code>method = "core"</code>, default; Arena and Marsman, 2026), which corrects the underestimated posterior variability of the pseudolikelihood. All methods use an adaptive Fisher-preconditioned MALA sampler. - The pseudo-posterior is rescaled to the sandwich covariance (<code>scale = "ghw"</code>, default), or to the inverse of a Monte Carlo estimate of the Hessian of the full log-posterior, at the pseudo-posterior mode (<code>scale = "mch"</code>) or at the Robbins-Monro estimate of the full-posterior mode (<code>scale = "rm"</code>). - <code>method = "adacore"</code> adapts the rescaling during burn-in; <code>method = "exact"</code> samples the full-likelihood posterior for small networks, with the normalizing constant computed by enumeration; <code>method = "dmh"</code> samples it with the double Metropolis-Hastings algorithm (Liang, 2010), which is much slower. - Posterior summaries (means, standard deviations, 95% credible intervals) and Savage-Dickey Bayes factors for each pairwise interaction, computed from the posterior draws.</p>
 <p>Both functions return objects with <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> methods.</p>
 <p><br></p>
 </div>
@@ -85,14 +85,14 @@
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"jupepis/dmrfit"</span><span class="op">)</span> <span class="co"># install package via remotes</span></span>
 <span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/jupepis/dmrfit" class="external-link">dmrfit</a></span><span class="op">)</span> <span class="co"># load the package</span></span></code></pre></div>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jupepis.github.io/dmrfit/" class="external-link">dmrfit</a></span><span class="op">)</span> <span class="co"># load the package</span></span></code></pre></div>
 <p><br></p>
 </div>
 <div class="section level2">
 <h2 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
 </h2>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/jupepis/dmrfit" class="external-link">dmrfit</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jupepis.github.io/dmrfit/" class="external-link">dmrfit</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># RADS-2 responses of 917 adolescents (25 items, 4 ordered categories). Here the 7 dysphoria items</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">rads2</span><span class="op">)</span></span>
@@ -123,6 +123,7 @@
 <li>Ising, E. (1925). Beitrag zur theorie des ferromagnetismus. <em>Zeitschrift für Physik</em>, 31(1):253–258.</li>
 <li>Fletcher, R. (1987). <em>Practical Methods of Optimization</em>. 2nd ed. Chichester: Wiley.</li>
 <li>Nocedal, J. and Wright, S.J. (1999). <em>Numerical Optimization</em>. New York: Springer.</li>
+<li>Liang, F. (2010). A double Metropolis-Hastings sampler for spatial models with intractable normalizing constants. <em>Journal of Statistical Computation and Simulation</em>, 80(9):1007–1022.</li>
 <li>Marsman, M., van den Bergh, D., and Haslbeck, J. M. B. (2025). Bayesian analysis of the ordinal Markov random field. <em>Psychometrika</em>, 90:146–182.</li>
 <li>Ramos-Vera, C., Quispe Callo, G., Basauri Delgado, M., Vallejos Saldarriaga, J., and Saintila, J. (2023). Factorial and network structure of the Reynolds Adolescent Depression Scale (RADS-2) in Peruvian adolescents. <em>PLOS ONE</em>, 18(5):e0286081.</li>
 <li>Skare, Ø., Bølviken, E., and Holden, L. (2003). Improved sampling-importance resampling and reduced bias importance sampling. <em>Scandinavian Journal of Statistics</em>, 30(4):719–737.</li>
@@ -168,8 +169,9 @@
 <h2 data-toc-skip>Dev status</h2>
 <ul class="list-unstyled">
 <li><a href="https://www.repostatus.org/#active" class="external-link"><img src="https://www.repostatus.org/badges/latest/active.svg" alt="github-repo-status"></a></li>
-<li><a href="https://www.github.com/jupepis/dmrfit" class="external-link"><img src="https://img.shields.io/github/r-package/v/jupepis/dmrfit" alt="R-package-version"></a></li>
+<li><a href="https://github.com/jupepis/dmrfit" class="external-link"><img src="https://img.shields.io/github/r-package/v/jupepis/dmrfit" alt="R-package-version"></a></li>
 <li><a href="https://github.com/jupepis/dmrfit/actions/workflows/check-standard.yaml" class="external-link"><img src="https://github.com/jupepis/dmrfit/actions/workflows/check-standard.yaml/badge.svg" alt="R-CMD-check"></a></li>
+<li><a href="https://app.codecov.io/gh/jupepis/dmrfit" class="external-link"><img src="https://codecov.io/gh/jupepis/dmrfit/graph/badge.svg" alt="Codecov test coverage"></a></li>
 </ul>
 </div>
 
