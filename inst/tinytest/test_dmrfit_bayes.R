@@ -31,8 +31,14 @@ expect_equal(fits$rm$scale, "rm")
 expect_true(is.na(fits$exact$scale))
 expect_true(fits$adacore$adacore_updates >= 0)
 
-# --- progress = FALSE prints nothing while sampling
-expect_silent(dmrfit_bayes(X, nsim = 50, burnin = 50, progress = FALSE, control = list(adaptive_stage = 50)))
+# --- the progress bar (written to the error stream) is shown by default and not with progress = FALSE
+bar_with <- capture.output(invisible(suppressWarnings(dmrfit_bayes(X, nsim = 600, burnin = 300))), type = "message")
+bar_without <- capture.output(invisible(suppressWarnings(dmrfit_bayes(X, nsim = 600, burnin = 300, progress = FALSE))), type = "message")
+expect_true(any(grepl("%", bar_with)))
+expect_equal(length(bar_without), 0L)
+
+# --- very short chains: a warning, not an error, when the effective sample size cannot be computed or is small
+expect_warning(dmrfit_bayes(X, nsim = 20, burnin = 10, progress = FALSE, control = list(adaptive_stage = 10)), "Savage-Dickey")
 
 # --- the posterior targeted by the fit is stated by print() and summary()
 expect_stdout(print(fits$exact), "full-likelihood posterior")

@@ -30,6 +30,7 @@
 #' @param interactions_scale scale parameter for the Cauchy prior on pairwise interactions (default is 2.5).
 #' @param sigma2 initial value for the adaptive variance parameter in the FisherMALA sampler (default is 0.1).
 #' @param seed random seed for reproducibility of the MCMC sampler (default is 123). The caller's random number stream is restored on exit.
+#' @param progress logical, whether to show a progress bar while sampling (default is TRUE).
 #' @param control a list of tuning settings, each with a default: \code{adaptive_stage} (500) iterations of the
 #'   initial adaptive stage; \code{max_states} (1e6) largest number of response patterns for \code{method = "exact"};
 #'   \code{dmh_aux} (25000) and \code{dmh_gibbs_iter} (5) auxiliary draws and Gibbs sweeps per iteration of
@@ -59,7 +60,7 @@
 #'
 #' @export
 #'
-dmrfit_bayes <- function(data, parinit = NULL, method = c("core", "adacore", "exact", "dmh"), scale = c("ghw", "mch", "rm"), nsim = 1e03, burnin = 1e03, ncores = 1, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, sigma2 = 0.1, seed = 123, control = list()) {
+dmrfit_bayes <- function(data, parinit = NULL, method = c("core", "adacore", "exact", "dmh"), scale = c("ghw", "mch", "rm"), nsim = 1e03, burnin = 1e03, ncores = 1, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, sigma2 = 0.1, seed = 123, progress = TRUE, control = list()) {
 
     # save the matched call for print and summary methods
     cl <- match.call()
@@ -160,7 +161,7 @@ dmrfit_bayes <- function(data, parinit = NULL, method = c("core", "adacore", "ex
                  adaptive_stage_n_iter = ctrl$adaptive_stage, sigma2 = sigma2,
                  thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta,
                  interactions_location = interactions_location, interactions_scale = interactions_scale,
-                 verbose = FALSE, progress = TRUE)
+                 verbose = FALSE, progress = progress)
 
     # --- Run the sampler ---
     out <- tryCatch({
@@ -272,9 +273,15 @@ dmrfit_bayes <- function(data, parinit = NULL, method = c("core", "adacore", "ex
     # --- Effective sample size of the posterior draws, per parameter (autocorrelation-based) ---
     ess <- apply(out$draws, 1, .ess_mcmc)
     names(ess) <- par_names
-    if (min(ess[inter_idx]) < 100)
-        warning("Savage-Dickey: the smallest effective sample size of the interactions is ", round(min(ess[inter_idx]), 1),
+    ess_inter <- ess[inter_idx]
+    if (anyNA(ess_inter)) {
+        # NA: the draws of an interaction never changed (the chain did not move), typically for very short chains
+        warning("Savage-Dickey: the draws of ", sum(is.na(ess_inter)), " interaction(s) are constant; the Bayes factors ",
+                "are unreliable. Consider increasing 'nsim' and 'burnin'.")
+    } else if (min(ess_inter) < 100) {
+        warning("Savage-Dickey: the smallest effective sample size of the interactions is ", round(min(ess_inter), 1),
                 "; the Bayes factors may be unreliable. Consider increasing 'nsim'.")
+    }
 
     pmles$savage_dickey <- list(
         bf_01 = bf_01,

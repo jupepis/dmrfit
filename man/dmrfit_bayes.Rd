@@ -18,6 +18,7 @@ dmrfit_bayes(
   interactions_scale = 2.5,
   sigma2 = 0.1,
   seed = 123,
+  progress = TRUE,
   control = list()
 )
 }
@@ -58,6 +59,8 @@ slower.}
 \item{sigma2}{initial value for the adaptive variance parameter in the FisherMALA sampler (default is 0.1).}
 
 \item{seed}{random seed for reproducibility of the MCMC sampler (default is 123). The caller's random number stream is restored on exit.}
+
+\item{progress}{logical, whether to show a progress bar while sampling (default is TRUE).}
 
 \item{control}{a list of tuning settings, each with a default: \code{adaptive_stage} (500) iterations of the
 initial adaptive stage; \code{max_states} (1e6) largest number of response patterns for \code{method = "exact"};
