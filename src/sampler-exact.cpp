@@ -16,22 +16,14 @@ struct ExactGradient {
 
 // Scratch buffers for compute_exact_gradient, sized once (M^P rows) and reused across every
 // call within a single cpp_exact_sampler() run, instead of each call allocating (and freeing)
-// fresh M^P-length vectors. These buffers are large (tens to low hundreds of MB), so repeated
-// allocation/deallocation of them every iteration is not free; reusing pre-sized memory avoids
-// that churn without changing any of the arithmetic.
+// fresh M^P-length vectors.
 struct ExactGradientWorkspace {
-    arma::fvec pars_f;           // size n_pars
-    arma::fvec scores_f;         // size M^P -- holds X * pars_f (float)
-    arma::vec  probabilities;    // size M^P -- widened + normalized scores (double)
-    arma::fvec probabilities_f;  // size M^P -- downcast of probabilities, for the second matvec
-    arma::fvec grad_contrib_f;   // size n_pars -- holds X.t() * probabilities_f (float)
+    arma::vec probabilities;    // size M^P -- scores X * pars, then the normalized probabilities
 
-    ExactGradientWorkspace(arma::uword n_rows, arma::uword n_pars)
-        : pars_f(n_pars), scores_f(n_rows), probabilities(n_rows),
-          probabilities_f(n_rows), grad_contrib_f(n_pars) {}
+    ExactGradientWorkspace(arma::uword n_rows) : probabilities(n_rows) {}
 };
 
-inline ExactGradient compute_exact_gradient(const arma::fmat &X,
+inline ExactGradient compute_exact_gradient(const arma::mat &X,
                                         const arma::vec &stats,
                                         const arma::vec &pars,
                                         arma::uword n_thresholds,
@@ -52,15 +44,9 @@ inline ExactGradient compute_exact_gradient(const arma::fmat &X,
     out.gradient(arma::span(n_thresholds, n_pars - 1)) = log_dcauchy_first_derivative(pars(arma::span(n_thresholds, n_pars - 1)), interactions_location, interactions_scale);
 
     // --- Compute log-sum-exp over all states (numerically stable) ---
-    // X is stored in single precision to halve the memory bandwidth of the two matrix-vector
-    // products below, which dominate the cost of this function (X has M^P rows, with M assumed as the number of possible values for each variable).
-    // Everything downstream of the first matvec (the softmax normalization: max-shift, exp, sum, normalize)
-    // runs at full double precision as before; only the two big matvecs run in float.
-    // All large (M^P-length) intermediates below are written into pre-sized buffers in `ws`
-    // (see ExactGradientWorkspace) rather than freshly allocated on every call.
-    ws.pars_f = arma::conv_to<arma::fvec>::from(pars);           // this is cheap (n_pars is small)
-    ws.scores_f = X * ws.pars_f;                                 // float matvec, written into a reused buffer
-    ws.probabilities = arma::conv_to<arma::vec>::from(ws.scores_f); // widen to double (lossless), into a reused buffer
+    // The two matrix-vector products with X (M^P rows) dominate the cost of this function. They run in double
+    // precision: R's BLAS on Windows has no single-precision routines (sgemv).
+    ws.probabilities = X * pars;           // scores, written into a reused buffer
     double m = ws.probabilities.max();
     ws.probabilities -= m;                 // shift
     ws.probabilities = arma::exp(ws.probabilities); // exponentiate
@@ -76,9 +62,7 @@ inline ExactGradient compute_exact_gradient(const arma::fmat &X,
 
     // --- Compute gradient of the log-likelihood: stats - N * E[s(X)] ---
     out.gradient += stats;
-    ws.probabilities_f = arma::conv_to<arma::fvec>::from(ws.probabilities); // downcasting only for this matvec, into a reused buffer
-    ws.grad_contrib_f = X.t() * ws.probabilities_f;                        // float matvec, written into a reused buffer
-    out.gradient -= static_cast<double>(N) * arma::conv_to<arma::vec>::from(ws.grad_contrib_f); // still small because of n_pars' size
+    out.gradient -= static_cast<double>(N) * (X.t() * ws.probabilities);
 
     return out;
 }
@@ -182,11 +166,8 @@ Rcpp::List cpp_exact_sampler(const arma::mat &data,
     arma::vec obs_stats;
     sufficient_statistics_omrf(obs_stats, data, n_categories, P, n_thresholds, n_pars, 1.0);
 
-    // --- Convert X to single precision once (X's entries are small integers, so this is exact) ---
-    arma::fmat Xf = arma::conv_to<arma::fmat>::from(X);
-
     // --- Scratch buffers for compute_exact_gradient, sized once and reused across every iteration ---
-    ExactGradientWorkspace ws(Xf.n_rows, n_pars);
+    ExactGradientWorkspace ws(X.n_rows);
 
     // --- Preallocate draws and sigma2_vec ---
     arma::mat draws(n_pars, n_keep, arma::fill::zeros);
@@ -210,7 +191,7 @@ Rcpp::List cpp_exact_sampler(const arma::mat &data,
     sigma2_vec(s-1) = sigma2;
 
     // --- Calculate exact gradient and normalizing constant at current parameters ---
-    ExactGradient exact_current = compute_exact_gradient(Xf, obs_stats, current_pars, n_thresholds, N, n_pars, true,
+    ExactGradient exact_current = compute_exact_gradient(X, obs_stats, current_pars, n_thresholds, N, n_pars, true,
                                                         thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, ws);
 
     // --- Start timer for the chain ---
@@ -235,7 +216,7 @@ Rcpp::List cpp_exact_sampler(const arma::mat &data,
         arma::vec proposed_pars = fishermala_propose(current_pars, exact_current.gradient, R_n, sigma2_R);
 
         // (2) Exact gradient and logZ at new parameters
-        ExactGradient exact_proposed = compute_exact_gradient(Xf, obs_stats, proposed_pars, n_thresholds, N, n_pars, true,
+        ExactGradient exact_proposed = compute_exact_gradient(X, obs_stats, proposed_pars, n_thresholds, N, n_pars, true,
                                                             thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, ws);
 
         // (3) Compute acceptance ratio
