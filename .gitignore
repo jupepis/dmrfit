@@ -1,1 +1,34 @@
-.Rproj.user
+.Rproj.user/
+*.Rproj
+.Rhistory
+.RData
+
+# Editor or OS
+.vscode/
+.DS_Store
+
+# Folders
+pl_project/
+
+# Build and package artifacts
+*.tar.gz
+.Rcheck/
+src/*.o
+src/*.so
+src/*.dll
+src/*.dylib
+src/sources.mk
+inst/doc/
+doc/
+Meta/
+
+# other files
+
+# Formatting style files
+
+
+# Other
+*.log
+# /.quarto/
+# **/*.quarto_ipynb
+docs
