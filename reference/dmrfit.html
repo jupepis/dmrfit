@@ -41,7 +41,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>dmrfit</h1>
-    <small class="dont-index">Source: <a href="https://github.com/jupepis/dmrfit/blob/csda-r1/R/dmrfit.R" class="external-link"><code>R/dmrfit.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/jupepis/dmrfit/blob/main/R/dmrfit.R" class="external-link"><code>R/dmrfit.R</code></a></small>
     <div class="hidden name"><code>dmrfit.Rd</code></div>
     </div>
 
@@ -89,11 +89,11 @@
 
 
 <dt id="arg-savage-dickey">savage_dickey<a class="anchor" aria-label="anchor" href="#arg-savage-dickey"></a></dt>
-<dd><p>logical, whether to compute the Savage-Dickey density ratio Bayes factor for each pairwise interaction via Bayesian Sampling Importance Resampling (BSIR). Only available when <code>with_prior = TRUE</code>. Default is FALSE.</p></dd>
+<dd><p>logical, whether to compute the Savage-Dickey density ratio Bayes factor for each pairwise interaction via Bayesian Sampling Importance Resampling (BSIR) from the coordinate-rescaled pseudo-posterior: the pseudo-posterior rescaled around its mode to the sandwich (Godambe-Huber-White) covariance, which corrects the underestimated posterior variability of the pseudo-likelihood. The proposal is a multivariate t with the sandwich covariance. When zero lies beyond all resampled draws of an interaction, its density at zero cannot be estimated from the draws: the Bayes factor is then reported at the floor <code>1/(10 * M)</code> and flagged in <code>savage_dickey$zero_beyond_draws</code>. Only available when <code>with_prior = TRUE</code>. Default is FALSE.</p></dd>
 
 
 <dt id="arg-m">M<a class="anchor" aria-label="anchor" href="#arg-m"></a></dt>
-<dd><p>number of importance samples for the BSIR step (default is 1000). Only used when <code>savage_dickey = TRUE</code>.</p></dd>
+<dd><p>number of draws resampled in the BSIR step (default is 1000). Only used when <code>savage_dickey = TRUE</code>.</p></dd>
 
 
 <dt id="arg-oversampling">oversampling<a class="anchor" aria-label="anchor" href="#arg-oversampling"></a></dt>
@@ -172,11 +172,11 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> Savage-Dickey density ratio  [prior: Cauchy( 0 , 2.5 )]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> H0: sigma = 0 for each pairwise interaction</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>            Estimate     SE   BF_01 Pr(=0|x)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[2,1]  -0.1373 0.1580 13.4723   0.9309</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[3,2]  -0.0078 0.1365 31.7240   0.9694</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            Estimate     SE BF_01 Pr(=0|x)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[2,1]  -0.1373 0.1580 13.17   0.9294</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[3,2]  -0.0078 0.1365 22.88   0.9581</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> SIR samples: 10000   Effective sample size: 7003.1 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> SIR samples: 10000   Effective sample size of the importance sample: 83684.4 (of 1e+05 proposal draws) </span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

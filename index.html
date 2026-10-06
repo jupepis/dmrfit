@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="pkgdown.css" rel="stylesheet">
 <script src="pkgdown.js"></script><meta property="og:title" content="Optimization Tools for Discrete Markov Random Fields">
-<meta property="og:description" content="A set of tools designed for estimating discrete Markov Random Fields via pseudolikelihood, for both Ising models (Ising, 1925, &lt;doi:10.1007/BF02980577&gt;) and Ordinal Markov Random Fields (Marsman, M., van den Bergh, D., and Haslbeck, J. M. B, 2025, &lt;doi:10.1017/psy.2024.4&gt;). Parameters are estimated through a trust region optimization algorithm, with robust standard error estimation. The package supports both full network estimation, where all edges are included, and constrained network estimation, where only a specified subset of edges is considered.">
+<meta property="og:description" content="Estimation of discrete Markov Random Fields through the pseudolikelihood, for both Ising models (Ising, 1925, &lt;doi:10.1007/BF02980577&gt;) and Ordinal Markov Random Fields (Marsman, M., van den Bergh, D., and Haslbeck, J. M. B, 2025, &lt;doi:10.1017/psy.2024.4&gt;). Point estimates, either maximum pseudolikelihood or maximum a posteriori, are obtained through a trust region optimization algorithm, with robust standard errors from the Huber-White sandwich estimator, for both full and constrained network structures. Bayesian inference corrects the pseudo-posterior through coordinate rescaling, which matches its covariance to the sandwich covariance, and samples from it with an adaptive Fisher-preconditioned Metropolis-adjusted Langevin algorithm. Savage-Dickey Bayes factors test each pairwise interaction, computed either by sampling importance resampling or from the posterior draws.">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
@@ -63,29 +63,49 @@
       </header><div class="row">
   <div class="contents col-md-9">
 
-<p><img align="right" width="185" src="reference/figures/dmrfit-logo.svg" alt="dmrfit logo"></p>
-<div class="section level1">
-<div class="page-header"><h1 id="dmrfit">
-<strong>dmrfit</strong><a class="anchor" aria-label="anchor" href="#dmrfit"></a>
-</h1></div>
-<div class="section level3">
-<h3 id="optimization-tools-for-discrete-markov-random-fields">
-<em>Optimization Tools for Discrete Markov Random Fields</em><a class="anchor" aria-label="anchor" href="#optimization-tools-for-discrete-markov-random-fields"></a>
-</h3>
+<p align="center">
+<img src="reference/figures/dmrfit_banner.svg" width="100%" alt="dmrfit: Optimization Tools for Discrete Markov Random Fields"></p>
 <!-- badges: start -->
 
 <p><br></p>
-<p>A set of tools designed for estimating discrete Markov Random Fields via pseudolikelihood, for both Ising models (Ising, 1925) and Ordinal Markov Random Fields (Marsman et al., 2025). Parameters are estimated through a trust region optimization algorithm (Fletcher, R., 1987; Nocedal, J. and Wright, S.J., 1999), with robust standard error estimation. The package supports both full network estimation, where all edges are included, and constrained network estimation, where only a specified subset of edges is considered.</p>
+<p><code>dmrfit</code> estimates discrete Markov Random Fields, both Ising models (Ising, 1925) and Ordinal Markov Random Fields (Marsman et al., 2025), through the pseudolikelihood. It offers a frequentist route, with point estimates from a trust region algorithm and robust standard errors, and a Bayesian route, in which the pseudo-posterior is corrected with coordinate rescaling (CoRe; Arena and Marsman, 2026). Point estimation supports both full network estimation, where all edges are included, and constrained network estimation, where only a specified subset of edges is considered.</p>
+<p><br></p>
+<div class="section level2">
+<h2 id="main-functionalities">Main functionalities<a class="anchor" aria-label="anchor" href="#main-functionalities"></a>
+</h2>
+<p><strong><code><a href="reference/dmrfit.html">dmrfit()</a></code>: point estimation and Bayes factors</strong> - Maximum pseudolikelihood estimation, or maximum a posteriori estimation with <code>with_prior = TRUE</code> (Beta-Prime prior on the thresholds, Cauchy prior on the pairwise interactions), through a trust region algorithm (Fletcher, 1987; Nocedal and Wright, 1999). - Robust standard errors from the Huber-White sandwich estimator. - Constrained estimation with <code>structure</code>, a P x P adjacency matrix of the edges to include. - Savage-Dickey Bayes factors for each pairwise interaction with <code>savage_dickey = TRUE</code>, computed by sampling importance resampling from the coordinate-rescaled pseudo-posterior (Skare et al., 2003). - Gradient, Hessian and pseudolikelihood evaluations parallelized over <code>ncores</code>.</p>
+<p><strong><code><a href="reference/dmrfit_bayes.html">dmrfit_bayes()</a></code>: posterior sampling</strong> - Draws from the coordinate-rescaled pseudo-posterior with an adaptive Fisher-preconditioned MALA sampler (Arena and Marsman, 2026), which corrects the underestimated posterior variability of the pseudolikelihood. - Posterior summaries (means, standard deviations, 95% credible intervals) and Savage-Dickey Bayes factors for each pairwise interaction, computed from the posterior draws.</p>
+<p>Both functions return objects with <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> methods.</p>
 <p><br></p>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>Install the package in R from CRAN:</p>
+<p>Install the development version from GitHub:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"jupepis/dmrfit"</span><span class="op">)</span> <span class="co"># install package via remotes</span></span>
 <span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/jupepis/dmrfit" class="external-link">dmrfit</a></span><span class="op">)</span> <span class="co"># load the package</span></span></code></pre></div>
+<p><br></p>
+</div>
+<div class="section level2">
+<h2 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
+</h2>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/jupepis/dmrfit" class="external-link">dmrfit</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># RADS-2 responses of 917 adolescents (25 items, 4 ordered categories). Here the 7 dysphoria items</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">rads2</span><span class="op">)</span></span>
+<span><span class="va">dysphoria</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">rads2</span>, <span class="st">"clusters"</span><span class="op">)</span> <span class="op">==</span> <span class="st">"Dysphoria"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Point estimates, sandwich standard errors and Savage-Dickey Bayes factors</span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dmrfit.html">dmrfit</a></span><span class="op">(</span><span class="va">rads2</span><span class="op">[</span>, <span class="va">dysphoria</span><span class="op">]</span>, with_prior <span class="op">=</span> <span class="cn">TRUE</span>, savage_dickey <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Posterior sampling from the coordinate-rescaled pseudo-posterior</span></span>
+<span><span class="va">fit_bayes</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dmrfit_bayes.html">dmrfit_bayes</a></span><span class="op">(</span><span class="va">rads2</span><span class="op">[</span>, <span class="va">dysphoria</span><span class="op">]</span>, nsim <span class="op">=</span> <span class="fl">5000</span>, burnin <span class="op">=</span> <span class="fl">1000</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit_bayes</span><span class="op">)</span></span></code></pre></div>
+<p>The example uses <code>rads2</code>, data from Ramos-Vera et al. (2023) distributed under the CC BY 4.0 license (see <code><a href="reference/rads2.html">?rads2</a></code>).</p>
 <p><br></p>
 </div>
 <div class="section level2">
@@ -99,13 +119,15 @@
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
 <ul>
+<li>Arena, G. and Marsman, M. (2026). Bayesian inference for discrete Markov random fields through coordinate rescaling. <em>Manuscript under revision</em>.</li>
 <li>Ising, E. (1925). Beitrag zur theorie des ferromagnetismus. <em>Zeitschrift für Physik</em>, 31(1):253–258.</li>
 <li>Fletcher, R. (1987). <em>Practical Methods of Optimization</em>. 2nd ed. Chichester: Wiley.</li>
 <li>Nocedal, J. and Wright, S.J. (1999). <em>Numerical Optimization</em>. New York: Springer.</li>
 <li>Marsman, M., van den Bergh, D., and Haslbeck, J. M. B. (2025). Bayesian analysis of the ordinal Markov random field. <em>Psychometrika</em>, 90:146–182.</li>
+<li>Ramos-Vera, C., Quispe Callo, G., Basauri Delgado, M., Vallejos Saldarriaga, J., and Saintila, J. (2023). Factorial and network structure of the Reynolds Adolescent Depression Scale (RADS-2) in Peruvian adolescents. <em>PLOS ONE</em>, 18(5):e0286081.</li>
+<li>Skare, Ø., Bølviken, E., and Holden, L. (2003). Improved sampling-importance resampling and reduced bias importance sampling. <em>Scandinavian Journal of Statistics</em>, 30(4):719–737.</li>
 </ul>
 <p><br></p>
-</div>
 </div>
 
   </div>

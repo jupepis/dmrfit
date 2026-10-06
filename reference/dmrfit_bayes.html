@@ -41,7 +41,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>dmrfit_bayes</h1>
-    <small class="dont-index">Source: <a href="https://github.com/jupepis/dmrfit/blob/csda-r1/R/dmrfit_bayes.R" class="external-link"><code>R/dmrfit_bayes.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/jupepis/dmrfit/blob/main/R/dmrfit_bayes.R" class="external-link"><code>R/dmrfit_bayes.R</code></a></small>
     <div class="hidden name"><code>dmrfit_bayes.Rd</code></div>
     </div>
 
@@ -110,12 +110,12 @@
 
 
 <dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
-<dd><p>random seed for reproducibility of the BSIR step (default is 123).</p></dd>
+<dd><p>random seed for reproducibility of the MCMC sampler (default is 123). The caller's random number stream is restored on exit.</p></dd>
 
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>dmrfit S3 class object</p>
+    <p>an object of class <code>dmrfit_bayes</code> (also of class <code>dmrfit</code>), including the posterior draws (<code>draws</code>), the Savage-Dickey Bayes factors with the effective sample size of each parameter (<code>savage_dickey</code>), and the multivariate effective sample size of the draws (<code>mess</code>; Vats, Flegal and Jones, 2019), which is <code>NA</code> when there are fewer than <code>P + 1</code> batches of <code>floor(sqrt(nsim))</code> draws per parameter.</p>
     </div>
 
     <div id="ref-examples">
@@ -135,32 +135,33 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> Discrete Markov Random Field (Ising)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Estimation method: Bayesian (FisherMALA)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Nodes: 3  Observations: 1000  Parameters: 6 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> MCMC samples: 500  Acceptance rate: 0.596  Elapsed: 0.3 sec</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> MCMC samples: 500  Acceptance rate: 0.61  Elapsed: 0.4 sec</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Multivariate effective sample size: 233.9 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ------------------------------------------------------------ </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Thresholds:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                 Post.Mean Post.SD    2.5%   97.5%</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mu[1,1] -1.4423   -1.4655  0.1279 -1.7149 -1.2247</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mu[2,1]  0.0164    0.0125  0.0765 -0.1423  0.1647</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mu[3,1] -0.8828   -0.8840  0.1059 -1.0958 -0.7042</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         Post.Mode Post.Mean Post.SD    2.5%   97.5%</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[1,1]   -1.4423   -1.4512  0.1279 -1.7194 -1.2166</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[2,1]    0.0164    0.0075  0.0803 -0.1482  0.1623</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[3,1]   -0.8828   -0.8862  0.1096 -1.0946 -0.6627</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Pairwise interactions:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                    Post.Mean Post.SD    2.5%  97.5%</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[2,1] -0.1374   -0.1102  0.1746 -0.4654 0.2130</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[3,1]  0.3445    0.3686  0.1697  0.0202 0.6631</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[3,2] -0.0040   -0.0165  0.1389 -0.2797 0.2713</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            Post.Mode Post.Mean Post.SD    2.5%  97.5%</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[2,1]   -0.1374   -0.1251  0.1573 -0.4161 0.1785</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[3,1]    0.3445    0.3592  0.1686  0.0270 0.7108</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[3,2]   -0.0040    0.0035  0.1436 -0.2947 0.2829</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Negative pseudo-loglikelihood at posterior mode: 1814.438 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Savage-Dickey density ratio  [prior: Cauchy( 0 , 2.5 )]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> H0: sigma = 0 for each pairwise interaction</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>            Post.Mode Post.SD   BF_01 Pr(=0|x)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[2,1]   -0.1374  0.1746 14.3307   0.9348</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[3,1]    0.3445  0.1697  1.8285   0.6465</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[3,2]   -0.0040  0.1389 24.0638   0.9601</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            Post.Mode Post.SD BF_01 Pr(=0|x)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[2,1]   -0.1374  0.1573 13.66   0.9318</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[3,1]    0.3445  0.1686 2.333      0.7</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[3,2]   -0.0040  0.1436 22.42   0.9573</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> MCMC samples: 500   Effective sample size: 507.2 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> MCMC samples: 500   Effective sample size of the interactions: min 181.2 , median 198.9 </span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
