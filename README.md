@@ -46,20 +46,22 @@ library(dmrfit) # load the package
 ## Example
 
 ```r
-# simulate data from a 3-node Ising model
-set.seed(123)
-n <- 1000
-P <- 3
-data <- matrix(rbinom(n * P, size = 1, prob = c(0.2, 0.5, 0.3)[rep(1:P, each = n)]), nrow = n, ncol = P)
+library(dmrfit)
+
+# RADS-2 responses of 917 adolescents (25 items, 4 ordered categories); here the 7 dysphoria items
+data(rads2)
+dysphoria <- names(which(attr(rads2, "clusters") == "Dysphoria"))
 
 # point estimates, sandwich standard errors and Savage-Dickey Bayes factors
-fit <- dmrfit(data, with_prior = TRUE, savage_dickey = TRUE)
+fit <- dmrfit(rads2[, dysphoria], with_prior = TRUE, savage_dickey = TRUE)
 summary(fit)
 
 # posterior sampling from the coordinate-rescaled pseudo-posterior
-fit_bayes <- dmrfit_bayes(data, nsim = 1000, burnin = 1000)
+fit_bayes <- dmrfit_bayes(rads2[, dysphoria], nsim = 5000, burnin = 1000)
 summary(fit_bayes)
 ```
+
+The example uses `rads2`, data from Ramos-Vera et al. (2023) distributed under the CC BY 4.0 license (see `?rads2`).
 
 <br />
 
@@ -78,6 +80,7 @@ When opening an issue, please, use a descriptive title that clearly states the i
 - Nocedal, J. and Wright, S.J. (1999). _Numerical Optimization_. New York: Springer.
 - Marsman, M., van den Bergh, D., and Haslbeck, J. M. B. (2025). Bayesian analysis of the ordinal
 Markov random field. _Psychometrika_, 90:146–182.
+- Ramos-Vera, C., Quispe Callo, G., Basauri Delgado, M., Vallejos Saldarriaga, J., and Saintila, J. (2023). Factorial and network structure of the Reynolds Adolescent Depression Scale (RADS-2) in Peruvian adolescents. _PLOS ONE_, 18(5):e0286081.
 - Skare, Ø., Bølviken, E., and Holden, L. (2003). Improved sampling-importance resampling and reduced bias importance sampling. _Scandinavian Journal of Statistics_, 30(4):719–737.
 
 <br />
