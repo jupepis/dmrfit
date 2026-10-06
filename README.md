@@ -48,15 +48,15 @@ library(dmrfit) # load the package
 ```r
 library(dmrfit)
 
-# RADS-2 responses of 917 adolescents (25 items, 4 ordered categories); here the 7 dysphoria items
+# RADS-2 responses of 917 adolescents (25 items, 4 ordered categories). Here the 7 dysphoria items
 data(rads2)
 dysphoria <- names(which(attr(rads2, "clusters") == "Dysphoria"))
 
-# point estimates, sandwich standard errors and Savage-Dickey Bayes factors
+# Point estimates, sandwich standard errors and Savage-Dickey Bayes factors
 fit <- dmrfit(rads2[, dysphoria], with_prior = TRUE, savage_dickey = TRUE)
 summary(fit)
 
-# posterior sampling from the coordinate-rescaled pseudo-posterior
+# Posterior sampling from the coordinate-rescaled pseudo-posterior
 fit_bayes <- dmrfit_bayes(rads2[, dysphoria], nsim = 5000, burnin = 1000)
 summary(fit_bayes)
 ```
