@@ -10,15 +10,33 @@
 #'   \item{\code{type = "bf"}}{One circle per pair of variables (lower triangle): its color is the evidence for the
 #'     edge given by its Savage-Dickey Bayes factor (see Details) and its area the absolute value of the interaction.
 #'     Requires a fit with Bayes factors.}
+#'   \item{\code{type = "trace"}}{The posterior draws (after burn-in) of the parameters in \code{pars} against the
+#'     iteration, one panel per parameter. Only for a \code{dmrfit_bayes} fit.}
+#'   \item{\code{type = "density"}}{The kernel density of the posterior draws of the parameters in \code{pars}, one
+#'     panel per parameter, with a solid line at the posterior summary chosen by \code{estimate} and dashed lines at
+#'     the highest posterior density interval of mass \code{prob}. Only for a \code{dmrfit_bayes} fit.}
+#'   \item{\code{type = "intervals"}}{The estimate and the interval of every parameter in \code{pars}, the thresholds
+#'     and the interactions in separate panels, each sorted by estimate. The intervals are the likelihood-ratio
+#'     intervals of a \code{dmrfit} fit computed with \code{lrt_intervals = TRUE}, otherwise its Wald intervals, both
+#'     at the level of the fit, or the highest posterior density intervals of mass \code{prob} of a
+#'     \code{dmrfit_bayes} fit (see \code{\link{confint.dmrfit}}). The caption states which.}
 #' }
 #'
 #' @param x a \code{dmrfit} or \code{dmrfit_bayes} object.
-#' @param type the plot: \code{"network"} (default) or \code{"bf"}.
+#' @param type the plot: \code{"network"} (default), \code{"bf"}, \code{"trace"}, \code{"density"} or
+#'   \code{"intervals"}.
 #' @param estimate the posterior summary of the interactions of a \code{dmrfit_bayes} fit: \code{"mode"} (default) the
 #'   marginal posterior mode, the maximum of the kernel density estimate of the draws (\code{stats::density}),
 #'   \code{"mean"} or \code{"median"}. The mode is the default because the posterior can be asymmetric in small
 #'   samples, which moves the mean and the median away from the mode; Arena and Marsman (2026) found this for the
 #'   thresholds of rarely chosen response categories. Ignored for a \code{dmrfit} fit, which has point estimates.
+#' @param pars (trace, density, intervals) the parameters to show (at most 9 for trace and density): their names, as in \code{names(x$argument)} (for
+#'   instance \code{"sigma[2,1]"} for the interaction between variables 2 and 1, \code{"mu[1,2]"} for the second
+#'   threshold of variable 1), or their positions in that vector. By default, the four interactions with the largest
+#'   absolute posterior summary (see \code{estimate}) for trace and density, and all the free parameters for
+#'   intervals. The parameters are labeled with the variable names.
+#' @param prob (density, intervals) mass of the highest posterior density interval of a \code{dmrfit_bayes} fit
+#'   (default 0.95). The intervals of a \code{dmrfit} fit are at its \code{level}.
 #' @param all_edges (network) logical, whether to draw every estimated interaction instead of only the included ones
 #'   (default FALSE). Every estimated interaction is also drawn for a fit without Bayes factors (only the free ones
 #'   for a constrained fit).
@@ -66,11 +84,23 @@
 #' # evidence for every edge from its Savage-Dickey Bayes factor
 #' plot(fit, type = "bf")
 #'
+#' # trace and density of the posterior draws
+#' fit_bayes <- dmrfit_bayes(rads2[, dysphoria], nsim = 1000, burnin = 500, progress = FALSE)
+#' plot(fit_bayes, type = "trace")
+#' plot(fit_bayes, type = "density", pars = c("sigma[2,1]", "mu[1,1]"))
+#'
+#' # estimates and intervals: Wald, likelihood-ratio and highest posterior density
+#' plot(fit, type = "intervals")
+#' fit_lrt <- dmrfit(rads2[, dysphoria], lrt_intervals = c("mu[1,3]", "mu[2,3]", "sigma[2,1]"))
+#' plot(fit_lrt, type = "intervals", pars = c("mu[1,3]", "mu[2,3]", "sigma[2,1]"))
+#' plot(fit_bayes, type = "intervals")
+#'
 #' @method plot dmrfit
 #' @export
 #'
-plot.dmrfit <- function(x, type = c("network", "bf"), estimate = c("mode", "mean", "median"), all_edges = FALSE,
-                        groups = NULL, layout = c("fr", "circle"), seed = 30, node_size = 10, ...) {
+plot.dmrfit <- function(x, type = c("network", "bf", "trace", "density", "intervals"), estimate = c("mode", "mean", "median"),
+                        pars = NULL, prob = 0.95, all_edges = FALSE, groups = NULL, layout = c("fr", "circle"),
+                        seed = 30, node_size = 10, ...) {
 
     type <- match.arg(type)
     if (!inherits(x, "dmrfit")) {
@@ -80,6 +110,12 @@ plot.dmrfit <- function(x, type = c("network", "bf"), estimate = c("mode", "mean
         warning("estimate is ignored for a dmrfit fit, which has point estimates.")
     }
     estimate <- match.arg(estimate)
+    if (type %in% c("trace", "density") && !inherits(x, "dmrfit_bayes")) {
+        stop("type = \"", type, "\" needs posterior draws: fit the model with dmrfit_bayes().")
+    }
+    if (!is.numeric(prob) || length(prob) != 1 || prob <= 0 || prob >= 1) {
+        stop("prob must be a number between 0 and 1.")
+    }
     if (!is.logical(all_edges) || length(all_edges) != 1 || is.na(all_edges)) {
         stop("all_edges must be TRUE or FALSE.")
     }
@@ -96,7 +132,10 @@ plot.dmrfit <- function(x, type = c("network", "bf"), estimate = c("mode", "mean
     p <- switch(type,
                 network = .plot_network(x, estimate = estimate, all_edges = all_edges, groups = groups, layout = layout,
                                         seed = seed, node_size = node_size),
-                bf = .plot_bf(x, estimate = estimate))
+                bf = .plot_bf(x, estimate = estimate),
+                trace = .plot_draws(x, type = "trace", estimate = estimate, pars = pars, prob = prob),
+                density = .plot_draws(x, type = "density", estimate = estimate, pars = pars, prob = prob),
+                intervals = .plot_intervals(x, estimate = estimate, pars = pars, prob = prob))
     return(p)
 }
 
@@ -120,6 +159,10 @@ plot.dmrfit <- function(x, type = c("network", "bf"), estimate = c("mode", "mean
                            "Inconclusive" = "Inconclusive (1/3 - 3)", "Weak excluded" = "Weak excluded (3 - 10)",
                            "Excluded" = "Excluded (>= 10)")
 .PLOT_SURFACE <- "#fcfcfb"
+# trace and density plots: neutral colors (one series, no identity color)
+.PLOT_TRACE <- "gray35"
+.PLOT_DENSITY <- "#3d3d3a"
+.PLOT_DENSITY_SHADE <- "#ebeae6"
 .PLOT_INK <- "#1a1a19"
 
 
@@ -347,5 +390,159 @@ plot.dmrfit <- function(x, type = c("network", "bf"), estimate = c("mode", "mean
                        plot.background = ggplot2::element_rect(fill = .PLOT_SURFACE, colour = NA)) +
         ggplot2::guides(fill = ggplot2::guide_legend(order = 1, override.aes = list(size = 5)),
                         size = ggplot2::guide_legend(order = 2, override.aes = list(fill = "gray65")))
+    return(p)
+}
+
+
+#' par_labels (internal)
+#' @description Readable labels of parameter names: the interaction sigma of variables i and j becomes
+#'   "<var j>-<var i>", and threshold h of variable p (mu) becomes "<var p>: threshold h".
+#' @param par_names parameter names, as in names(x$argument)
+#' @param var_names the variable names
+#' @return a character vector
+#' @noRd
+.par_labels <- function(par_names, var_names) {
+    idx <- regmatches(par_names, gregexpr("[0-9]+", par_names))
+    labels <- vapply(seq_along(par_names), function(k) {
+        ij <- as.integer(idx[[k]])
+        if (startsWith(par_names[k], "sigma")) paste0(var_names[ij[2]], "-", var_names[ij[1]])
+        else paste0(var_names[ij[1]], ": threshold ", ij[2])
+    }, character(1))
+    return(labels)
+}
+
+
+#' bind_panels (internal)
+#' @description Binds a list of data frames, one per panel, with the panel labels as an ordered factor.
+#' @param frames list of data frames with a column parameter
+#' @param labels the panel labels, in order
+#' @return a data frame
+#' @noRd
+.bind_panels <- function(frames, labels) {
+    out <- do.call(rbind, frames)
+    out$parameter <- factor(out$parameter, levels = labels)
+    return(out)
+}
+
+
+#' plot_draws (internal)
+#' @description Trace and density plots of plot.dmrfit(type = "trace" or "density"); see its documentation for the
+#'   arguments.
+#' @param type "trace" or "density"
+#' @return a ggplot object
+#' @noRd
+.plot_draws <- function(x, type, estimate, pars, prob) {
+    var_names <- if (is.null(x$var_names)) paste0("V", seq_len(x$P)) else x$var_names
+    par_names <- names(x$argument)
+    summary_fun <- switch(estimate, mode = .posterior_mode, mean = mean, median = stats::median)
+
+    # --- parameters to show: by default the four interactions with the largest absolute posterior summary ---
+    if (is.null(pars)) {
+        inter <- .interaction_estimates(x, estimate)
+        pars <- inter$name[order(-abs(inter$estimate))][seq_len(min(4, nrow(inter)))]
+    } else if (is.numeric(pars)) {
+        if (any(pars < 1 | pars > length(par_names) | pars != round(pars))) {
+            stop("pars must be positions between 1 and ", length(par_names), ".")
+        }
+        pars <- par_names[pars]
+    } else if (!all(pars %in% par_names)) {
+        stop("unknown parameter(s) in pars: ", paste(setdiff(pars, par_names), collapse = ", "),
+             ". See names(x$argument).")
+    }
+    pars <- unique(pars)
+    if (length(pars) > 9) {
+        stop("At most 9 parameters can be shown; pars has ", length(pars), ".")
+    }
+    labels <- .par_labels(pars, var_names)
+    draws <- x$draws[match(pars, par_names), , drop = FALSE]
+
+    long <- data.frame(parameter = factor(rep(labels, each = ncol(draws)), levels = labels),
+                       iteration = rep(seq_len(ncol(draws)), times = length(pars)),
+                       value = as.vector(t(draws)))
+    n_col <- if (length(pars) <= 3) length(pars) else if (length(pars) == 4) 2 else 3 # rows of up to three panels
+
+    if (type == "trace") {
+        p <- ggplot2::ggplot(long, ggplot2::aes(x = .data$iteration, y = .data$value)) +
+            ggplot2::geom_line(colour = .PLOT_TRACE, linewidth = 0.25) +
+            ggplot2::labs(x = "Iteration (after burn-in)", y = NULL)
+    } else {
+        # --- kernel density of every parameter, its posterior summary and its HPD interval ---
+        curves <- list()
+        marks <- list()
+        for (k in seq_along(pars)) {
+            z <- draws[k, ]
+            d <- stats::density(z)
+            hpd <- .hdi(z, prob)
+            curves[[k]] <- data.frame(parameter = labels[k], x = d$x, y = d$y)
+            marks[[k]] <- data.frame(parameter = labels[k], center = summary_fun(z), lower = hpd[1], upper = hpd[2])
+        }
+        curves <- .bind_panels(curves, labels)
+        marks <- .bind_panels(marks, labels)
+        p <- ggplot2::ggplot(curves, ggplot2::aes(x = .data$x, y = .data$y)) +
+            ggplot2::geom_area(fill = .PLOT_DENSITY_SHADE) +
+            ggplot2::geom_line(colour = .PLOT_DENSITY, linewidth = 0.5) +
+            ggplot2::geom_vline(data = marks, ggplot2::aes(xintercept = .data$center), colour = .PLOT_DENSITY,
+                                linewidth = 0.5) +
+            ggplot2::geom_vline(data = marks, ggplot2::aes(xintercept = .data$lower), colour = .PLOT_DENSITY,
+                                linewidth = 0.4, linetype = "dashed") +
+            ggplot2::geom_vline(data = marks, ggplot2::aes(xintercept = .data$upper), colour = .PLOT_DENSITY,
+                                linewidth = 0.4, linetype = "dashed") +
+            ggplot2::labs(x = NULL, y = "Density",
+                          caption = paste0("Solid line: posterior ", estimate, "; dashed lines: ", round(100 * prob),
+                                           "% highest posterior density interval"))
+    }
+
+    p <- p + ggplot2::facet_wrap(~ parameter, ncol = n_col, scales = "free") +
+        ggplot2::theme_minimal(base_size = 12) +
+        ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
+                       strip.text = ggplot2::element_text(face = "bold"),
+                       plot.background = ggplot2::element_rect(fill = .PLOT_SURFACE, colour = NA),
+                       plot.caption = ggplot2::element_text(colour = "gray35", hjust = 0.5))
+    return(p)
+}
+
+
+#' plot_intervals (internal)
+#' @description Interval plot of plot.dmrfit(type = "intervals"); see its documentation for the arguments.
+#' @return a ggplot object
+#' @noRd
+.plot_intervals <- function(x, estimate, pars, prob) {
+    var_names <- if (is.null(x$var_names)) paste0("V", seq_len(x$P)) else x$var_names
+    par_names <- names(x$argument)
+    if (is.numeric(pars)) pars <- par_names[pars]
+
+    # --- intervals (confint() checks pars) and point estimates ---
+    if (inherits(x, "dmrfit_bayes")) {
+        bounds <- confint(x, parm = pars, level = prob)
+        summary_fun <- switch(estimate, mode = .posterior_mode, mean = mean, median = stats::median)
+        center <- apply(x$draws[match(rownames(bounds), par_names), , drop = FALSE], 1, summary_fun)
+        rule <- paste0("Point: posterior ", estimate, "; line: ", round(100 * prob), "% highest posterior density interval")
+    } else {
+        lrt <- !is.null(x$lrt_intervals)
+        level <- .fit_level(x)
+        bounds <- confint(x, parm = pars, level = level, method = if (lrt) "lrt" else "wald")
+        center <- x$argument[rownames(bounds)]
+        rule <- paste0("Point: estimate; line: ", round(100 * level), "% ",
+                       if (lrt) "likelihood-ratio interval" else "Wald interval (sandwich standard errors)")
+    }
+
+    is_inter <- startsWith(rownames(bounds), "sigma")
+    iv <- data.frame(label = .par_labels(rownames(bounds), var_names), center = unname(center),
+                     lower = bounds[, 1], upper = bounds[, 2],
+                     type = factor(ifelse(is_inter, "Interactions", "Thresholds"), levels = c("Thresholds", "Interactions")))
+    iv$label <- factor(iv$label, levels = iv$label[order(iv$type, iv$center)]) # sorted by estimate within each panel
+
+    p <- ggplot2::ggplot(iv, ggplot2::aes(x = .data$center, y = .data$label)) +
+        ggplot2::geom_vline(xintercept = 0, colour = "gray80", linewidth = 0.4) +
+        ggplot2::geom_errorbar(ggplot2::aes(xmin = .data$lower, xmax = .data$upper), width = 0, orientation = "y",
+                               colour = .PLOT_DENSITY, linewidth = 0.5) +
+        ggplot2::geom_point(colour = .PLOT_DENSITY, size = 1.8) +
+        ggplot2::facet_wrap(~ type, scales = "free", ncol = 2) + # own axes: thresholds and interactions differ in scale
+        ggplot2::labs(x = NULL, y = NULL, caption = rule) +
+        ggplot2::theme_minimal(base_size = 12) +
+        ggplot2::theme(panel.grid.minor = ggplot2::element_blank(), panel.grid.major.y = ggplot2::element_blank(),
+                       strip.text = ggplot2::element_text(face = "bold"),
+                       plot.background = ggplot2::element_rect(fill = .PLOT_SURFACE, colour = NA),
+                       plot.caption = ggplot2::element_text(colour = "gray35", hjust = 0.5))
     return(p)
 }

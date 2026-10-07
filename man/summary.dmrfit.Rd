@@ -23,6 +23,9 @@ an object of class \code{summary.dmrfit} containing:
 \item{n_categories}{vector of category counts per node.}
 \item{with_prior}{logical, whether a prior was used.}
 \item{structured}{logical, whether the network structure was constrained.}
+\item{intervals}{a matrix with the Wald intervals of the free parameters, and their likelihood-ratio intervals
+when the fit has them (\code{lrt_intervals = TRUE}), at the level of the fit.}
+\item{level}{the level of the intervals.}
 }
 \description{
 Produces a detailed summary of a fitted discrete MRF model, analogous to

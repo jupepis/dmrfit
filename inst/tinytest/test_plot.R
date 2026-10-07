@@ -102,3 +102,50 @@ expect_error(plot(fit_nobf, type = "bf"), "savage_dickey = TRUE")
 expect_error(plot(fit, type = "bf_matrix"))
 # for dmrfit_bayes, the circle area is the chosen posterior summary
 expect_equal(sort(plot(fit_b, type = "bf", estimate = "mean")$data$weight), sort(unname(abs(est("mean")))))
+
+# --- trace and density: by default the four interactions with the largest |posterior mode|, panels titled with the
+# variable names; pars by name or position, at most 9
+inter_b <- dmrfit:::.interaction_estimates(fit_b, "mode")
+top4 <- inter_b$name[order(-abs(inter_b$estimate))][1:4]
+p_tr <- plot(fit_b, type = "trace")
+expect_equal(levels(p_tr$data$parameter), dmrfit:::.par_labels(top4, colnames(X)))
+expect_equal(nrow(p_tr$data), 4 * ncol(fit_b$draws))
+expect_equal(p_tr$data$value[p_tr$data$parameter == levels(p_tr$data$parameter)[1]], unname(fit_b$draws[top4[1], ]))
+expect_equal(dmrfit:::.par_labels(c("sigma[2,1]", "mu[1,3]"), colnames(X)), c("D3-D6", "D3: threshold 3"))
+expect_equal(levels(plot(fit_b, type = "trace", pars = c(1, 13))$data$parameter),
+             dmrfit:::.par_labels(names(fit_b$argument)[c(1, 13)], colnames(X)))
+expect_silent(ggplot2::ggplot_build(p_tr))
+# density: solid line at the posterior summary, dashed lines at the HPD interval of mass prob
+p_de <- plot(fit_b, type = "density", pars = "sigma[2,1]", estimate = "median", prob = 0.9)
+z <- fit_b$draws["sigma[2,1]", ]
+expect_equal(ggplot2::layer_data(p_de, 3)$xintercept, median(z))  # layers: area, curve, summary, lower, upper
+expect_equal(c(ggplot2::layer_data(p_de, 4)$xintercept, ggplot2::layer_data(p_de, 5)$xintercept), dmrfit:::.hdi(z, 0.9))
+# panels in rows of up to three
+expect_equal(p_tr$facet$params$ncol, 2)
+expect_equal(plot(fit_b, type = "trace", pars = 1:3)$facet$params$ncol, 3)
+expect_equal(plot(fit_b, type = "trace", pars = 1:5)$facet$params$ncol, 3)
+expect_silent(ggplot2::ggplot_build(p_de))
+# checks
+expect_error(plot(fit, type = "trace"), "dmrfit_bayes")
+expect_error(plot(fit_b, type = "trace", pars = 1:10), "At most 9")
+expect_error(plot(fit_b, type = "density", pars = "sigma[9,1]"), "unknown parameter")
+expect_error(plot(fit_b, type = "density", pars = 0), "positions between")
+expect_error(plot(fit_b, type = "density", prob = 1), "between 0 and 1")
+
+# --- intervals: thresholds and interactions in separate panels, sorted by estimate; LRT intervals when the fit has
+# them, otherwise Wald, at the level of the fit; HPD intervals for dmrfit_bayes
+p_iv <- plot(fit, type = "intervals")
+expect_equal(nrow(p_iv$data), length(fit$argument))
+expect_equal(unname(cbind(p_iv$data$lower, p_iv$data$upper)), unname(confint(fit, method = "wald")))
+expect_true(grepl("Wald", p_iv$labels$caption))
+fit_l <- dmrfit(X, lrt_intervals = TRUE, level = 0.9)
+p_l <- plot(fit_l, type = "intervals")
+expect_equal(unname(cbind(p_l$data$lower, p_l$data$upper)), unname(confint(fit_l)))
+expect_true(grepl("90% likelihood-ratio", p_l$labels$caption))
+ord <- split(p_l$data, p_l$data$type)
+expect_true(all(vapply(ord, function(d) !is.unsorted(d$center[order(as.integer(d$label))]), logical(1))))
+p_h <- plot(fit_b, type = "intervals", pars = c("mu[1,1]", "sigma[2,1]"), prob = 0.8)
+expect_equal(unname(p_h$data$upper[2]), dmrfit:::.hdi(fit_b$draws["sigma[2,1]", ], 0.8)[2])
+expect_equal(levels(p_h$data$type), c("Thresholds", "Interactions"))
+expect_silent(ggplot2::ggplot_build(p_l))
+

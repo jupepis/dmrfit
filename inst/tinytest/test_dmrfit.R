@@ -38,6 +38,77 @@ fit_s_sd <- dmrfit(X, structure = S, with_prior = TRUE, savage_dickey = TRUE, M 
 expect_equal(names(fit_s_sd$savage_dickey$bf_01), setdiff(names(fit_s$argument)[-(1:12)], "sigma[2,1]"))
 expect_stdout(print(summary(fit_s_sd)), "constrained")
 
+# --- constrained fit: the sandwich covariance comes from the free parameters only, zero for the absent edges
+free <- c(rep(TRUE, 12), S[lower.tri(S)] == 1)
+Hf_inv <- solve(fit_s$utils$hessian[free, free])
+expect_equal(fit_s$utils$HW[free, free], Hf_inv %*% fit_s$utils$FisherInfo[free, free] %*% Hf_inv)
+expect_true(all(fit_s$utils$HW[!free, ] == 0) && all(fit_s$utils$HW[, !free] == 0))
+# with every edge present, the constrained construction gives the sandwich of the unconstrained fit (with and without
+# the prior)
+S_all <- matrix(1, 4, 4); diag(S_all) <- 0
+for (pr in c(FALSE, TRUE)) {
+    expect_equal(dmrfit(X, structure = S_all, with_prior = pr)$utils$HW, dmrfit(X, with_prior = pr)$utils$HW, tolerance = 1e-8)
+}
+
+# --- profile likelihood-ratio intervals: the adjusted profile statistic equals the chi-square quantile at both bounds
+fit_lrt <- dmrfit(X, with_prior = TRUE, lrt_intervals = TRUE, level = 0.9)
+li <- fit_lrt$lrt_intervals
+expect_equal(rownames(li), names(fit_lrt$argument))
+expect_equal(li$C, diag(solve(fit_lrt$utils$hessian)) / diag(fit_lrt$utils$HW))
+expect_true(all(li$lower < li$estimate & li$estimate < li$upper))
+Xs <- cbind(as.matrix(X) - 1, 2 * t(apply(as.matrix(X) - 1, 1, function(x) { M <- x %*% t(x); M[lower.tri(M)] })))
+profile_nll <- function(k, value) {
+    dmrfit:::cpp_optimize_profile(data = Xs, parinit = fit_lrt$argument, which_parconstr = k - 1, parconstr = value,
+                                  n_categories = rep(4, 4), P = 4, f_term = sqrt(.Machine$double.eps),
+                                  m_term = sqrt(.Machine$double.eps), n_iter_max = 100, rinit = 1, rmax = 10,
+                                  with_prior = TRUE, epsilon = 1e-6, ncores = 1L, thresholds_alpha = 0.5,
+                                  thresholds_beta = 0.5, interactions_location = 0, interactions_scale = 2.5)$utils$value
+}
+stat <- function(k, value) li$C[k] * 2 * (profile_nll(k, value) - fit_lrt$utils$value)
+for (k in c(1, 12, 13, 18)) {
+    expect_equal(c(stat(k, li$lower[k]), stat(k, li$upper[k])), rep(qchisq(0.9, 1), 2), tolerance = 1e-3)
+}
+# the profile fixes theta_k and optimizes the other parameters: their gradient is close to zero
+prof <- dmrfit:::cpp_optimize_profile(data = Xs, parinit = fit_lrt$argument, which_parconstr = 12, parconstr = li$upper[13],
+                                      n_categories = rep(4, 4), P = 4, f_term = sqrt(.Machine$double.eps),
+                                      m_term = sqrt(.Machine$double.eps), n_iter_max = 100, rinit = 1, rmax = 10,
+                                      with_prior = TRUE, epsilon = 1e-6, ncores = 1L, thresholds_alpha = 0.5,
+                                      thresholds_beta = 0.5, interactions_location = 0, interactions_scale = 2.5)
+expect_equal(prof$argument[13], li$upper[13])
+expect_true(max(abs(prof$utils$gradient[-13])) < 1)
+# a subset of parameters by name
+expect_equal(rownames(dmrfit(X, lrt_intervals = c("sigma[2,1]", "mu[1,1]"))$lrt_intervals), c("sigma[2,1]", "mu[1,1]"))
+expect_error(dmrfit(X, lrt_intervals = "sigma[9,1]"), "unknown parameter")
+expect_true(is.null(dmrfit(X)$lrt_intervals))
+# fewer than 10 observations per free parameter: a warning suggests the likelihood-ratio intervals
+expect_warning(dmrfit(X[1:100, ]), "lrt_intervals = TRUE")
+expect_silent(dmrfit(X[1:100, ], lrt_intervals = "sigma[2,1]"))
+expect_silent(dmrfit(X))
+# constrained fit: intervals for the free parameters only
+expect_equal(rownames(dmrfit(X, structure = S, lrt_intervals = TRUE)$lrt_intervals), names(fit_s$argument)[free])
+expect_error(dmrfit(X, lrt_intervals = NA), "TRUE, FALSE or a vector")
+expect_error(dmrfit(X, level = 1), "between 0 and 1")
+
+# --- confint(): stored likelihood-ratio intervals, or Wald intervals from the sandwich
+expect_equal(unname(confint(fit_lrt, level = 0.9)), unname(as.matrix(li[, c("lower", "upper")])))
+expect_equal(colnames(confint(fit_lrt, level = 0.9)), c("5 %", "95 %"))
+wald <- confint(fit_lrt, parm = "sigma[2,1]", method = "wald")  # at the level of the fit, 0.9
+expect_equal(unname(wald[1, ]), unname(fit_lrt$argument["sigma[2,1]"] + c(-1, 1) * qnorm(0.95) * sqrt(fit_lrt$utils$HW[13, 13])))
+expect_equal(rownames(confint(fit_lrt, parm = c(1, 13), level = 0.9)), names(fit_lrt$argument)[c(1, 13)])
+expect_equal(confint(fit_lrt), confint(fit_lrt, level = 0.9))  # default: the level of the fit
+expect_error(confint(fit_lrt, level = 0.95), "computed at level 0.9")
+# summary(): Wald and likelihood-ratio intervals next to each other, at the level of the fit
+sm <- summary(fit_lrt)
+expect_equal(sm$level, 0.9)
+expect_equal(colnames(sm$intervals), c("Wald lower", "Wald upper", "LRT lower", "LRT upper"))
+expect_equal(unname(sm$intervals[, 3:4]), unname(as.matrix(li[, c("lower", "upper")])))
+expect_equal(unname(sm$intervals[, 1:2]), unname(confint(fit_lrt, method = "wald")))
+expect_equal(colnames(summary(dmrfit(X))$intervals), c("Wald lower", "Wald upper"))
+expect_stdout(print(sm), "Intervals \\(90%\\)")
+expect_error(confint(dmrfit(X)), "lrt_intervals = TRUE")
+expect_error(confint(fit_lrt, parm = "sigma[9,1]", level = 0.9), "unknown parameter")
+expect_error(confint(fit_s, parm = "sigma[2,1]", method = "wald"), "absent edges")
+
 # --- Savage-Dickey Bayes factors
 set.seed(10)
 before <- .Random.seed

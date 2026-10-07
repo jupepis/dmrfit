@@ -68,3 +68,9 @@ f1 <- quiet_fit(seed = 7)
 expect_identical(.Random.seed, before)
 expect_identical(quiet_fit(seed = 7)$draws, f1$draws)
 expect_false(identical(quiet_fit(seed = 8)$draws, f1$draws))
+
+# --- confint(): highest posterior density intervals of the draws
+ci <- confint(fits$core, parm = c("mu[1,1]", "sigma[2,1]"), level = 0.9)
+expect_equal(unname(ci[2, ]), dmrfit:::.hdi(fits$core$draws["sigma[2,1]", ], 0.9))
+expect_equal(nrow(confint(fits$core)), nrow(fits$core$draws))
+

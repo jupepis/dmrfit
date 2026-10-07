@@ -18,6 +18,8 @@ dmrfit(
   interactions_location = 0,
   interactions_scale = 2.5,
   proposal_df = 5,
+  lrt_intervals = FALSE,
+  level = 0.95,
   seed = 123
 )
 }
@@ -48,6 +50,16 @@ dmrfit(
 
 \item{proposal_df}{degrees of freedom for the multivariate t proposal distribution in the BSIR step (default is 5). Only used when \code{savage_dickey = TRUE}.}
 
+\item{lrt_intervals}{whether to compute likelihood-ratio intervals (default is FALSE; see Details): \code{TRUE}
+for all free parameters, or a vector of parameter names (as in \code{names(fit$argument)}) for some of them. Each
+interval needs a series of constrained optimizations, which take a while for large networks. They are returned
+by \code{confint(fit, method = "lrt")}. When they are not computed and there are fewer than 10 observations per
+free parameter, a warning suggests them.}
+
+\item{level}{confidence level of the intervals (default is 0.95): the Wald intervals printed by \code{summary()}
+and the likelihood-ratio intervals, so that both are at the same level. It is also the default level of
+\code{confint()}.}
+
 \item{seed}{random seed for reproducibility of the BSIR step (default is 123). The caller's random number stream is restored on exit. Only used when \code{savage_dickey = TRUE}.}
 }
 \value{
@@ -63,6 +75,20 @@ maximize the pseudolikelihood, or the pseudo-posterior with \code{with_prior = T
 trust region algorithm; the standard errors come from the Huber-White sandwich estimator. Optionally, Savage-Dickey
 Bayes factors are computed for each pairwise interaction from the coordinate-rescaled pseudo-posterior (Arena and
 Marsman, 2026).
+}
+\details{
+The likelihood-ratio interval of a parameter \eqn{\theta_k} is based on its profile pseudolikelihood:
+for each value of \eqn{\theta_k}, the other parameters are set to the values that maximize the pseudolikelihood
+(or the pseudo-posterior with \code{with_prior = TRUE}). The interval collects the values where
+\deqn{C_k \cdot 2 [\log PL(\hat\theta) - \max_{\theta_{-k}} \log PL(\theta_k, \theta_{-k})] \le \chi^2_{1, level}.}
+For a full likelihood the statistic would be \eqn{\chi^2_1}-distributed (\eqn{C_k = 1}); for the
+pseudolikelihood it is \eqn{\lambda_k \chi^2_1}-distributed, with \eqn{\lambda_k = \Sigma_{kk} / (H^{-1})_{kk}},
+because the curvature \eqn{H} of the pseudolikelihood overstates the information in the data
+(\eqn{\Sigma} is the sandwich covariance). The scaling \eqn{C_k = 1 / \lambda_k} calibrates the statistic (Pace,
+Salvan and Sartori, 2011; Varin, Reid and Firth, 2011). Unlike the Wald intervals, the likelihood-ratio intervals
+can be asymmetric around the estimate. The bounds are found by \code{uniroot} on each side of the estimate. The
+asymmetry matters when the sample size is small relative to the number of parameters (Arena and Marsman, 2026), so
+with fewer than 10 observations per free parameter \code{dmrfit()} warns that the Wald intervals may be inaccurate.
 }
 \examples{
 
@@ -86,8 +112,14 @@ summary(fit_constrained)
 Arena, G. and Marsman, M. (2026). Bayesian inference for discrete Markov random fields through
 coordinate rescaling. arXiv preprint. \doi{10.48550/arXiv.2601.17205}
 
+Pace, L., Salvan, A., and Sartori, N. (2011). Adjusting composite likelihood ratio statistics. \emph{Statistica
+Sinica}, 21(1), 129-148.
+
 Skare, Ø., Bølviken, E., and Holden, L. (2003). Improved sampling-importance resampling and reduced bias importance
 sampling. \emph{Scandinavian Journal of Statistics}, 30(4), 719-737.
+
+Varin, C., Reid, N., and Firth, D. (2011). An overview of composite likelihood methods. \emph{Statistica Sinica},
+21(1), 5-42.
 }
 \seealso{
 \code{\link{dmrfit_bayes}} for posterior sampling.

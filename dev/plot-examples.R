@@ -18,6 +18,7 @@ S <- matrix(1, length(items), length(items), dimnames = list(items, items)); dia
 S[clusters[items] == "Dysphoria", clusters[items] != "Dysphoria"] <- 0      # no edges between the two clusters
 S[clusters[items] != "Dysphoria", clusters[items] == "Dysphoria"] <- 0
 fit_constrained <- dmrfit(rads2[, items], structure = S, with_prior = TRUE)
+fit_lrt  <- dmrfit(rads2[, items], with_prior = TRUE, lrt_intervals = TRUE)  # likelihood-ratio intervals
 fit_bayes <- dmrfit_bayes(rads2[, items], nsim = 2000, burnin = 1000, progress = FALSE) # CoRe posterior draws
 
 # --- plots ------------------------------------------------------------------------------------------------------------
@@ -37,7 +38,14 @@ pages <- list(
                                                                       node_size = 13),
     "11. Bayes factors (dmrfit, SIR)"                         = plot(fit_bf, type = "bf"),
     "12. Bayes factors (dmrfit_bayes, posterior mode)"        = plot(fit_bayes, type = "bf"),
-    "13. the returned ggplot can be modified"                 = plot(fit_bf, groups = clusters[items]) +
+    "13. trace (default: the 4 interactions with the largest |posterior mode|)" = plot(fit_bayes, type = "trace"),
+    "14. density, thresholds of D1 and interactions of D1 (9 panels)" = plot(fit_bayes, type = "density",
+                                                                     pars = c(paste0("mu[1,", 1:3, "]"), paste0("sigma[", 2:7, ",1]"))),
+    "15. density, posterior mean and 90% HPD interval"       = plot(fit_bayes, type = "density", estimate = "mean", prob = 0.9),
+    "16. intervals (dmrfit, Wald)"                            = plot(fit_bf, type = "intervals"),
+    "17. intervals (dmrfit, likelihood-ratio)"                = plot(fit_lrt, type = "intervals"),
+    "18. intervals (dmrfit_bayes, HPD)"                       = plot(fit_bayes, type = "intervals"),
+    "19. the returned ggplot can be modified"                 = plot(fit_bf, groups = clusters[items]) +
                                                                   labs(title = "RADS-2: dysphoria and anhedonia items") +
                                                                   theme(legend.position = "right")
 )
