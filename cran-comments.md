@@ -4,6 +4,7 @@
 * GitHub Actions: Windows (R release), Ubuntu (R devel, release, oldrel-1)
 * win-builder: R devel
 * R-hub: linux, windows, macos-arm64, clang-asan, gcc14 and gcc16 (Fedora), all R devel
+* local: tests and examples without the suggested package igraph
 
 ## R CMD check results
 
