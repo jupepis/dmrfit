@@ -19,7 +19,28 @@
 #' @param interactions_location location parameter for the Cauchy prior on pairwise interactions (default is 0.0). Only used when \code{with_prior = TRUE}.
 #' @param interactions_scale scale parameter for the Cauchy prior on pairwise interactions (default is 2.5). Only used when \code{with_prior = TRUE}.
 #' @param proposal_df degrees of freedom for the multivariate t proposal distribution in the BSIR step (default is 5). Only used when \code{savage_dickey = TRUE}.
+#' @param lrt_intervals whether to compute likelihood-ratio intervals (default is FALSE; see Details): \code{TRUE}
+#'   for all free parameters, or a vector of parameter names (as in \code{names(fit$argument)}) for some of them. Each
+#'   interval needs a series of constrained optimizations, which take a while for large networks. They are returned
+#'   by \code{confint(fit, method = "lrt")}. When they are not computed and there are fewer than 10 observations per
+#'   free parameter, a warning suggests them.
+#' @param level confidence level of the intervals (default is 0.95): the Wald intervals printed by \code{summary()}
+#'   and the likelihood-ratio intervals, so that both are at the same level. It is also the default level of
+#'   \code{confint()}.
 #' @param seed random seed for reproducibility of the BSIR step (default is 123). The caller's random number stream is restored on exit. Only used when \code{savage_dickey = TRUE}.
+#'
+#' @details The likelihood-ratio interval of a parameter \eqn{\theta_k} is based on its profile pseudolikelihood:
+#' for each value of \eqn{\theta_k}, the other parameters are set to the values that maximize the pseudolikelihood
+#' (or the pseudo-posterior with \code{with_prior = TRUE}). The interval collects the values where
+#' \deqn{C_k \cdot 2 [\log PL(\hat\theta) - \max_{\theta_{-k}} \log PL(\theta_k, \theta_{-k})] \le \chi^2_{1, level}.}
+#' For a full likelihood the statistic would be \eqn{\chi^2_1}-distributed (\eqn{C_k = 1}); for the
+#' pseudolikelihood it is \eqn{\lambda_k \chi^2_1}-distributed, with \eqn{\lambda_k = \Sigma_{kk} / (H^{-1})_{kk}},
+#' because the curvature \eqn{H} of the pseudolikelihood overstates the information in the data
+#' (\eqn{\Sigma} is the sandwich covariance). The scaling \eqn{C_k = 1 / \lambda_k} calibrates the statistic (Pace,
+#' Salvan and Sartori, 2011; Varin, Reid and Firth, 2011). Unlike the Wald intervals, the likelihood-ratio intervals
+#' can be asymmetric around the estimate. The bounds are found by \code{uniroot} on each side of the estimate. The
+#' asymmetry matters when the sample size is small relative to the number of parameters (Arena and Marsman, 2026), so
+#' with fewer than 10 observations per free parameter \code{dmrfit()} warns that the Wald intervals may be inaccurate.
 #'
 #' @return an object of class \code{dmrfit}, a list including the estimates (\code{argument}), the value, gradient,
 #'   Hessian and sandwich covariance of the objective at the estimates (\code{utils}), the matched call
@@ -30,8 +51,14 @@
 #' @references Arena, G. and Marsman, M. (2026). Bayesian inference for discrete Markov random fields through
 #' coordinate rescaling. arXiv preprint. \doi{10.48550/arXiv.2601.17205}
 #'
+#' Pace, L., Salvan, A., and Sartori, N. (2011). Adjusting composite likelihood ratio statistics. \emph{Statistica
+#' Sinica}, 21(1), 129-148.
+#'
 #' Skare, Ø., Bølviken, E., and Holden, L. (2003). Improved sampling-importance resampling and reduced bias importance
 #' sampling. \emph{Scandinavian Journal of Statistics}, 30(4), 719-737.
+#'
+#' Varin, C., Reid, N., and Firth, D. (2011). An overview of composite likelihood methods. \emph{Statistica Sinica},
+#' 21(1), 5-42.
 #'
 #' @seealso \code{\link{dmrfit_bayes}} for posterior sampling.
 #'
@@ -54,10 +81,17 @@
 #'
 #' @export
 #'
-dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, savage_dickey = FALSE, M = 1000, oversampling = 10, ncores = 1, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, proposal_df = 5, seed = 123) {
+dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, savage_dickey = FALSE, M = 1000, oversampling = 10, ncores = 1, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, proposal_df = 5, lrt_intervals = FALSE, level = 0.95, seed = 123) {
 
     # save the matched call for print and summary methods
     cl <- match.call()
+
+    if (!(is.character(lrt_intervals) || (is.logical(lrt_intervals) && length(lrt_intervals) == 1 && !is.na(lrt_intervals)))) {
+        stop("lrt_intervals must be TRUE, FALSE or a vector of parameter names.")
+    }
+    if (!is.numeric(level) || length(level) != 1 || level <= 0 || level >= 1) {
+        stop("level must be a number between 0 and 1.")
+    }
 
     # validate savage_dickey requires with_prior
     if (savage_dickey && !with_prior)
@@ -82,7 +116,7 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
     }
 
      # remove NAs from data if any exist
-    data <- data[!is.na(rowSums(data)), ]
+    data <- data[!is.na(rowSums(data)), , drop = FALSE]
 
     # check that columns of data are integer and non-negative
     if(any(data < 0) || any(data != floor(data))) {
@@ -148,12 +182,14 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
     # metadata needed by print/summary
     pmles$call <- cl
     pmles$P <- P
+    pmles$var_names <- if (is.null(colnames(data))) paste0("V", seq_len(P)) else colnames(data)[seq_len(P)] # node labels for plot()
     pmles$n_categories <- n_categories
     pmles$N <- nrow(data)
     pmles$with_prior <- with_prior
     pmles$structured <- !is.null(structure)
     pmles$structure <- structure
     pmles$ncores <- ncores
+    pmles$level <- level # level of the Wald and likelihood-ratio intervals
 
     # label the parameter vector
     n_thresholds <- sum(n_categories - 1)
@@ -164,6 +200,51 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
         lapply((j + 1):P, function(i) paste0("sigma[", i, ",", j, "]"))
     }))
     names(pmles$argument) <- c(thresh_names, inter_names)
+
+    # free parameters: all thresholds, and the interactions present in the structure
+    free_idx <- if (is.null(structure)) seq_len(n_pars) else which(c(rep(TRUE, n_thresholds), structure[lower.tri(structure)] == 1))
+
+    # --- sandwich covariance of a constrained fit: from the free parameters only (the absent edges are not estimated),
+    # with the same construction as dmrf_deriv(): the sandwich of the pseudolikelihood, H^-1 J H^-1, and with a prior
+    # the inverse of its inverse plus the prior precision ---
+    if (!is.null(structure)) {
+        lik <- if (with_prior) {
+            dmrf_deriv(pars = pmles$argument, data = data, P = P, n_categories = n_categories, with_prior = FALSE,
+                       ncores = ncores, thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta,
+                       interactions_location = interactions_location, interactions_scale = interactions_scale)
+        } else pmles$utils
+        H_free_inv <- solve(lik$hessian[free_idx, free_idx, drop = FALSE])
+        HW_free <- H_free_inv %*% lik$FisherInfo[free_idx, free_idx, drop = FALSE] %*% H_free_inv
+        if (with_prior) {
+            prior_precision <- (pmles$utils$hessian - lik$hessian)[free_idx, free_idx, drop = FALSE] # diagonal
+            HW_free <- solve(solve(HW_free) + prior_precision)
+        }
+        HW <- matrix(0, n_pars, n_pars)
+        HW[free_idx, free_idx] <- HW_free
+        pmles$utils$HW <- HW
+    }
+
+    # --- few observations per parameter: the Wald intervals assume a symmetric sampling distribution ---
+    if (isFALSE(lrt_intervals) && nrow(data) < 10 * length(free_idx)) {
+        warning("The sample size (", nrow(data), ") is small relative to the number of free parameters (", length(free_idx),
+                "): the Wald intervals assume a symmetric sampling distribution and may be inaccurate. Likelihood-ratio ",
+                "intervals are suggested: refit with lrt_intervals = TRUE (or a vector of parameter names).")
+    }
+
+    # --- likelihood-ratio intervals of the free parameters ---
+    if (is.character(lrt_intervals) || isTRUE(lrt_intervals)) {
+        lrt_idx <- if (is.character(lrt_intervals)) match(lrt_intervals, names(pmles$argument)) else free_idx
+        if (anyNA(lrt_idx) || !all(lrt_idx %in% free_idx)) {
+            stop("lrt_intervals: unknown parameter(s) or absent edges of the constrained fit: ",
+                 paste(lrt_intervals[is.na(lrt_idx) | !(lrt_idx %in% free_idx)], collapse = ", "), ".")
+        }
+        pmles$lrt_intervals <- .lrt_intervals(pars = pmles$argument, nll_hat = pmles$utils$value, lrt_idx = lrt_idx,
+                                              data = data, free_idx = free_idx, H = pmles$utils$hessian,
+                                              Sigma = pmles$utils$HW, level = level, P = P, n_categories = n_categories,
+                                              with_prior = with_prior, ncores = ncores, thresholds_alpha = thresholds_alpha,
+                                              thresholds_beta = thresholds_beta, interactions_location = interactions_location,
+                                              interactions_scale = interactions_scale)
+    }
 
     # --- Savage-Dickey via BSIR ---
     if(savage_dickey){
@@ -373,6 +454,9 @@ print.dmrfit <- function(x, ...) {
 #'   \item{n_categories}{vector of category counts per node.}
 #'   \item{with_prior}{logical, whether a prior was used.}
 #'   \item{structured}{logical, whether the network structure was constrained.}
+#'   \item{intervals}{a matrix with the Wald intervals of the free parameters, and their likelihood-ratio intervals
+#'     when the fit has them (\code{lrt_intervals = TRUE}), at the level of the fit.}
+#'   \item{level}{the level of the intervals.}
 #'
 #' @export
 #'
@@ -427,7 +511,9 @@ summary.dmrfit <- function(object, ...) {
         n_categories = n_categories,
         with_prior = object$with_prior,
         structured = object$structured,
-        savage_dickey = object$savage_dickey
+        savage_dickey = object$savage_dickey,
+        intervals = .summary_intervals(object),
+        level = .fit_level(object)
     )
     class(out) <- "summary.dmrfit"
     out
@@ -471,6 +557,10 @@ print.summary.dmrfit <- function(x, ...) {
     printCoefmat(x$interactions, P.values = TRUE, has.Pvalue = TRUE,
                  signif.stars = TRUE, ...)
 
+    cat("\nIntervals (", format(100 * x$level), "%): Wald (sandwich standard errors)",
+        if (ncol(x$intervals) == 4) " and likelihood-ratio", "\n", sep = "")
+    print(round(x$intervals, 4))
+
     cat("\nNegative pseudo-loglikelihood:", round(x$neg_pseudo_loglik, 4), "\n")
 
     if (!is.null(x$savage_dickey)) {
@@ -499,3 +589,112 @@ print.summary.dmrfit <- function(x, ...) {
 }
 
 
+#' lrt_intervals (internal)
+#' @description Adjusted profile likelihood-ratio intervals of parameters of a dmrfit() fit. For each parameter k, the
+#'   profile negative log pseudolikelihood fixes theta_k (and the absent edges of a constrained fit at 0) and
+#'   minimizes over the other free parameters (cpp_optimize_profile, warm-started at the previous solution); the bounds
+#'   are the values where C_k * 2 * (profile nll - nll_hat) = qchisq(level, 1), with C_k = (H^-1)_kk / Sigma_kk and H
+#'   the negative Hessian of the free parameters (Pace, Salvan and Sartori, 2011). Each bound is bracketed by steps of
+#'   sqrt(Sigma_kk) away from the estimate (doubling up to 2^10 steps) and found by uniroot.
+#' @param pars named vector of the estimates
+#' @param nll_hat negative log pseudolikelihood (or pseudo-posterior) at the estimates
+#' @param lrt_idx indices of the parameters that get an interval
+#' @param data data matrix with the cross-product columns, as passed to cpp_optimize()
+#' @param free_idx indices of the free parameters
+#' @param H negative Hessian of the objective at the estimates
+#' @param Sigma sandwich covariance at the estimates
+#' @param level confidence level
+#' @param P,n_categories,with_prior,ncores,thresholds_alpha,thresholds_beta,interactions_location,interactions_scale as in
+#'   dmrfit()
+#' @return a data frame with one row per parameter in lrt_idx (row names: the parameter names) and the columns
+#'   estimate, lower, upper and C; the level is stored in attr(, "level")
+#' @noRd
+.lrt_intervals <- function(pars, nll_hat, lrt_idx, data, free_idx, H, Sigma, level, P, n_categories, with_prior, ncores,
+                           thresholds_alpha, thresholds_beta, interactions_location, interactions_scale) {
+    absent <- setdiff(seq_along(pars), free_idx) # absent edges of a constrained fit, fixed at 0
+    cutoff <- stats::qchisq(level, df = 1)
+    H_inv <- matrix(0, length(pars), length(pars))
+    H_inv[free_idx, free_idx] <- solve(H[free_idx, free_idx, drop = FALSE])
+
+    # --- profile negative log pseudolikelihood at theta_k = value, warm-started at the last solution (kept in an
+    # environment, so that every evaluation can update it) ---
+    warm <- new.env()
+    warm$start <- pars
+    profile_nll <- function(k, value) {
+        fit <- cpp_optimize_profile(data = data, parinit = warm$start, which_parconstr = c(absent, k) - 1,
+                                    parconstr = c(rep(0, length(absent)), value), n_categories = n_categories, P = P,
+                                    f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps), n_iter_max = 100,
+                                    rinit = 1.0, rmax = 10.0, with_prior = with_prior, epsilon = 1e-06, ncores = ncores,
+                                    thresholds_alpha = thresholds_alpha, thresholds_beta = thresholds_beta,
+                                    interactions_location = interactions_location, interactions_scale = interactions_scale)
+        warm$start <- as.vector(fit$argument)
+        return(fit$utils$value)
+    }
+
+    out <- data.frame(estimate = unname(pars[lrt_idx]), lower = NA_real_, upper = NA_real_,
+                      C = diag(H_inv)[lrt_idx] / diag(Sigma)[lrt_idx], row.names = names(pars)[lrt_idx])
+    for (m in seq_along(lrt_idx)) {
+        k <- lrt_idx[m]
+        # adjusted profile statistic minus the cutoff, as a function of theta_k
+        g <- function(value) out$C[m] * 2 * (profile_nll(k, value) - nll_hat) - cutoff
+        step <- sqrt(Sigma[k, k])
+        for (side in c(-1, 1)) {
+            warm$start <- pars
+            # --- bracket the root: move away from the estimate until the statistic exceeds the cutoff ---
+            near <- pars[k]
+            g_near <- -cutoff # the statistic is 0 at the estimate
+            far <- pars[k] + side * step
+            g_far <- g(far)
+            doublings <- 0
+            while (is.finite(g_far) && g_far < 0 && doublings < 10) {
+                doublings <- doublings + 1
+                near <- far
+                g_near <- g_far
+                far <- pars[k] + side * step * 2^doublings
+                g_far <- g(far)
+            }
+            # the signs at the ends are those found while bracketing (the profile optimizer stops at a tolerance, so a
+            # new evaluation at the same point could differ slightly)
+            ends <- if (side < 0) list(x = c(far, near), f = c(g_far, g_near)) else list(x = c(near, far), f = c(g_near, g_far))
+            bound <- if (is.finite(g_far) && g_far >= 0) {
+                tryCatch(stats::uniroot(g, interval = ends$x, f.lower = ends$f[1], f.upper = ends$f[2], tol = 1e-6 * step)$root,
+                         error = function(e) NA_real_)
+            } else NA_real_
+            if (side < 0) out$lower[m] <- bound else out$upper[m] <- bound
+        }
+    }
+    if (anyNA(out[, c("lower", "upper")])) {
+        warning("Likelihood-ratio intervals: some bounds could not be found (", sum(is.na(out[, c("lower", "upper")])),
+                " of ", 2 * nrow(out), "); they are NA.")
+    }
+    attr(out, "level") <- level
+    return(out)
+}
+
+
+#' fit_level (internal)
+#' @description Level of the intervals of a dmrfit fit (0.95 for fits made before the level argument).
+#' @param object a dmrfit object
+#' @return a number
+#' @noRd
+.fit_level <- function(object) {
+    return(if (is.null(object$level)) 0.95 else object$level)
+}
+
+
+#' summary_intervals (internal)
+#' @description Wald intervals of the free parameters of a dmrfit fit, with the likelihood-ratio intervals next to
+#'   them when the fit has them, at the level of the fit.
+#' @param object a dmrfit object
+#' @return a matrix with the columns Wald lower and upper, and LRT lower and upper
+#' @noRd
+.summary_intervals <- function(object) {
+    level <- .fit_level(object)
+    out <- confint(object, level = level, method = "wald")
+    colnames(out) <- c("Wald lower", "Wald upper")
+    if (!is.null(object$lrt_intervals)) {
+        lrt <- confint(object, level = level, method = "lrt")
+        out <- cbind(out, `LRT lower` = lrt[, 1], `LRT upper` = lrt[, 2])
+    }
+    return(out)
+}

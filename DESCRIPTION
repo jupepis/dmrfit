@@ -27,12 +27,14 @@ BugReports: https://github.com/jupepis/dmrfit/issues
 Depends:
     R (>= 4.0.0)
 Imports:
+    ggplot2,
     grDevices,
     graphics,
     parallel,
     Rcpp (>= 1.1.0),
     stats
 Suggests: 
+    igraph,
     tinytest
 LinkingTo:
     Rcpp,

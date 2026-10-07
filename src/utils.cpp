@@ -46,16 +46,14 @@ Rcpp::List dmrf_deriv(
     const double &interactions_location,
     const double &interactions_scale)
 {
-    arma::uword n,p,i,j,h;
-    arma::uword n_pars = pars.n_elem; // this must be equal to P+P*(P-1)/2 or to pars.n_elem
-    arma::uword N = data.n_rows;
-    arma::uword n_thresholds = arma::accu(n_categories-1);
+    arma::uword n_pars = pars.n_elem; // this must be equal to n_thresholds + P * (P - 1) / 2
+    arma::uword n_thresholds = arma::accu(n_categories - 1);
     arma::vec thresholds = pars(arma::span(0,n_thresholds-1));  // vector of thresholds parameters
     arma::vec interactions_vec = pars(arma::span(n_thresholds,n_pars-1));// vector of P*(P-1)/2 interaction parameters
 
     // building the symmetric matrix of interaction parameters from its lower triangular
     arma::mat lower_matrix_interactions(P,P,arma::fill::zeros);
-    arma::uvec lower_indices = arma::trimatl_ind(arma::size(lower_matrix_interactions), -1); // element indices of the lower triangular excluding the diagonal elements 
+    arma::uvec lower_indices = arma::trimatl_ind(arma::size(lower_matrix_interactions), -1); // element indices of the lower triangular excluding the diagonal elements
     lower_matrix_interactions(lower_indices) = interactions_vec;
     arma::mat interactions = arma::symmatl(lower_matrix_interactions);
 
@@ -65,256 +63,156 @@ Rcpp::List dmrf_deriv(
         // stop algorithm (this check can be handled at R-level)
     }
 
-    // utility [matrix 2 x P*(P-1)/2] where by column the indices (i,j) of the interaction effects 
-    arma::umat matrix_indices_sigma(2,P*(P-1)/2);
-    arma::uword l = 0;
-    for(j = 0; j < (P-1); j++){ // column j
-        for(i = (j+1); i < P; i++){ // row i
-            matrix_indices_sigma(0,l) = i;
-            matrix_indices_sigma(1,l) = j;
-            l++;
+    // --- Positions of the parameters of the full conditional of each node p: its thresholds and its P - 1 interactions ---
+    // category_offsets(p) is the position of the first threshold of node p; index_interaction(p, j) is the position of the
+    // interaction between nodes p and j (j != p), with the interactions in lower-triangular column order
+    arma::uvec category_offsets(P, arma::fill::zeros);
+    for(arma::uword p = 1; p < P; p++){
+        category_offsets(p) = category_offsets(p - 1) + n_categories(p - 1) - 1;
+    }
+    arma::umat index_interaction(P, P, arma::fill::zeros);
+    for(arma::uword j = 0; j < P; j++){
+        for(arma::uword i = j + 1; i < P; i++){
+            arma::uword index_ij = n_thresholds + j * P - j * (j + 1) / 2 + (i - j - 1);
+            index_interaction(i, j) = index_ij;
+            index_interaction(j, i) = index_ij;
         }
     }
 
-    // utility vectors indicating which stats and which category (of length n_thresholds - used in the hessian computation)
-    arma::uvec which_stats(n_thresholds,arma::fill::zeros);
-    arma::vec category_stats(n_thresholds,arma::fill::zeros);
-    l = 0; // reset index operator l
-    for(p = 0; p < P; p++){
-        for(h = 1; h < n_categories(p); h++){
-            which_stats(l) = p;
-            category_stats(l) = static_cast<double>(h);
-            l++;
-        }
+    // --- Unique response patterns and their frequencies: each pattern is processed once ---
+    arma::mat data_unique;
+    arma::vec frequency;
+    get_data_unique(data_unique, frequency, data.cols(0, P - 1));
+    arma::uword N_unique = data_unique.n_rows;
+
+    // --- Split the patterns into a fixed number of chunks, independent of ncores, summed in order after the parallel loop ---
+    // (the results do not depend on the number of threads; no BLAS routine is called inside the parallel loop, because BLAS
+    // libraries with their own threads are not safe to call from several threads at once)
+    arma::uword n_chunks = std::min<arma::uword>(16, N_unique);
+    arma::uvec chunk_start(n_chunks + 1);
+    for(arma::uword c = 0; c <= n_chunks; c++){
+        chunk_start(c) = (c * N_unique) / n_chunks;
     }
+    arma::vec loglik_chunk(n_chunks, arma::fill::zeros);
+    arma::mat gradient_chunk(n_pars, n_chunks, arma::fill::zeros);
+    arma::cube hessian_chunk(n_pars, n_pars, n_chunks, arma::fill::zeros);
+    arma::mat gradient_patterns(n_pars, N_unique, arma::fill::zeros); // negative gradient of one observation of each pattern
 
-
-    // creating empty objects where to save loglik, gradient and hessian computed per each person (statistical unit) , this is useful for the parallelization step
-    arma::vec loglik_vec(N,arma::fill::zeros);
-    arma::mat gradient_mat(n_pars,N,arma::fill::zeros);
-    arma::cube hessian_cube(n_pars,n_pars,N,arma::fill::zeros);
-    arma::cube square_score_cube(n_pars,n_pars,N,arma::fill::zeros);
-
-    // loop over people, in parallel over ncores threads: each person writes only to its own entries of loglik_vec,
-    // gradient_mat, square_score_cube and hessian_cube, which are summed after the loop
+    // --- Loop over the chunks, in parallel over ncores threads ---
     #ifdef _OPENMP
-    #pragma omp parallel for num_threads(ncores) if(ncores > 1) private(p, h, i, j)
+    #pragma omp parallel for num_threads(ncores) if(ncores > 1) schedule(static)
     #endif
-    for(n = 0; n < N; n++){
-        // select n-th person statistics
-        arma::vec stats_n = data.row(n).t(); // stats for n-th person {X1,X2,...,2XiXj}
-        // processing observed category per each X
-        arma::uvec stats_X_n = arma::conv_to<arma::uvec>::from(stats_n(arma::span(0,P-1)));
-        arma::vec pars_n(P+P*(P-1)/2,arma::fill::zeros);
-        for(p = 0; p < P; p++){
-            arma::uword which_threshold = stats_X_n(p);
-            if(which_threshold > 0){
-                arma::uword index_threshold_Xp = (which_threshold-1);
-                if(p>0){
-                    index_threshold_Xp += arma::accu(n_categories(arma::span(0,p-1))-1);
+    for(arma::uword c = 0; c < n_chunks; c++){
+        arma::mat& hessian_c = hessian_chunk.slice(c);
+
+        for(arma::uword n = chunk_start(c); n < chunk_start(c + 1); n++){
+            arma::vec stats_n = data_unique.row(n).t(); // stats {X1, X2, ..., XP} of the n-th pattern
+            double frequency_n = frequency(n);
+
+            // --- Weighted sum of the other variables of each node: sum_{j != p} sigma_pj x_j (as a loop, no BLAS call) ---
+            arma::vec xixj_sigma(P, arma::fill::zeros);
+            for(arma::uword p = 0; p < P; p++){
+                for(arma::uword j = 0; j < P; j++){
+                    xixj_sigma(p) += interactions(j, p) * stats_n(j); // the diagonal of interactions is 0.0
                 }
-                pars_n(p) = thresholds(index_threshold_Xp); // which_threshold-1 because in the thresholds vector we omit the baseline
             }
-        }
-        // filling in the interaction parameters
-        pars_n(arma::span(P,pars_n.n_elem-1)) = interactions_vec;
-        // calculating the numerator of the pseudo-loglikelihood for participant n
-        double loglik_n = arma::accu(pars_n(arma::span(0,P-1))); // sum_p{sum_h{threshold_h*I(x == h)}}
-        loglik_n += arma::accu((pars_n(arma::span(P,pars_n.n_elem-1)).t() * stats_n(arma::span(P,pars_n.n_elem-1)))); // sum_p{sum{2x_p*x_j*sigma_pj}
+            double loglik_n = 0.0;
+            arma::vec gradient_n(n_pars, arma::fill::zeros);
 
-        //for each p we have to compute the support (normalizing constant, denominator) for each item, that is ln[1+sum_h{exp(mu_h+h*sum_{j!=p}{x_jsigma_pj})}]
-        double support_n = 0.0;
-        arma::vec probs_n(n_thresholds,arma::fill::zeros);
-        arma::vec var_n(n_thresholds,arma::fill::zeros);
-        for(p = 0; p < P; p++){
-            double denom_p = 1.0;
-            arma::vec stats_excl_p = stats_n(arma::span(0,P-1));
-            stats_excl_p(p) = 0.0; // this could be avoided because the interaction matrix has 0.0 in the diagonal
-            for(h = 1; h < n_categories(p); h++){
-                arma::uword index_threshold_Xp = h-1;
-                if(p>0){
-                    index_threshold_Xp += arma::accu(n_categories(arma::span(0,p-1))-1);
+            for(arma::uword p = 0; p < P; p++){
+                arma::uword n_thresholds_p = n_categories(p) - 1;
+                arma::uword x_p = static_cast<arma::uword>(stats_n(p));
+
+                // --- Conditional probabilities P(Xp = h), h = 1, ..., m - 1 (log-sum-exp with the baseline category 0) ---
+                arma::vec success_event(n_thresholds_p);
+                for(arma::uword h = 1; h <= n_thresholds_p; h++){
+                    success_event(h - 1) = thresholds(category_offsets(p) + h - 1) + static_cast<double>(h) * xixj_sigma(p);
                 }
-                double success_event = arma::accu(thresholds(index_threshold_Xp) + static_cast<double>(h)*(stats_excl_p.t() * interactions.col(p)));                 
-                // calculating denom_p, and probs_n numerator
-                denom_p += std::exp(success_event);
-                probs_n(index_threshold_Xp) = std::exp(success_event); // success probability for p-th variable
-            }
-            support_n += std::log(denom_p);
-        
-            // calculate pr(Xp = h) and variances 
-            for(h = 1; h < n_categories(p); h++){
-                arma::uword index_threshold_Xp = h-1;
-                if(p>0){
-                    index_threshold_Xp += arma::accu(n_categories(arma::span(0,p-1))-1);
+                double max_event = std::max(0.0, success_event.max());
+                arma::vec probs_p = arma::exp(success_event - max_event);
+                double denom_p = std::exp(-max_event) + arma::accu(probs_p);
+                probs_p /= denom_p;
+                double log_denom_p = max_event + std::log(denom_p);
+
+                // --- Conditional expected value and variance of Xp ---
+                double expected_X = 0.0;
+                double expected_X_square = 0.0;
+                for(arma::uword h = 1; h <= n_thresholds_p; h++){
+                    expected_X += static_cast<double>(h) * probs_p(h - 1);
+                    expected_X_square += static_cast<double>(h * h) * probs_p(h - 1);
                 }
-                probs_n(index_threshold_Xp) /= denom_p;
-                var_n(index_threshold_Xp) = probs_n(index_threshold_Xp)*(1.0-probs_n(index_threshold_Xp)); // variance (for a bernoulli) p-th variable for level h
-            }
-        }
-        
-        // updating loglikelihood
-        loglik_n -= support_n;
-        loglik_vec(n) -= loglik_n; // (-=) because negative loglikelihood       
+                double variance_X = expected_X_square - expected_X * expected_X;
 
-        // calculate (negative) gradient
-        arma::vec gradient_n(n_pars,arma::fill::zeros);
-
-        // gradient for thresholds
-        for(p = 0; p < P; p++){
-            for(h = 1; h < n_categories(p); h++){
-                arma::uword index_threshold_Xp = h-1;
-                if(p>0){
-                    index_threshold_Xp += arma::accu(n_categories(arma::span(0,p-1))-1);
+                // --- Log pseudolikelihood of node p: mu_{p, x_p} + x_p sum_{j != p} sigma_pj x_j - log(denom_p) ---
+                if(x_p > 0){
+                    loglik_n += thresholds(category_offsets(p) + x_p - 1);
                 }
-                gradient_n(index_threshold_Xp) += static_cast<double>((stats_n(p) == h)) - probs_n(index_threshold_Xp);
-            }
-        }
+                loglik_n += stats_n(p) * xixj_sigma(p) - log_denom_p;
 
-        // gradient for interactions
-        gradient_n(arma::span(n_thresholds,n_pars-1)) += stats_n(arma::span(P,P*(P-1)/2+P-1)); // summing first part of the gradient, that is the sufficient statistic 2XiXj
-
-        arma::uword index_ij = n_thresholds;
-        for(j = 0; j < (P-1); j++){
-            // calculate expected Xj
-            double expected_Xj = 0.0;
-            for(h = 1; h < n_categories(j); h++){
-                arma::uword index_threshold_Xj = h-1;
-                if(j>0){
-                    index_threshold_Xj += arma::accu(n_categories(arma::span(0,j-1))-1);
+                // --- Gradient of the log pseudolikelihood: I(Xp = h) - P(Xp = h) for the thresholds of node p ---
+                for(arma::uword h = 1; h <= n_thresholds_p; h++){
+                    gradient_n(category_offsets(p) + h - 1) += static_cast<double>(x_p == h) - probs_p(h - 1);
                 }
-                expected_Xj += static_cast<double>(h)*probs_n(index_threshold_Xj);
-            }
-            for(i = (j+1); i < P; i++){
-                // calculate expected Xi
-                double expected_Xi = 0.0;
-                for(h = 1; h < n_categories(i); h++){
-                    arma::uword index_threshold_Xi = h-1;
-                    if(i>0){
-                        index_threshold_Xi += arma::accu(n_categories(arma::span(0,i-1))-1);
-                    }
-                    expected_Xi += static_cast<double>(h)*probs_n(index_threshold_Xi);
-                }
-                gradient_n(index_ij) -= (stats_n(j)*expected_Xi + stats_n(i)*expected_Xj); // subtracting the second part that is -Xj*\sum_h{h*P(Xi=h)}-Xi*\sum_h{h(P(Xj=h)}
-                index_ij++;
-            }
-        }
-
-        gradient_mat.col(n) -= gradient_n; // (-=) because negative gradient
-
-        // covariance matrix of score n-th person
-        square_score_cube.slice(n) = gradient_mat.col(n) * gradient_mat.col(n).t();
- 
-        // calculate (negative) Hessian
-        arma::mat hessian_n(n_pars,n_pars,arma::fill::zeros);
-
-        // hessian
-        for(j = 0; j < n_pars; j++){ // column j
-            for(i = j; i < n_pars; i++){ // row i
-                if((j < n_thresholds) && (i < n_thresholds)){ // hessian for (thresholds) - only when i == j (diagonal elements), off diagonal elements remain 0.0
-                    if(i == j){ // for (threshold_h,threshold_h) of the same X
-                        hessian_n(i,j) -= var_n(j);
-                        //if(n==0){
-                        //    Rcpp::Rcout << "hessian value for mu(" << which_stats(j) << "," << category_stats(j) << ") = " << var_n(j) << "\n";
-                        //}
-                    }
-                    else if(which_stats(i) == which_stats(j)){ // for(threshold_h,threshold_k) of the same node X
-                        hessian_n(i,j) += probs_n(i)*probs_n(j);
-                        hessian_n(j,i) = hessian_n(i,j);
+                // --- and x_j (x_p - E[Xp]) for the interactions of node p ---
+                for(arma::uword j = 0; j < P; j++){
+                    if(j != p && stats_n(j) != 0.0){
+                        gradient_n(index_interaction(p, j)) += stats_n(j) * (stats_n(p) - expected_X);
                     }
                 }
-                else if((j < n_thresholds) && (i >= n_thresholds) && arma::any(matrix_indices_sigma.col(i-n_thresholds) == which_stats(j))){ // hessian for (thresholds,interactions) - only for (mu_k,sigma_{kl}) or (mu_l,sigma_{kl}), derivatives for (mu_k,sigma_{rl}) remain 0.0
-                    arma::uword s = (!(matrix_indices_sigma(1,i-n_thresholds) == which_stats(j)))*1; // selecting position index of the element different from which_stats(j)
-                    arma::uword which_index = matrix_indices_sigma(s,i-n_thresholds);
-                    // calculate variance of variable X_which_stats(j)
-                    double expected_X = 0.0;
-                    for(h = 1; h < n_categories(which_stats(j)); h++){
-                        arma::uword index_threshold_h = h-1;
-                        if(which_stats(j)>0){
-                            index_threshold_h += arma::accu(n_categories(arma::span(0,which_stats(j)-1))-1);
+
+                // --- Negative Hessian: frequency times the covariance of the sufficient statistics of node p under its full
+                // conditional: Cov(mu_h, mu_k) = P(Xp = h) (I(h = k) - P(Xp = k)), Cov(mu_h, sigma_pj) = x_j P(Xp = h) (h - E[Xp]),
+                // Cov(sigma_pj, sigma_pk) = x_j x_k Var(Xp) ---
+                for(arma::uword h = 1; h <= n_thresholds_p; h++){
+                    arma::uword index_threshold_h = category_offsets(p) + h - 1;
+                    for(arma::uword k = 1; k <= n_thresholds_p; k++){
+                        hessian_c(index_threshold_h, category_offsets(p) + k - 1) += frequency_n * probs_p(h - 1) * (static_cast<double>(h == k) - probs_p(k - 1));
+                    }
+                    double covariance_h = frequency_n * probs_p(h - 1) * (static_cast<double>(h) - expected_X);
+                    for(arma::uword j = 0; j < P; j++){
+                        if(j != p && stats_n(j) != 0.0){
+                            hessian_c(index_threshold_h, index_interaction(p, j)) += covariance_h * stats_n(j);
+                            hessian_c(index_interaction(p, j), index_threshold_h) += covariance_h * stats_n(j);
                         }
-                        expected_X += static_cast<double>(h)*probs_n(index_threshold_h);
                     }
-                    // updating hessian
-                    hessian_n(i,j) -= stats_n(which_index)*probs_n(j)*(category_stats(j)-expected_X); 
-                    hessian_n(j,i) = hessian_n(i,j);
-                } 
-                else if((i >= n_thresholds) && (j >= n_thresholds)){ // hessian for (interactions) 
-                    arma::uvec indices_i = matrix_indices_sigma.col(i-n_thresholds);
-                    arma::uvec indices_j = matrix_indices_sigma.col(j-n_thresholds);
-                    if(i == j){ // derivative for (sigma_{ij},sigma_{ij}) - here using either indices_j or indices_i is the same as they refer to the same sigma_{kl}
-                        // calculate variance of variable X indices_j(0)
-                        double expected_X_j0 = 0.0;
-                        double expected_X_square_j0 = 0.0;
-                        for(h = 1; h < n_categories(indices_j(0)); h++){
-                            arma::uword index_threshold_h = h-1;
-                            if(indices_j(0)>0){
-                                index_threshold_h += arma::accu(n_categories(arma::span(0,indices_j(0)-1))-1);
-                            }
-                            expected_X_j0 += static_cast<double>(h)*probs_n(index_threshold_h);
-                            expected_X_square_j0 += std::pow(static_cast<double>(h),2)*probs_n(index_threshold_h);
-                        }
-                        double var_j0 = expected_X_square_j0 - std::pow(expected_X_j0,2);
-
-                        // calculate variance of variable X indices_j(1)
-                        double expected_X_j1 = 0.0;
-                        double expected_X_square_j1 = 0.0;
-                        for(h = 1; h < n_categories(indices_j(1)); h++){
-                            arma::uword index_threshold_h = h-1;
-                            if(indices_j(1)>0){
-                                index_threshold_h += arma::accu(n_categories(arma::span(0,indices_j(1)-1))-1);
-                            }
-                            expected_X_j1 += static_cast<double>(h)*probs_n(index_threshold_h);
-                            expected_X_square_j1 += std::pow(static_cast<double>(h),2)*probs_n(index_threshold_h);
-                        }
-                        double var_j1 = expected_X_square_j1 - std::pow(expected_X_j1,2);
-
-                        hessian_n(i,j) -= (std::pow(stats_n(indices_j(1)),2)*var_j0+std::pow(stats_n(indices_j(0)),2)*var_j1);
+                }
+                for(arma::uword j = 0; j < P; j++){
+                    if(j == p || stats_n(j) == 0.0){
+                        continue;
                     }
-                    else if(arma::any(indices_i == indices_j(0)) || arma::any(indices_i == indices_j(1))){ // derivative for (sigma_{kl},sigma_{lr}), at this stage only one of the two conditions on indices_i can be true
-                        arma::uvec m = arma::join_cols(arma::find(indices_i == indices_j(0)),arma::find(indices_i == indices_j(1)));
-                        arma::uword index_in_common =  indices_i(m(0));
-                        arma::uvec which_indices_j = arma::find(indices_j != index_in_common);
-                        arma::uword index_j = indices_j(which_indices_j(0));
-                        arma::uvec which_indices_i = arma::find(indices_i != index_in_common);
-                        arma::uword index_i = indices_i(which_indices_i(0));
-
-                        // calculate variance of variable or the X in common (if sigma_ij and sigma_il, is the variance of Xi)
-                        double expected_X = 0.0;
-                        double expected_X_square = 0.0;
-                        for(h = 1; h < n_categories(index_in_common); h++){
-                            arma::uword index_threshold_h = h-1;
-                            if(index_in_common>0){
-                                index_threshold_h += arma::accu(n_categories(arma::span(0,index_in_common-1))-1);
-                            }
-                            expected_X += static_cast<double>(h)*probs_n(index_threshold_h);
-                            expected_X_square += std::pow(static_cast<double>(h),2)*probs_n(index_threshold_h);
+                    for(arma::uword k = 0; k < P; k++){
+                        if(k == p || stats_n(k) == 0.0){
+                            continue;
                         }
-                        double var_X = expected_X_square - std::pow(expected_X,2);
-
-                        hessian_n(i,j) -= stats_n(index_i)*stats_n(index_j)*var_X;
-                        hessian_n(j,i) = hessian_n(i,j);
+                        hessian_c(index_interaction(p, j), index_interaction(p, k)) += frequency_n * stats_n(j) * stats_n(k) * variance_X;
                     }
                 }
             }
+
+            loglik_chunk(c) -= frequency_n * loglik_n;  // (-=) because negative log pseudolikelihood
+            gradient_patterns.col(n) = -gradient_n;     // (-) because negative gradient
+            gradient_chunk.col(c) += frequency_n * gradient_patterns.col(n);
         }
-        hessian_cube.slice(n) -= hessian_n; // (-=) because negative hessian
-        
     }
-    
-    // sum over people
-    double loglik = arma::accu(loglik_vec); 
-    arma::vec gradient = arma::sum(gradient_mat,1); 
-    arma::mat hessian = arma::sum(hessian_cube,2); 
 
-    // calculate Huber-White sandwich variance estimator
+    // --- Sum over the chunks, in order ---
+    double loglik = arma::accu(loglik_chunk);
+    arma::vec gradient = arma::sum(gradient_chunk, 1);
+    arma::mat hessian(n_pars, n_pars, arma::fill::zeros);
+    for(arma::uword c = 0; c < n_chunks; c++){
+        hessian += hessian_chunk.slice(c);
+    }
 
+    // --- Covariance of the score: sum_n frequency_n g_n g_n', in one matrix product outside the parallel loop ---
+    gradient_patterns.each_row() %= arma::sqrt(frequency).t();
+    arma::mat square_score = gradient_patterns * gradient_patterns.t();
+
+    // --- Huber-White sandwich variance estimator ---
     arma::mat inverse_negative_hessian = arma::inv_sympd(hessian);
-    arma::mat square_score = arma::sum(square_score_cube,2);  //gradient * gradient.t(); 
     arma::mat HW = inverse_negative_hessian * square_score;
     HW *= inverse_negative_hessian;
 
-    // Adding prior information on loglik, gradient and hessian 
+    // Adding prior information on loglik, gradient and hessian
     if(with_prior){
         // prior on pseudologlikelihood
         loglik -= (arma::accu(log_beta_prime(thresholds, thresholds_alpha, thresholds_beta)) + arma::accu(log_dcauchy(interactions_vec, interactions_location, interactions_scale)));
@@ -334,9 +232,6 @@ Rcpp::List dmrf_deriv(
         arma::mat HW_inv = arma::inv_sympd(HW);
         HW_inv -= log_prior_hessian_mat;
         HW = arma::inv_sympd(HW_inv);
-
-        // prior on the score
-        //square_score += (gradient_prior * gradient_prior.t()); // we do not use this definition anywhere [[TO REMOVE]]
     }
 
     Rcpp::List out = Rcpp::List::create(
@@ -345,8 +240,8 @@ Rcpp::List dmrf_deriv(
         Rcpp::Named("hessian") = hessian,
         Rcpp::Named("HW") = HW,
         Rcpp::Named("FisherInfo") = square_score);
-  
-   return out;
+
+    return out;
 }
 
 
