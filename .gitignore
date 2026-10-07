@@ -32,4 +32,3 @@ Meta/
 # /.quarto/
 # **/*.quarto_ipynb
 docs
-dev/plot-examples.pdf

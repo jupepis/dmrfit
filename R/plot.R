@@ -59,6 +59,8 @@
 #' @param seed (network) random seed of the \code{"fr"} layout (default 30); other seeds give other arrangements. The
 #'   caller's random number stream is restored on exit.
 #' @param node_size (network) size of the nodes (default 10); the labels scale with it.
+#' @param show_comments logical, whether to show the explanation below the plot (default TRUE): the rule for the drawn
+#'   edges, or what the points, lines and probabilities show. With FALSE, only the plot and its legends are drawn.
 #' @param ... further arguments (currently unused).
 #'
 #' @details The evidence for an edge is classified by its Savage-Dickey Bayes factor \eqn{BF_{01}}, the evidence for
@@ -102,8 +104,8 @@
 #' plot(fit_lrt, type = "intervals", pars = c("mu[1,3]", "mu[2,3]", "sigma[2,1]"))
 #' plot(fit_bayes, type = "intervals")
 #'
-#' # expected influence of every variable
-#' plot(fit, type = "centrality")
+#' # expected influence of every variable, without the explanation below the plot
+#' plot(fit, type = "centrality", show_comments = FALSE)
 #' plot(fit_bayes, type = "centrality")
 #'
 #' @method plot dmrfit
@@ -111,7 +113,7 @@
 #'
 plot.dmrfit <- function(x, type = c("network", "bf", "trace", "density", "intervals", "centrality"), estimate = c("mode", "mean", "median"),
                         pars = NULL, prob = 0.95, all_edges = FALSE, groups = NULL, layout = c("fr", "circle"),
-                        seed = 30, node_size = 10, ...) {
+                        seed = 30, node_size = 10, show_comments = TRUE, ...) {
 
     type <- match.arg(type)
     if (!inherits(x, "dmrfit")) {
@@ -126,6 +128,9 @@ plot.dmrfit <- function(x, type = c("network", "bf", "trace", "density", "interv
     }
     if (!is.numeric(prob) || length(prob) != 1 || prob <= 0 || prob >= 1) {
         stop("prob must be a number between 0 and 1.")
+    }
+    if (!is.logical(show_comments) || length(show_comments) != 1 || is.na(show_comments)) {
+        stop("show_comments must be TRUE or FALSE.")
     }
     if (!is.logical(all_edges) || length(all_edges) != 1 || is.na(all_edges)) {
         stop("all_edges must be TRUE or FALSE.")
@@ -148,6 +153,11 @@ plot.dmrfit <- function(x, type = c("network", "bf", "trace", "density", "interv
                 density = .plot_draws(x, type = "density", estimate = estimate, pars = pars, prob = prob),
                 intervals = .plot_intervals(x, estimate = estimate, pars = pars, prob = prob),
                 centrality = .plot_centrality(x, estimate = estimate, prob = prob))
+
+    # --- without the explanation below the plot (for instance, when it goes into the caption of a figure) ---
+    if (!show_comments) {
+        p <- p + ggplot2::labs(caption = NULL)
+    }
     return(p)
 }
 
@@ -500,7 +510,7 @@ plot.dmrfit <- function(x, type = c("network", "bf", "trace", "density", "interv
             ggplot2::geom_vline(data = marks, ggplot2::aes(xintercept = .data$upper), colour = .PLOT_DENSITY,
                                 linewidth = 0.4, linetype = "dashed") +
             ggplot2::labs(x = NULL, y = "Density",
-                          caption = paste0("Solid line: posterior ", estimate, "; dashed lines: ", round(100 * prob),
+                          caption = paste0("Solid line: posterior ", estimate, ". Dashed lines: ", round(100 * prob),
                                            "% highest posterior density interval"))
     }
 
@@ -528,13 +538,13 @@ plot.dmrfit <- function(x, type = c("network", "bf", "trace", "density", "interv
         bounds <- confint(x, parm = pars, level = prob)
         summary_fun <- switch(estimate, mode = .posterior_mode, mean = mean, median = stats::median)
         center <- apply(x$draws[match(rownames(bounds), par_names), , drop = FALSE], 1, summary_fun)
-        rule <- paste0("Point: posterior ", estimate, "; line: ", round(100 * prob), "% highest posterior density interval")
+        rule <- paste0("Point: posterior ", estimate, ". Line: ", round(100 * prob), "% highest posterior density interval")
     } else {
         lrt <- !is.null(x$lrt_intervals)
         level <- .fit_level(x)
         bounds <- confint(x, parm = pars, level = level, method = if (lrt) "lrt" else "wald")
         center <- x$argument[rownames(bounds)]
-        rule <- paste0("Point: estimate; line: ", round(100 * level), "% ",
+        rule <- paste0("Point: estimate. Line: ", round(100 * level), "% ",
                        if (lrt) "likelihood-ratio interval" else "Wald interval (sandwich standard errors)")
     }
 
@@ -609,10 +619,10 @@ plot.dmrfit <- function(x, type = c("network", "bf", "trace", "density", "interv
     ei$name <- factor(ei$name, levels = ei$name[order(ei$center)]) # sorted by expected influence
     bayes <- inherits(x, "dmrfit_bayes")
     rule <- if (bayes) {
-        paste0("Point: posterior ", estimate, "; line: ", round(100 * prob), "% highest posterior density interval\n",
+        paste0("Point: posterior ", estimate, ". Line: ", round(100 * prob), "% highest posterior density interval\n",
                "Pr(most central): posterior probability of the largest expected influence")
     } else {
-        paste0("Point: estimate; line: ", round(100 * .fit_level(x)), "% Wald interval (sandwich standard errors)")
+        paste0("Point: estimate. Line: ", round(100 * .fit_level(x)), "% Wald interval (sandwich standard errors)")
     }
 
     p <- ggplot2::ggplot(ei, ggplot2::aes(x = .data$center, y = .data$name)) +

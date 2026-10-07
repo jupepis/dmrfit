@@ -15,6 +15,7 @@
   layout = c("fr", "circle"),
   seed = 30,
   node_size = 10,
+  show_comments = TRUE,
   ...
 )
 }
@@ -58,6 +59,10 @@ estimated interactions, weighted by their absolute value, so that the nodes keep
 caller's random number stream is restored on exit.}
 
 \item{node_size}{(network) size of the nodes (default 10); the labels scale with it.}
+
+\item{show_comments}{logical, whether to show the explanation below the plot (default TRUE): the rule for the drawn
+edges, or what the points, lines and probabilities show. With FALSE, only the plot and its legends are drawn, for
+instance when the explanation goes into the caption of a figure in a paper.}
 
 \item{...}{further arguments (currently unused).}
 }
@@ -129,8 +134,8 @@ fit_lrt <- dmrfit(rads2[, dysphoria], lrt_intervals = c("mu[1,3]", "mu[2,3]", "s
 plot(fit_lrt, type = "intervals", pars = c("mu[1,3]", "mu[2,3]", "sigma[2,1]"))
 plot(fit_bayes, type = "intervals")
 
-# expected influence of every variable
-plot(fit, type = "centrality")
+# expected influence of every variable, without the explanation below the plot
+plot(fit, type = "centrality", show_comments = FALSE)
 plot(fit_bayes, type = "centrality")
 
 }

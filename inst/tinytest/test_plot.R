@@ -168,3 +168,13 @@ expect_equal(c(ei_b$lower[1], ei_b$upper[1]), dmrfit:::.hdi(ei_draws_1, 0.9))
 expect_equal(sum(ei_b$p_most_central), 1)
 expect_silent(ggplot2::ggplot_build(plot(fit_b, type = "centrality")))
 
+# --- show_comments = FALSE: no explanation below the plot, for every type
+for (type in c("network", "bf", "intervals", "centrality")) {
+    expect_true(!is.null(plot(fit, type = type)$labels$caption) || type == "bf")
+    expect_null(plot(fit, type = type, show_comments = FALSE)$labels$caption)
+}
+for (type in c("density", "centrality")) {
+    expect_null(plot(fit_b, type = type, show_comments = FALSE)$labels$caption)
+}
+expect_error(plot(fit, show_comments = NA), "TRUE or FALSE")
+
