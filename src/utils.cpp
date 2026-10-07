@@ -24,14 +24,14 @@ arma::mat cpp_mvnrnd_arma(const arma::vec &mu, const arma::mat &Sigma, int n) {
   return X;
 }
 
-// Utils Discrete MRF Pseudolikelihood 
+// Utils Discrete MRF Pseudo-likelihood 
 //
-// pseudolikelihood of a discrete mrf function value and derivatives value at specific parameters (used by the optimization algortihm)
+// pseudo-likelihood of a discrete mrf function value and derivatives value at specific parameters (used by the optimization algortihm)
 // the function returns a list of named objects
 // "loglik" is the negative pseudologlikelihood calculated at the parameters supplied via the input pars
 // "gradient" is the negative gradient value at pars
 // "hessian" is the negative hessian value (its inverse returns the matrix of variances and covariances of the model parameters)
-// "HW" is the Huber-White sandwich variance estimator (it is already a matrix of variances and covariances)
+// "HW" is the Godambe-Huber-White (GHW) covariance (it is already a matrix of variances and covariances)
 // note: loglik, gradient and hessian are used by the trust algorithm to find the MPLEs
 // [[Rcpp::export]]
 Rcpp::List dmrf_deriv(
@@ -143,13 +143,13 @@ Rcpp::List dmrf_deriv(
                 }
                 double variance_X = expected_X_square - expected_X * expected_X;
 
-                // --- Log pseudolikelihood of node p: mu_{p, x_p} + x_p sum_{j != p} sigma_pj x_j - log(denom_p) ---
+                // --- Log pseudo-likelihood of node p: mu_{p, x_p} + x_p sum_{j != p} sigma_pj x_j - log(denom_p) ---
                 if(x_p > 0){
                     loglik_n += thresholds(category_offsets(p) + x_p - 1);
                 }
                 loglik_n += stats_n(p) * xixj_sigma(p) - log_denom_p;
 
-                // --- Gradient of the log pseudolikelihood: I(Xp = h) - P(Xp = h) for the thresholds of node p ---
+                // --- Gradient of the log pseudo-likelihood: I(Xp = h) - P(Xp = h) for the thresholds of node p ---
                 for(arma::uword h = 1; h <= n_thresholds_p; h++){
                     gradient_n(category_offsets(p) + h - 1) += static_cast<double>(x_p == h) - probs_p(h - 1);
                 }
@@ -189,7 +189,7 @@ Rcpp::List dmrf_deriv(
                 }
             }
 
-            loglik_chunk(c) -= frequency_n * loglik_n;  // (-=) because negative log pseudolikelihood
+            loglik_chunk(c) -= frequency_n * loglik_n;  // (-=) because negative log pseudo-likelihood
             gradient_patterns.col(n) = -gradient_n;     // (-) because negative gradient
             gradient_chunk.col(c) += frequency_n * gradient_patterns.col(n);
         }
@@ -207,7 +207,7 @@ Rcpp::List dmrf_deriv(
     gradient_patterns.each_row() %= arma::sqrt(frequency).t();
     arma::mat square_score = gradient_patterns * gradient_patterns.t();
 
-    // --- Huber-White sandwich variance estimator ---
+    // --- Godambe-Huber-White (GHW) covariance ---
     arma::mat inverse_negative_hessian = arma::inv_sympd(hessian);
     arma::mat HW = inverse_negative_hessian * square_score;
     HW *= inverse_negative_hessian;

@@ -12,22 +12,22 @@
 
 <br />
 
-`dmrfit` estimates discrete Markov Random Fields, both Ising models (Ising, 1925) and Ordinal Markov Random Fields (Marsman et al., 2025), through the pseudolikelihood. It offers a frequentist route, with point estimates from a trust region algorithm and robust standard errors, and a Bayesian route, in which the pseudo-posterior is corrected with coordinate rescaling (CoRe; Arena and Marsman, 2026). Point estimation supports both full network estimation, where all edges are included, and constrained network estimation, where only a specified subset of edges is considered.
+`dmrfit` estimates discrete Markov Random Fields, both Ising models (Ising, 1925) and Ordinal Markov Random Fields (Marsman et al., 2025), through the pseudo-likelihood. It offers a frequentist route, with point estimates from a trust region algorithm and robust standard errors, and a Bayesian route, in which the pseudo-posterior is corrected with coordinate rescaling (CoRe; Arena and Marsman, 2026). Point estimation supports both full network estimation, where all edges are included, and constrained network estimation, where only a specified subset of edges is considered.
 
 <br />
 
 ## Main functionalities
 
 **`dmrfit()`: point estimation and Bayes factors**
-- Maximum pseudolikelihood estimation, or maximum a posteriori estimation with `with_prior = TRUE` (Beta-Prime prior on the thresholds, Cauchy prior on the pairwise interactions), through a trust region algorithm (Fletcher, 1987; Nocedal and Wright, 1999).
-- Robust standard errors from the Huber-White sandwich estimator, with Wald intervals, and with `lrt_intervals = TRUE` profile likelihood-ratio intervals adjusted for the pseudolikelihood (Pace et al., 2011), which can be asymmetric when the sample size is small relative to the number of parameters. `confint()` returns either, and `summary()` prints them next to each other.
+- Maximum pseudo-likelihood estimation, or maximum a posteriori estimation with `with_prior = TRUE` (Beta-Prime prior on the thresholds, Cauchy prior on the pairwise interactions), through a trust region algorithm (Fletcher, 1987; Nocedal and Wright, 1999).
+- Robust standard errors from the Godambe-Huber-White (GHW, or sandwich) estimator, with Wald intervals, and with `lrt_intervals = TRUE` profile likelihood-ratio intervals adjusted for the pseudo-likelihood (Pace et al., 2011), which can be asymmetric when the sample size is small relative to the number of parameters. `confint()` returns either, and `summary()` prints them next to each other.
 - Constrained estimation with `structure`, a P x P adjacency matrix of the edges to include.
 - Savage-Dickey Bayes factors for each pairwise interaction with `savage_dickey = TRUE`, computed by sampling importance resampling from the coordinate-rescaled pseudo-posterior (Skare et al., 2003).
-- Gradient, Hessian and pseudolikelihood evaluations parallelized over `ncores`, with the same results for any number of cores.
+- Gradient, Hessian and pseudo-likelihood evaluations parallelized over `ncores`, with the same results for any number of cores.
 
 **`dmrfit_bayes()`: posterior sampling**
-- Draws from the coordinate-rescaled pseudo-posterior (`method = "core"`, default; Arena and Marsman, 2026), which corrects the underestimated posterior variability of the pseudolikelihood. All methods use the Fisher adaptive Metropolis-adjusted Langevin algorithm (FisherMALA; Titsias, 2024).
-- The pseudo-posterior is rescaled to the sandwich covariance (`scale = "ghw"`, default), or to the inverse of a Monte Carlo estimate of the Hessian of the full log-posterior, at the pseudo-posterior mode (`scale = "mch"`) or at the Robbins-Monro estimate of the full-posterior mode (`scale = "rm"`).
+- Draws from the coordinate-rescaled pseudo-posterior (`method = "core"`, default; Arena and Marsman, 2026), which corrects the underestimated posterior variability of the pseudo-likelihood. All methods use the Fisher adaptive Metropolis-adjusted Langevin algorithm (FisherMALA; Titsias, 2024).
+- The pseudo-posterior is rescaled to the GHW covariance (`scale = "ghw"`, default), or to the inverse of a Monte Carlo estimate of the Hessian of the full log-posterior, at the pseudo-posterior mode (`scale = "mch"`) or at the Robbins-Monro estimate of the full-posterior mode (`scale = "rm"`).
 - `method = "adacore"` adapts the rescaling during burn-in; `method = "exact"` samples the full-likelihood posterior for small networks, with the normalizing constant computed by enumeration; `method = "dmh"` samples it with the double Metropolis-Hastings algorithm (Liang, 2010), which is much slower.
 - Posterior summaries (means, standard deviations, 95% credible intervals) and Savage-Dickey Bayes factors for each pairwise interaction, computed from the posterior draws; highest posterior density intervals with `confint()`.
 
@@ -64,7 +64,7 @@ data(rads2)
 clusters <- attr(rads2, "clusters")
 items <- names(clusters)[clusters %in% c("Dysphoria", "Anhedonia/Negative Affect")]
 
-# Point estimates, sandwich standard errors, likelihood-ratio intervals and Savage-Dickey Bayes factors
+# Point estimates, GHW standard errors, likelihood-ratio intervals and Savage-Dickey Bayes factors
 fit <- dmrfit(rads2[, items], with_prior = TRUE, savage_dickey = TRUE, lrt_intervals = TRUE)
 summary(fit)
 confint(fit)
