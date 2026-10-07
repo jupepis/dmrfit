@@ -43,7 +43,7 @@
 #' dim(rads2)
 #' table(attr(rads2, "clusters"))
 #'
-#' # point estimates and sandwich standard errors for the seven dysphoria items
+#' # point estimates and Godambe-Huber-White standard errors for the seven dysphoria items
 #' dysphoria <- names(which(attr(rads2, "clusters") == "Dysphoria"))
 #' fit <- dmrfit(rads2[, dysphoria], with_prior = TRUE)
 #' summary(fit)

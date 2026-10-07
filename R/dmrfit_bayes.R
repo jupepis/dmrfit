@@ -2,8 +2,8 @@
 #'
 #' @description Bayesian inference for a discrete Markov random field (Ising or ordinal) by Markov chain Monte Carlo.
 #' By default, the posterior is approximated by the coordinate-rescaled (CoRe) pseudo-posterior of Arena and Marsman
-#' (2026): the pseudo-posterior rescaled around its mode so that its covariance matches the sandwich
-#' (Godambe-Huber-White) covariance, which corrects the underestimated posterior variability of the pseudolikelihood.
+#' (2026): the pseudo-posterior rescaled around its mode so that its covariance matches the Godambe-Huber-White
+#' (GHW) covariance, which corrects the underestimated posterior variability of the pseudo-likelihood.
 #' All samplers use the Fisher adaptive Metropolis-adjusted Langevin algorithm (FisherMALA; Titsias, 2024).
 #'
 #' @param data data matrix, with rows as samples and columns as variables. Each variable should be rescaled to the range of 0 to m-1, where m is the number of categories for that variable. The baseline category is always the minimum value in the variable. The internal processing will check if the variables are rescaled and will rescale them if necessary. If there are any NAs in the data, they will be removed before optimization (listwise deletion).
@@ -16,14 +16,14 @@
 #'   iteration and is much slower than the other methods (minutes to hours instead of seconds, depending on the
 #'   network size and \code{control$dmh_aux}); \code{"core"} runs at the cost of the pseudo-posterior sampler.
 #' @param scale the covariance to which the pseudo-posterior is rescaled, only used when \code{method = "core"}:
-#'   \code{"ghw"} (default) the sandwich (Godambe-Huber-White) covariance; \code{"mch"} the inverse of the negative
+#'   \code{"ghw"} (default) the Godambe-Huber-White (GHW) covariance; \code{"mch"} the inverse of the negative
 #'   Hessian of the full log-posterior at the pseudo-posterior mode, estimated by Monte Carlo simulation; \code{"rm"}
 #'   the same Hessian at the full-posterior mode, estimated by a Newton-type Robbins-Monro algorithm (the sampler
 #'   remains centered at the pseudo-posterior mode). \code{"mch"} and \code{"rm"} simulate data from the model and are
 #'   slower.
 #' @param nsim number of posterior draws kept after burn-in. Default is 1000.
 #' @param burnin number of burn-in iterations, after an initial adaptive stage of \code{control$adaptive_stage} iterations. Default is 1000.
-#' @param ncores number of cores used to compute the gradient, Hessian and pseudolikelihood in parallel when finding the pseudo-posterior mode. It is capped at the number of available cores minus one, and has no effect when the package was built without OpenMP support. Default is 1.
+#' @param ncores number of cores used to compute the gradient, Hessian and pseudo-likelihood in parallel when finding the pseudo-posterior mode. It is capped at the number of available cores minus one, and has no effect when the package was built without OpenMP support. Default is 1.
 #' @param thresholds_alpha alpha parameter for the Beta-Prime prior on thresholds (default is 0.5).
 #' @param thresholds_beta beta parameter for the Beta-Prime prior on thresholds (default is 0.5).
 #' @param interactions_location location parameter for the Cauchy prior on pairwise interactions (default is 0.0).
@@ -195,7 +195,7 @@ dmrfit_bayes <- function(data, parinit = NULL, method = c("core", "adacore", "ex
             new_scale <- t(chol((target_cov + t(target_cov)) / 2))
             do.call(cpp_core_sampler, c(args, list(pmles = mode_pseudo, current_scale = current_scale, new_scale = new_scale)))
         } else if (method == "adacore") {
-            # AdaCoRe takes the data with the cross-product columns (it recomputes the sandwich covariance)
+            # AdaCoRe takes the data with the cross-product columns (it recomputes the GHW covariance)
             args_ada <- args
             args_ada$data <- data
             do.call(cpp_adacore_sampler, c(args_ada, list(pmles = mode_pseudo)))
@@ -236,7 +236,7 @@ dmrfit_bayes <- function(data, parinit = NULL, method = c("core", "adacore", "ex
         paste0("mu[", p, ",", seq_len(n_categories[p] - 1), "]")
     }))
     inter_names <- unlist(lapply(1:(P - 1), function(j) {
-        lapply((j + 1):P, function(i) paste0("sigma[", i, ",", j, "]"))
+        lapply((j + 1):P, function(i) paste0("theta[", i, ",", j, "]"))
     }))
     par_names <- c(thresh_names, inter_names)
     pmles$argument <- setNames(as.vector(pmles$argument), par_names) # plain named vector (the optimizer returns a one-column matrix)
@@ -464,13 +464,13 @@ print.summary.dmrfit_bayes <- function(x, ...) {
     cat("\nPairwise interactions:\n")
     print(round(x$interactions, 4))
 
-    cat("\nNegative pseudo-loglikelihood at posterior mode:", round(x$neg_pseudo_loglik, 4), "\n")
+    cat("\nNegative log pseudo-likelihood at posterior mode:", round(x$neg_pseudo_loglik, 4), "\n")
 
     if (!is.null(x$savage_dickey)) {
         sd <- x$savage_dickey
         cat("\nSavage-Dickey density ratio  [prior: Cauchy(", sd$interactions_location, ",",
             sd$interactions_scale, ")]\n")
-        cat("H0: sigma = 0 for each pairwise interaction\n\n")
+        cat("H0: theta = 0 for each pairwise interaction\n\n")
         tbl <- data.frame(
             `Post.Mode` = round(sd$estimate, 4),
             `Post.SD`   = round(sd$se, 4),
@@ -578,12 +578,12 @@ print.summary.dmrfit_bayes <- function(x, ...) {
 #' @return a character string
 #' @noRd
 .method_label <- function(method, scale) {
-    if (is.null(method)) return("coordinate-rescaled pseudo-posterior (sandwich covariance)")
+    if (is.null(method)) return("coordinate-rescaled pseudo-posterior (Godambe-Huber-White covariance)")
     switch(method,
            core = paste0("coordinate-rescaled pseudo-posterior (",
-                         switch(scale, ghw = "sandwich covariance", mch = "Monte Carlo Hessian at the pseudo-posterior mode",
+                         switch(scale, ghw = "Godambe-Huber-White covariance", mch = "Monte Carlo Hessian at the pseudo-posterior mode",
                                 rm = "Monte Carlo Hessian at the Robbins-Monro estimate of the full-posterior mode"), ")"),
-           adacore = "coordinate-rescaled pseudo-posterior (sandwich covariance adapted during burn-in)",
+           adacore = "coordinate-rescaled pseudo-posterior (Godambe-Huber-White covariance adapted during burn-in)",
            exact = "full-likelihood posterior (exact normalizing constant)",
            dmh = "full-likelihood posterior (double Metropolis-Hastings)")
 }

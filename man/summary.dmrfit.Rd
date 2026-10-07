@@ -17,7 +17,7 @@ an object of class \code{summary.dmrfit} containing:
 \item{coefficients}{a matrix with columns for the estimate, standard error, z-value and p-value.}
 \item{thresholds}{coefficient matrix for threshold parameters.}
 \item{interactions}{coefficient matrix for free pairwise interaction parameters.}
-\item{neg_pseudo_loglik}{the negative pseudo-loglikelihood at convergence.}
+\item{neg_pseudo_loglik}{the negative log pseudo-likelihood at convergence.}
 \item{P}{number of nodes.}
 \item{N}{number of observations.}
 \item{n_categories}{vector of category counts per node.}
@@ -29,5 +29,5 @@ when the fit has them (\code{lrt_intervals = TRUE}), at the level of the fit.}
 }
 \description{
 Produces a detailed summary of a fitted discrete MRF model, analogous to
-\code{summary.lm}. Standard errors are obtained from the Huber-White sandwich estimator.
+\code{summary.lm}. Standard errors are obtained from the Godambe-Huber-White (GHW) estimator.
 }

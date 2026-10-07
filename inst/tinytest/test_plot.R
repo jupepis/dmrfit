@@ -70,7 +70,7 @@ expect_error(plot(fit, all_edges = NA), "TRUE or FALSE")
 
 # --- dmrfit_bayes: the edges are the marginal posterior modes (default), means or medians of the draws
 fit_b <- suppressWarnings(dmrfit_bayes(X, nsim = 400, burnin = 200, progress = FALSE))
-inter_rows <- grep("^sigma", rownames(fit_b$draws))
+inter_rows <- grep("^theta", rownames(fit_b$draws))
 est <- function(e) { d <- dmrfit:::.interaction_estimates(fit_b, e); setNames(d$estimate, d$name) }
 expect_equal(est("mean"), apply(fit_b$draws[inter_rows, ], 1, mean))
 expect_equal(est("median"), apply(fit_b$draws[inter_rows, ], 1, median))
@@ -90,7 +90,7 @@ bf01 <- fit$savage_dickey$bf_01
 p_bf <- plot(fit, type = "bf")
 circ <- p_bf$data
 expect_equal(nrow(circ), choose(5, 2))
-ord <- match(paste0("sigma[", match(circ$row, colnames(X)), ",", match(circ$col, colnames(X)), "]"), names(fit$argument))
+ord <- match(paste0("theta[", match(circ$row, colnames(X)), ",", match(circ$col, colnames(X)), "]"), names(fit$argument))
 expect_equal(circ$weight, unname(abs(fit$argument[ord])))
 expect_equal(as.character(circ$evidence), as.character(dmrfit:::.evidence_class(unname(bf01[names(fit$argument)[ord]]))))
 expect_equal(levels(circ$evidence), c("Included", "Weak included", "Inconclusive", "Weak excluded", "Excluded"))
@@ -111,13 +111,13 @@ p_tr <- plot(fit_b, type = "trace")
 expect_equal(levels(p_tr$data$parameter), dmrfit:::.par_labels(top4, colnames(X)))
 expect_equal(nrow(p_tr$data), 4 * ncol(fit_b$draws))
 expect_equal(p_tr$data$value[p_tr$data$parameter == levels(p_tr$data$parameter)[1]], unname(fit_b$draws[top4[1], ]))
-expect_equal(dmrfit:::.par_labels(c("sigma[2,1]", "mu[1,3]"), colnames(X)), c("D3-D6", "D3: threshold 3"))
+expect_equal(dmrfit:::.par_labels(c("theta[2,1]", "mu[1,3]"), colnames(X)), c("D3-D6", "D3: threshold 3"))
 expect_equal(levels(plot(fit_b, type = "trace", pars = c(1, 13))$data$parameter),
              dmrfit:::.par_labels(names(fit_b$argument)[c(1, 13)], colnames(X)))
 expect_silent(ggplot2::ggplot_build(p_tr))
 # density: solid line at the posterior summary, dashed lines at the HPD interval of mass prob
-p_de <- plot(fit_b, type = "density", pars = "sigma[2,1]", estimate = "median", prob = 0.9)
-z <- fit_b$draws["sigma[2,1]", ]
+p_de <- plot(fit_b, type = "density", pars = "theta[2,1]", estimate = "median", prob = 0.9)
+z <- fit_b$draws["theta[2,1]", ]
 expect_equal(ggplot2::layer_data(p_de, 3)$xintercept, median(z))  # layers: area, curve, summary, lower, upper
 expect_equal(c(ggplot2::layer_data(p_de, 4)$xintercept, ggplot2::layer_data(p_de, 5)$xintercept), dmrfit:::.hdi(z, 0.9))
 # panels in rows of up to three
@@ -128,7 +128,7 @@ expect_silent(ggplot2::ggplot_build(p_de))
 # checks
 expect_error(plot(fit, type = "trace"), "dmrfit_bayes")
 expect_error(plot(fit_b, type = "trace", pars = 1:10), "At most 9")
-expect_error(plot(fit_b, type = "density", pars = "sigma[9,1]"), "unknown parameter")
+expect_error(plot(fit_b, type = "density", pars = "theta[9,1]"), "unknown parameter")
 expect_error(plot(fit_b, type = "density", pars = 0), "positions between")
 expect_error(plot(fit_b, type = "density", prob = 1), "between 0 and 1")
 
@@ -144,8 +144,8 @@ expect_equal(unname(cbind(p_l$data$lower, p_l$data$upper)), unname(confint(fit_l
 expect_true(grepl("90% likelihood-ratio", p_l$labels$caption))
 ord <- split(p_l$data, p_l$data$type)
 expect_true(all(vapply(ord, function(d) !is.unsorted(d$center[order(as.integer(d$label))]), logical(1))))
-p_h <- plot(fit_b, type = "intervals", pars = c("mu[1,1]", "sigma[2,1]"), prob = 0.8)
-expect_equal(unname(p_h$data$upper[2]), dmrfit:::.hdi(fit_b$draws["sigma[2,1]", ], 0.8)[2])
+p_h <- plot(fit_b, type = "intervals", pars = c("mu[1,1]", "theta[2,1]"), prob = 0.8)
+expect_equal(unname(p_h$data$upper[2]), dmrfit:::.hdi(fit_b$draws["theta[2,1]", ], 0.8)[2])
 expect_equal(levels(p_h$data$type), c("Thresholds", "Interactions"))
 expect_silent(ggplot2::ggplot_build(p_l))
 
@@ -153,8 +153,8 @@ expect_silent(ggplot2::ggplot_build(p_l))
 ei <- dmrfit:::.expected_influence(fit, "mode", 0.95)
 Theta <- matrix(0, 5, 5); Theta[lower.tri(Theta)] <- fit$argument[-(1:15)]; Theta <- Theta + t(Theta)
 expect_equal(ei$center, rowSums(Theta))
-# dmrfit: Wald interval with the standard error of the sum from the sandwich covariance
-a1 <- as.numeric(c(rep(0, 15), col(Theta)[lower.tri(Theta)] == 1)) # the interactions sigma[i,1] of variable 1
+# dmrfit: Wald interval with the standard error of the sum from the GHW covariance
+a1 <- as.numeric(c(rep(0, 15), col(Theta)[lower.tri(Theta)] == 1)) # the interactions theta[i,1] of variable 1
 expect_equal(ei$upper[1] - ei$center[1], qnorm(0.975) * sqrt(drop(t(a1) %*% fit$utils$HW %*% a1)))
 expect_true(all(is.na(ei$p_most_central)))
 p_c <- plot(fit, type = "centrality")
@@ -162,7 +162,7 @@ expect_equal(levels(p_c$data$name), as.character(ei$name[order(ei$center)]))
 expect_silent(ggplot2::ggplot_build(p_c))
 # dmrfit_bayes: computed on every draw; the probabilities of the largest expected influence sum to 1
 ei_b <- dmrfit:::.expected_influence(fit_b, "median", 0.9)
-ei_draws_1 <- colSums(fit_b$draws[grep("^sigma\\[[0-9]+,1\\]$", rownames(fit_b$draws)), ]) # variable 1
+ei_draws_1 <- colSums(fit_b$draws[grep("^theta\\[[0-9]+,1\\]$", rownames(fit_b$draws)), ]) # variable 1
 expect_equal(ei_b$center[1], median(ei_draws_1))
 expect_equal(c(ei_b$lower[1], ei_b$upper[1]), dmrfit:::.hdi(ei_draws_1, 0.9))
 expect_equal(sum(ei_b$p_most_central), 1)

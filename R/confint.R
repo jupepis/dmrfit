@@ -2,7 +2,7 @@
 #'
 #' @description Intervals for the parameters of a \code{dmrfit} or \code{dmrfit_bayes} fit. For a \code{dmrfit} fit,
 #' the adjusted likelihood-ratio intervals computed with \code{dmrfit(..., lrt_intervals = TRUE)} (\code{method =
-#' "lrt"}, see \code{\link{dmrfit}}), or Wald intervals from the sandwich standard errors (\code{method = "wald"}). For a
+#' "lrt"}, see \code{\link{dmrfit}}), or Wald intervals from the Godambe-Huber-White (GHW) standard errors (\code{method = "wald"}). For a
 #' \code{dmrfit_bayes} fit, highest posterior density intervals of the posterior draws.
 #'
 #' @param object a \code{dmrfit} or \code{dmrfit_bayes} object.
@@ -21,9 +21,9 @@
 #' @examples
 #' data(rads2)
 #' dysphoria <- names(which(attr(rads2, "clusters") == "Dysphoria"))
-#' fit <- dmrfit(rads2[, dysphoria], lrt_intervals = c("mu[1,3]", "sigma[2,1]"))
-#' confint(fit, parm = c("mu[1,3]", "sigma[2,1]"))
-#' confint(fit, parm = c("mu[1,3]", "sigma[2,1]"), method = "wald")
+#' fit <- dmrfit(rads2[, dysphoria], lrt_intervals = c("mu[1,3]", "theta[2,1]"))
+#' confint(fit, parm = c("mu[1,3]", "theta[2,1]"))
+#' confint(fit, parm = c("mu[1,3]", "theta[2,1]"), method = "wald")
 #'
 #' @method confint dmrfit
 #' @export

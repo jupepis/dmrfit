@@ -25,8 +25,8 @@
 #'     \code{estimate} and the highest posterior density interval of mass \code{prob} of the expected influence
 #'     computed on every draw, and next to it the posterior probability that the variable is the most central (the
 #'     share of draws in which its expected influence is the largest). For a \code{dmrfit} fit, the estimate and its
-#'     Wald interval at the level of the fit; the standard error of a sum of interactions follows from their sandwich
-#'     covariance.}
+#'     Wald interval at the level of the fit; the standard error of a sum of interactions follows from their
+#'     Godambe-Huber-White (GHW) covariance.}
 #' }
 #'
 #' @param x a \code{dmrfit} or \code{dmrfit_bayes} object.
@@ -38,7 +38,7 @@
 #'   samples, which moves the mean and the median away from the mode; Arena and Marsman (2026) found this for the
 #'   thresholds of rarely chosen response categories. Ignored for a \code{dmrfit} fit, which has point estimates.
 #' @param pars (trace, density, intervals) the parameters to show (at most 9 for trace and density): their names, as in \code{names(x$argument)} (for
-#'   instance \code{"sigma[2,1]"} for the interaction between variables 2 and 1, \code{"mu[1,2]"} for the second
+#'   instance \code{"theta[2,1]"} for the interaction between variables 2 and 1, \code{"mu[1,2]"} for the second
 #'   threshold of variable 1), or their positions in that vector. By default, the four interactions with the largest
 #'   absolute posterior summary (see \code{estimate}) for trace and density, and all the free parameters for
 #'   intervals. The parameters are labeled with the variable names.
@@ -96,12 +96,12 @@
 #' # trace and density of the posterior draws
 #' fit_bayes <- dmrfit_bayes(rads2[, dysphoria], nsim = 1000, burnin = 500, progress = FALSE)
 #' plot(fit_bayes, type = "trace")
-#' plot(fit_bayes, type = "density", pars = c("sigma[2,1]", "mu[1,1]"))
+#' plot(fit_bayes, type = "density", pars = c("theta[2,1]", "mu[1,1]"))
 #'
 #' # estimates and intervals: Wald, likelihood-ratio and highest posterior density
 #' plot(fit, type = "intervals")
-#' fit_lrt <- dmrfit(rads2[, dysphoria], lrt_intervals = c("mu[1,3]", "mu[2,3]", "sigma[2,1]"))
-#' plot(fit_lrt, type = "intervals", pars = c("mu[1,3]", "mu[2,3]", "sigma[2,1]"))
+#' fit_lrt <- dmrfit(rads2[, dysphoria], lrt_intervals = c("mu[1,3]", "mu[2,3]", "theta[2,1]"))
+#' plot(fit_lrt, type = "intervals", pars = c("mu[1,3]", "mu[2,3]", "theta[2,1]"))
 #' plot(fit_bayes, type = "intervals")
 #'
 #' # expected influence of every variable, without the explanation below the plot
@@ -417,7 +417,7 @@ plot.dmrfit <- function(x, type = c("network", "bf", "trace", "density", "interv
 
 
 #' par_labels (internal)
-#' @description Readable labels of parameter names: the interaction sigma of variables i and j becomes
+#' @description Readable labels of parameter names: the interaction theta of variables i and j becomes
 #'   "<var j>-<var i>", and threshold h of variable p (mu) becomes "<var p>: threshold h".
 #' @param par_names parameter names, as in names(x$argument)
 #' @param var_names the variable names
@@ -427,7 +427,7 @@ plot.dmrfit <- function(x, type = c("network", "bf", "trace", "density", "interv
     idx <- regmatches(par_names, gregexpr("[0-9]+", par_names))
     labels <- vapply(seq_along(par_names), function(k) {
         ij <- as.integer(idx[[k]])
-        if (startsWith(par_names[k], "sigma")) paste0(var_names[ij[2]], "-", var_names[ij[1]])
+        if (startsWith(par_names[k], "theta")) paste0(var_names[ij[2]], "-", var_names[ij[1]])
         else paste0(var_names[ij[1]], ": threshold ", ij[2])
     }, character(1))
     return(labels)
@@ -545,10 +545,10 @@ plot.dmrfit <- function(x, type = c("network", "bf", "trace", "density", "interv
         bounds <- confint(x, parm = pars, level = level, method = if (lrt) "lrt" else "wald")
         center <- x$argument[rownames(bounds)]
         rule <- paste0("Point: estimate. Line: ", round(100 * level), "% ",
-                       if (lrt) "likelihood-ratio interval" else "Wald interval (sandwich standard errors)")
+                       if (lrt) "likelihood-ratio interval" else "Wald interval (Godambe-Huber-White standard errors)")
     }
 
-    is_inter <- startsWith(rownames(bounds), "sigma")
+    is_inter <- startsWith(rownames(bounds), "theta")
     iv <- data.frame(label = .par_labels(rownames(bounds), var_names), center = unname(center),
                      lower = bounds[, 1], upper = bounds[, 2],
                      type = factor(ifelse(is_inter, "Interactions", "Thresholds"), levels = c("Thresholds", "Interactions")))
@@ -573,7 +573,7 @@ plot.dmrfit <- function(x, type = c("network", "bf", "trace", "density", "interv
 #' expected_influence (internal)
 #' @description Expected influence of every variable, EI_i = sum_j theta_ij: for a dmrfit_bayes fit, computed on every
 #'   draw, summarized by the posterior summary, the HPD interval and the posterior probability of the largest expected
-#'   influence; for a dmrfit fit, the estimate with its Wald interval, the standard error from the sandwich covariance
+#'   influence; for a dmrfit fit, the estimate with its Wald interval, the standard error from the GHW covariance
 #'   of the interactions (sqrt(a' Sigma a), with a the indicator of the interactions of the variable).
 #' @param x a dmrfit or dmrfit_bayes object
 #' @param estimate the posterior summary for a dmrfit_bayes fit: "mode", "mean" or "median"
@@ -622,7 +622,7 @@ plot.dmrfit <- function(x, type = c("network", "bf", "trace", "density", "interv
         paste0("Point: posterior ", estimate, ". Line: ", round(100 * prob), "% highest posterior density interval\n",
                "Pr(most central): posterior probability of the largest expected influence")
     } else {
-        paste0("Point: estimate. Line: ", round(100 * .fit_level(x)), "% Wald interval (sandwich standard errors)")
+        paste0("Point: estimate. Line: ", round(100 * .fit_level(x)), "% Wald interval (Godambe-Huber-White standard errors)")
     }
 
     p <- ggplot2::ggplot(ei, ggplot2::aes(x = .data$center, y = .data$name)) +

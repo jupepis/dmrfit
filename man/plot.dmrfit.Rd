@@ -32,7 +32,7 @@ samples, which moves the mean and the median away from the mode; Arena and Marsm
 thresholds of rarely chosen response categories. Ignored for a \code{dmrfit} fit, which has point estimates.}
 
 \item{pars}{(trace, density, intervals) the parameters to show (at most 9 for trace and density): their names, as in \code{names(x$argument)} (for
-instance \code{"sigma[2,1]"} for the interaction between variables 2 and 1, \code{"mu[1,2]"} for the second
+instance \code{"theta[2,1]"} for the interaction between variables 2 and 1, \code{"mu[1,2]"} for the second
 threshold of variable 1), or their positions in that vector. By default, the four interactions with the largest
 absolute posterior summary (see \code{estimate}) for trace and density, and all the free parameters for
 intervals. The parameters are labeled with the variable names.}
@@ -61,8 +61,7 @@ caller's random number stream is restored on exit.}
 \item{node_size}{(network) size of the nodes (default 10); the labels scale with it.}
 
 \item{show_comments}{logical, whether to show the explanation below the plot (default TRUE): the rule for the drawn
-edges, or what the points, lines and probabilities show. With FALSE, only the plot and its legends are drawn, for
-instance when the explanation goes into the caption of a figure in a paper.}
+edges, or what the points, lines and probabilities show. With FALSE, only the plot and its legends are drawn.}
 
 \item{...}{further arguments (currently unused).}
 }
@@ -95,8 +94,8 @@ of its interactions, sorted by its estimate. For a \code{dmrfit_bayes} fit, the 
 \code{estimate} and the highest posterior density interval of mass \code{prob} of the expected influence
 computed on every draw, and next to it the posterior probability that the variable is the most central (the
 share of draws in which its expected influence is the largest). For a \code{dmrfit} fit, the estimate and its
-Wald interval at the level of the fit; the standard error of a sum of interactions follows from their sandwich
-covariance.}
+Wald interval at the level of the fit; the standard error of a sum of interactions follows from their
+Godambe-Huber-White (GHW) covariance.}
 }
 }
 \details{
@@ -126,12 +125,12 @@ plot(fit, type = "bf")
 # trace and density of the posterior draws
 fit_bayes <- dmrfit_bayes(rads2[, dysphoria], nsim = 1000, burnin = 500, progress = FALSE)
 plot(fit_bayes, type = "trace")
-plot(fit_bayes, type = "density", pars = c("sigma[2,1]", "mu[1,1]"))
+plot(fit_bayes, type = "density", pars = c("theta[2,1]", "mu[1,1]"))
 
 # estimates and intervals: Wald, likelihood-ratio and highest posterior density
 plot(fit, type = "intervals")
-fit_lrt <- dmrfit(rads2[, dysphoria], lrt_intervals = c("mu[1,3]", "mu[2,3]", "sigma[2,1]"))
-plot(fit_lrt, type = "intervals", pars = c("mu[1,3]", "mu[2,3]", "sigma[2,1]"))
+fit_lrt <- dmrfit(rads2[, dysphoria], lrt_intervals = c("mu[1,3]", "mu[2,3]", "theta[2,1]"))
+plot(fit_lrt, type = "intervals", pars = c("mu[1,3]", "mu[2,3]", "theta[2,1]"))
 plot(fit_bayes, type = "intervals")
 
 # expected influence of every variable, without the explanation below the plot

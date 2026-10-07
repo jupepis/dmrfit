@@ -32,13 +32,13 @@ dmrfit(
 
 \item{with_prior}{logical, whether to include the prior in the optimization: a Beta-Prime prior on the thresholds and a Cauchy prior on the pairwise interactions. Default is FALSE.}
 
-\item{savage_dickey}{logical, whether to compute the Savage-Dickey density ratio Bayes factor for each pairwise interaction via Bayesian Sampling Importance Resampling (BSIR) from the coordinate-rescaled pseudo-posterior: the pseudo-posterior rescaled around its mode to the sandwich (Godambe-Huber-White) covariance, which corrects the underestimated posterior variability of the pseudolikelihood. The proposal is a multivariate t with the sandwich covariance. When zero lies beyond all resampled draws of an interaction, its density at zero cannot be estimated from the draws: the Bayes factor is then reported at the floor \code{1/(10 * M)} and flagged in \code{savage_dickey$zero_beyond_draws}. Only available when \code{with_prior = TRUE}. Default is FALSE.}
+\item{savage_dickey}{logical, whether to compute the Savage-Dickey density ratio Bayes factor for each pairwise interaction via Bayesian Sampling Importance Resampling (BSIR) from the coordinate-rescaled pseudo-posterior: the pseudo-posterior rescaled around its mode to the Godambe-Huber-White (GHW) covariance, which corrects the underestimated posterior variability of the pseudo-likelihood. The proposal is a multivariate t with the GHW covariance. When zero lies beyond all resampled draws of an interaction, its density at zero cannot be estimated from the draws: the Bayes factor is then reported at the floor \code{1/(10 * M)} and flagged in \code{savage_dickey$zero_beyond_draws}. Only available when \code{with_prior = TRUE}. Default is FALSE.}
 
 \item{M}{number of draws resampled in the BSIR step (default is 1000). Only used when \code{savage_dickey = TRUE}.}
 
 \item{oversampling}{multiplier for the number of proposal draws in the BSIR step (default is 10). The total number of proposal draws is \code{M * oversampling}. Only used when \code{savage_dickey = TRUE}.}
 
-\item{ncores}{number of cores used to compute the gradient, Hessian and pseudolikelihood in parallel. It is capped at the number of available cores minus one, and has no effect when the package was built without OpenMP support. Default is 1.}
+\item{ncores}{number of cores used to compute the gradient, Hessian and pseudo-likelihood in parallel. It is capped at the number of available cores minus one, and has no effect when the package was built without OpenMP support. Default is 1.}
 
 \item{thresholds_alpha}{alpha parameter for the Beta-Prime prior on thresholds (default is 0.5). Only used when \code{with_prior = TRUE}.}
 
@@ -64,27 +64,27 @@ and the likelihood-ratio intervals, so that both are at the same level. It is al
 }
 \value{
 an object of class \code{dmrfit}, a list including the estimates (\code{argument}), the value, gradient,
-Hessian and sandwich covariance of the objective at the estimates (\code{utils}), the matched call
+Hessian and GHW covariance of the objective at the estimates (\code{utils}), the matched call
 (\code{call}), the data dimensions (\code{P}, \code{N}, \code{n_categories}), and, with
 \code{savage_dickey = TRUE}, the Savage-Dickey Bayes factors with the importance-sampling effective sample
 size (\code{savage_dickey}).
 }
 \description{
-Fits a discrete Markov random field (Ising or ordinal) through the pseudolikelihood. The estimates
-maximize the pseudolikelihood, or the pseudo-posterior with \code{with_prior = TRUE}, and are obtained with a
-trust region algorithm; the standard errors come from the Huber-White sandwich estimator. Optionally, Savage-Dickey
+Fits a discrete Markov random field (Ising or ordinal) through the pseudo-likelihood. The estimates
+maximize the pseudo-likelihood, or the pseudo-posterior with \code{with_prior = TRUE}, and are obtained with a
+trust region algorithm; the standard errors come from the Godambe-Huber-White (GHW, or sandwich) estimator. Optionally, Savage-Dickey
 Bayes factors are computed for each pairwise interaction from the coordinate-rescaled pseudo-posterior (Arena and
 Marsman, 2026).
 }
 \details{
-The likelihood-ratio interval of a parameter \eqn{\theta_k} is based on its profile pseudolikelihood:
-for each value of \eqn{\theta_k}, the other parameters are set to the values that maximize the pseudolikelihood
+The likelihood-ratio interval of a parameter \eqn{\theta_k} is based on its profile pseudo-likelihood:
+for each value of \eqn{\theta_k}, the other parameters are set to the values that maximize the pseudo-likelihood
 (or the pseudo-posterior with \code{with_prior = TRUE}). The interval collects the values where
 \deqn{C_k \cdot 2 [\log PL(\hat\theta) - \max_{\theta_{-k}} \log PL(\theta_k, \theta_{-k})] \le \chi^2_{1, level}.}
 For a full likelihood the statistic would be \eqn{\chi^2_1}-distributed (\eqn{C_k = 1}); for the
-pseudolikelihood it is \eqn{\lambda_k \chi^2_1}-distributed, with \eqn{\lambda_k = \Sigma_{kk} / (H^{-1})_{kk}},
-because the curvature \eqn{H} of the pseudolikelihood overstates the information in the data
-(\eqn{\Sigma} is the sandwich covariance). The scaling \eqn{C_k = 1 / \lambda_k} calibrates the statistic (Pace,
+pseudo-likelihood it is \eqn{\lambda_k \chi^2_1}-distributed, with \eqn{\lambda_k = \Sigma_{kk} / (H^{-1})_{kk}},
+because the curvature \eqn{H} of the pseudo-likelihood overstates the information in the data
+(\eqn{\Sigma} is the GHW covariance). The scaling \eqn{C_k = 1 / \lambda_k} calibrates the statistic (Pace,
 Salvan and Sartori, 2011; Varin, Reid and Firth, 2011). Unlike the Wald intervals, the likelihood-ratio intervals
 can be asymmetric around the estimate. The bounds are found by \code{uniroot} on each side of the estimate. The
 asymmetry matters when the sample size is small relative to the number of parameters (Arena and Marsman, 2026), so
