@@ -36,7 +36,7 @@ iteration and is much slower than the other methods (minutes to hours instead of
 network size and \code{control$dmh_aux}); \code{"core"} runs at the cost of the pseudo-posterior sampler.}
 
 \item{scale}{the covariance to which the pseudo-posterior is rescaled, only used when \code{method = "core"}:
-\code{"ghw"} (default) the sandwich (Godambe-Huber-White) covariance; \code{"mch"} the inverse of the negative
+\code{"ghw"} (default) the Godambe-Huber-White (GHW) covariance; \code{"mch"} the inverse of the negative
 Hessian of the full log-posterior at the pseudo-posterior mode, estimated by Monte Carlo simulation; \code{"rm"}
 the same Hessian at the full-posterior mode, estimated by a Newton-type Robbins-Monro algorithm (the sampler
 remains centered at the pseudo-posterior mode). \code{"mch"} and \code{"rm"} simulate data from the model and are
@@ -46,7 +46,7 @@ slower.}
 
 \item{burnin}{number of burn-in iterations, after an initial adaptive stage of \code{control$adaptive_stage} iterations. Default is 1000.}
 
-\item{ncores}{number of cores used to compute the gradient, Hessian and pseudolikelihood in parallel when finding the pseudo-posterior mode. It is capped at the number of available cores minus one. Default is 1.}
+\item{ncores}{number of cores used to compute the gradient, Hessian and pseudo-likelihood in parallel when finding the pseudo-posterior mode. It is capped at the number of available cores minus one, and has no effect when the package was built without OpenMP support. Default is 1.}
 
 \item{thresholds_alpha}{alpha parameter for the Beta-Prime prior on thresholds (default is 0.5).}
 
@@ -74,9 +74,9 @@ an object of class \code{dmrfit_bayes} (also of class \code{dmrfit}), including 
 \description{
 Bayesian inference for a discrete Markov random field (Ising or ordinal) by Markov chain Monte Carlo.
 By default, the posterior is approximated by the coordinate-rescaled (CoRe) pseudo-posterior of Arena and Marsman
-(2026): the pseudo-posterior rescaled around its mode so that its covariance matches the sandwich
-(Godambe-Huber-White) covariance, which corrects the underestimated posterior variability of the pseudolikelihood.
-All samplers use an adaptive Fisher-preconditioned Metropolis-adjusted Langevin algorithm (FisherMALA).
+(2026): the pseudo-posterior rescaled around its mode so that its covariance matches the Godambe-Huber-White
+(GHW) covariance, which corrects the underestimated posterior variability of the pseudo-likelihood.
+All samplers use the Fisher adaptive Metropolis-adjusted Langevin algorithm (FisherMALA; Titsias, 2024).
 }
 \examples{
 
@@ -97,10 +97,14 @@ summary(fit_exact)
 }
 \references{
 Arena, G. and Marsman, M. (2026). Bayesian inference for discrete Markov random fields through
-coordinate rescaling. Manuscript submitted for publication.
+coordinate rescaling. arXiv preprint. \doi{10.48550/arXiv.2601.17205}
 
 Liang, F. (2010). A double Metropolis-Hastings sampler for spatial models with intractable normalizing constants.
 \emph{Journal of Statistical Computation and Simulation}, 80(9), 1007-1022.
+
+Titsias, M. K. (2024). Optimal preconditioning and Fisher adaptive Langevin sampling. In \emph{Proceedings of
+the 37th International Conference on Neural Information Processing Systems} (NIPS '23). Red Hook, NY, USA: Curran
+Associates.
 
 Vats, D., Flegal, J. M., and Jones, G. L. (2019). Multivariate output analysis for Markov chain Monte Carlo.
 \emph{Biometrika}, 106(2), 321-337.

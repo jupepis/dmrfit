@@ -41,7 +41,7 @@ expect_true(out$adacore$counter_update >= 0)
 set.seed(5)
 expect_identical(run$core()$draws, out$core$draws)
 
-# --- CoRe targets the sandwich covariance; the pseudo-posterior is narrower (the deficit CoRe corrects)
+# --- CoRe targets the GHW covariance; the pseudo-posterior is narrower (the deficit CoRe corrects)
 sd_core <- apply(out$core$draws, 2, sd)
 sd_pseudo <- apply(out$pseudo$draws, 2, sd)
 expect_true(abs(median(sd_core / sqrt(diag(fit$utils$HW))) - 1) < 0.2)

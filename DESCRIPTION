@@ -8,19 +8,37 @@ Authors@R: c(person(given = "Giuseppe",
              role = c("aut", "cre"),
              email = "g.arena@uva.nl",
              comment = c(ORCID = "0000-0001-5204-3326")))
-Description: Estimation of discrete Markov Random Fields through the pseudolikelihood, for both Ising models (Ising, 1925, <doi:10.1007/BF02980577>) and Ordinal Markov Random Fields (Marsman, M., van den Bergh, D., and Haslbeck, J. M. B, 2025, <doi:10.1017/psy.2024.4>). Point estimates, either maximum pseudolikelihood or maximum a posteriori, are obtained through a trust region optimization algorithm, with robust standard errors from the Huber-White sandwich estimator, for both full and constrained network structures. Bayesian inference corrects the pseudo-posterior through coordinate rescaling, which matches its covariance to the sandwich covariance, and samples from it with an adaptive Fisher-preconditioned Metropolis-adjusted Langevin algorithm. For comparison, the posterior based on the full likelihood can also be sampled, exactly for small networks or with the double Metropolis-Hastings algorithm. Savage-Dickey Bayes factors test each pairwise interaction, computed either by sampling importance resampling or from the posterior draws.
+Description: Estimation of discrete Markov random fields through the pseudo-likelihood, for both Ising models
+    (Ising (1925) <doi:10.1007/BF02980577>) and ordinal Markov random fields (Marsman et al. (2025)
+    <doi:10.1017/psy.2024.4>). Point estimates, either maximum pseudo-likelihood or maximum a posteriori, are
+    obtained through a trust region optimization algorithm, with robust standard errors from the
+    Godambe-Huber-White (GHW, or sandwich) estimator, for both full and constrained network structures. Bayesian
+    inference corrects the pseudo-posterior through coordinate rescaling (Arena and Marsman (2026)
+    <doi:10.48550/arXiv.2601.17205>), which matches its covariance to the GHW covariance, and samples from it with the Fisher adaptive Metropolis-adjusted Langevin algorithm (Titsias (2024)
+    <doi:10.48550/arXiv.2305.14442>). For comparison, the posterior based on the full likelihood can also be
+    sampled, exactly for small networks or with the double Metropolis-Hastings algorithm (Liang (2010)
+    <doi:10.1080/00949650902882162>). Savage-Dickey Bayes factors test each pairwise interaction, computed either
+    by sampling importance resampling (Skare et al. (2003) <doi:10.1111/1467-9469.00360>) or from the posterior
+    draws.
 License: MIT + file LICENSE
+Copyright: The dataset 'rads2' is licensed under CC BY 4.0; see file COPYRIGHTS.
 URL: https://jupepis.github.io/dmrfit/, https://github.com/jupepis/dmrfit
 BugReports: https://github.com/jupepis/dmrfit/issues
 Depends:
     R (>= 4.0.0)
 Imports:
+    ggplot2,
     grDevices,
     graphics,
+    parallel,
     Rcpp (>= 1.1.0),
     stats
 Suggests: 
+    igraph,
+    knitr,
+    rmarkdown,
     tinytest
+VignetteBuilder: knitr
 LinkingTo:
     Rcpp,
     RcppArmadillo,

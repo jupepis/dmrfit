@@ -429,6 +429,9 @@ Rcpp::List cpp_optimize_profile(
     arma::uword n_pars = pars.n_elem;
     // impose constrained value for certain parameters
     pars(which_parconstr) = parconstr;
+    // free coordinates (1) and constrained ones (0): the trust-region steps move the free coordinates only
+    arma::vec free_pars(n_pars, arma::fill::ones);
+    free_pars(which_parconstr).zeros();
     Rcpp::List deriv = dmrf_deriv(pars,data,P,n_categories,with_prior,ncores,thresholds_alpha, thresholds_beta, interactions_location, interactions_scale);
 
     double rho = 0.0;
@@ -451,8 +454,11 @@ Rcpp::List cpp_optimize_profile(
             
         if(accept){
             f = deriv["value"];
-            g = Rcpp::as<arma::vec>(deriv["gradient"]);
-            B = Rcpp::as<arma::mat>(deriv["hessian"]);
+            // gradient and Hessian restricted to the free coordinates; the identity on the constrained ones keeps the
+            // Hessian invertible, and their step is zero because their gradient is zero
+            g = Rcpp::as<arma::vec>(deriv["gradient"]) % free_pars;
+            B = Rcpp::as<arma::mat>(deriv["hessian"]) % (free_pars * free_pars.t());
+            B.diag() += (1.0 - free_pars);
             arma::eig_sym(eigval, eigvec, B); 
             gq = eigvec.t() * g;
         }

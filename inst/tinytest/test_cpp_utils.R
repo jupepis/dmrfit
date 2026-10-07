@@ -29,7 +29,7 @@ expect_equal(as.vector(doubled), 2 * as.vector(once), tolerance = 1e-10)
 # the stabilized log-sum-exp keeps the value finite at large parameter values
 expect_true(all(is.finite(dmrfit:::cpp_npseudologlik_draws(matrix(30, n_pars, 1), X, n_categories, TRUE, 0.5, 0.5, 0, 2.5))))
 
-# --- dmrf_deriv: curvature of the negative log pseudo-posterior and sandwich covariance at the mode
+# --- dmrf_deriv: curvature of the negative log pseudo-posterior and GHW covariance at the mode
 fit <- dmrfit:::cpp_optimize(data = X_suff, parinit = rep(0, n_pars), n_categories = n_categories, P = P,
                              f_term = sqrt(.Machine$double.eps), m_term = sqrt(.Machine$double.eps), n_iter_max = 100,
                              rinit = 1, rmax = 10, with_prior = TRUE, epsilon = 1e-06, ncores = 1L, thresholds_alpha = 0.5,
@@ -72,3 +72,4 @@ for (p in 1:2) {
     expect_equal(as.vector(table(factor(gibbs$X[, p], levels = 0:3))) / 20000,
                  exp(c(0, mu[p, ])) / sum(exp(c(0, mu[p, ]))), tolerance = 0.02)
 }
+

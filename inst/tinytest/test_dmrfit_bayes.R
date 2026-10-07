@@ -25,7 +25,7 @@ for (k in names(fits)) {
     expect_inherits(f, "dmrfit_bayes", info = k)
     expect_equal(dim(f$draws), c(9L + 3L, 600L), info = k)
     expect_true(all(is.finite(f$draws)), info = k)
-    expect_equal(rownames(f$draws)[10], "sigma[2,1]", info = k)
+    expect_equal(rownames(f$draws)[10], "theta[2,1]", info = k)
 }
 expect_equal(fits$core$method, "core")
 expect_equal(fits$core$scale, "ghw")
@@ -49,7 +49,7 @@ expect_stdout(print(summary(fits$core)), "coordinate-rescaled pseudo-posterior")
 expect_true(grepl("double Metropolis-Hastings", dmrfit:::.method_label("dmh", "ghw")))
 expect_true(grepl("adapted during burn-in", dmrfit:::.method_label("adacore", "ghw")))
 expect_true(grepl("Robbins-Monro", dmrfit:::.method_label("core", "rm")))
-expect_true(grepl("sandwich covariance", dmrfit:::.method_label(NULL, NULL)))
+expect_true(grepl("Godambe-Huber-White covariance", dmrfit:::.method_label(NULL, NULL)))
 
 # --- Savage-Dickey Bayes factors and effective sample sizes
 sd <- fits$core$savage_dickey
@@ -68,3 +68,9 @@ f1 <- quiet_fit(seed = 7)
 expect_identical(.Random.seed, before)
 expect_identical(quiet_fit(seed = 7)$draws, f1$draws)
 expect_false(identical(quiet_fit(seed = 8)$draws, f1$draws))
+
+# --- confint(): highest posterior density intervals of the draws
+ci <- confint(fits$core, parm = c("mu[1,1]", "theta[2,1]"), level = 0.9)
+expect_equal(unname(ci[2, ]), dmrfit:::.hdi(fits$core$draws["theta[2,1]", ], 0.9))
+expect_equal(nrow(confint(fits$core)), nrow(fits$core$draws))
+
