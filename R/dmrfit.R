@@ -82,7 +82,7 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
     }
 
      # remove NAs from data if any exist
-    data <- data[!is.na(rowSums(data)), ]
+    data <- data[!is.na(rowSums(data)), , drop = FALSE]
 
     # check that columns of data are integer and non-negative
     if(any(data < 0) || any(data != floor(data))) {
@@ -148,6 +148,7 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
     # metadata needed by print/summary
     pmles$call <- cl
     pmles$P <- P
+    pmles$var_names <- if (is.null(colnames(data))) paste0("V", seq_len(P)) else colnames(data)[seq_len(P)] # node labels for plot()
     pmles$n_categories <- n_categories
     pmles$N <- nrow(data)
     pmles$with_prior <- with_prior

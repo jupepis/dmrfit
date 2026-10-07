@@ -72,3 +72,4 @@ for (p in 1:2) {
     expect_equal(as.vector(table(factor(gibbs$X[, p], levels = 0:3))) / 20000,
                  exp(c(0, mu[p, ])) / sum(exp(c(0, mu[p, ]))), tolerance = 0.02)
 }
+
