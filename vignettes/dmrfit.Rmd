@@ -12,9 +12,9 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height
                       out.width = "100%")
 ```
 
-This vignette walks through a complete network analysis with `dmrfit`: point estimation with confidence intervals, the
-evidence for each edge, Bayesian estimation, centrality, and the choice between the sampling methods. Each section
-first shows how to run and read the analysis. The paragraphs titled *Details* explain the methods and can be skipped on
+This vignette illustrates a complete network analysis with `dmrfit`. It covers point estimation with confidence
+intervals, the evidence for each edge, Bayesian estimation, centrality, and the choice between the sampling methods.
+Each section first describes how to run the analysis and interpret its output. The paragraphs titled *Details* explain the methods and can be skipped on
 a first reading. The notation follows Arena and Marsman (2026).
 
 ## Discrete Markov random fields and the pseudo-likelihood
@@ -46,7 +46,7 @@ $\pi(\boldsymbol{\eta})$, it defines the pseudo-posterior
 $\tilde{\pi}(\boldsymbol{\eta} \mid \mathbf{X}) \propto \tilde{f}(\mathbf{X}; \boldsymbol{\eta})\, \pi(\boldsymbol{\eta})$.
 The pseudo-likelihood estimates are consistent, but the curvature of the pseudo-likelihood overstates the information
 in the data: used naively, it underestimates the variability of the estimates and the posterior variance. The package
-corrects this in both routes it offers:
+corrects this underestimation in two ways.
 
 - `dmrfit()` estimates the parameters by maximizing the pseudo-likelihood (or the pseudo-posterior), with robust
   standard errors, confidence intervals and Bayes factors for the edges.
@@ -204,7 +204,7 @@ pseudo-posterior, which has the location of the pseudo-posterior and the scale o
 fit_bayes <- dmrfit_bayes(X, nsim = 10000, burnin = 1000, progress = FALSE)
 ```
 
-Before using the draws, we check that the chain has converged and mixes well. The trace plot shows the draws of the
+We first assess the convergence and mixing of the chain. The trace plot shows the draws of the
 interactions with the largest absolute posterior modes, which should fluctuate around a stable level, without trends.
 The effective sample sizes (ESS) summarize the mixing.
 
@@ -287,10 +287,10 @@ summary(sd_ratio)
 ```
 
 The posterior standard deviations of CoRe are close to those of the exact posterior, and slightly larger on average
-(median ratio `r round(median(sd_ratio), 2)`, largest `r round(max(sd_ratio), 2)`). This is expected: the GHW covariance
-is at least as large as the inverse Fisher information, with equality when the pseudo-likelihood is efficient, and the
-residual gap grows for small $n$ relative to the number of parameters (Arena and Marsman, 2026). A guide to the other
-options of `dmrfit_bayes()`:
+(median ratio `r round(median(sd_ratio), 2)`, largest `r round(max(sd_ratio), 2)`). This agrees with the theory, because the GHW
+covariance is at least as large as the inverse Fisher information, with equality when the pseudo-likelihood is efficient, and the
+residual gap grows for small $n$ relative to the number of parameters (Arena and Marsman, 2026). The other options of
+`dmrfit_bayes()` are the following.
 
 - `method = "core"` (default): the coordinate-rescaled pseudo-posterior, as fast as sampling the pseudo-posterior.
 - `method = "adacore"`: adapts the rescaling during burn-in, at the running mean of the draws.
