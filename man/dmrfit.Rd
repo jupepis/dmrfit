@@ -84,7 +84,7 @@ summary(fit_constrained)
 }
 \references{
 Arena, G. and Marsman, M. (2026). Bayesian inference for discrete Markov random fields through
-coordinate rescaling. Manuscript submitted for publication.
+coordinate rescaling. arXiv preprint. \doi{10.48550/arXiv.2601.17205}
 
 Skare, Ø., Bølviken, E., and Holden, L. (2003). Improved sampling-importance resampling and reduced bias importance
 sampling. \emph{Scandinavian Journal of Statistics}, 30(4), 719-737.

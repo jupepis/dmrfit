@@ -77,7 +77,7 @@ When opening an issue, please, use a descriptive title that clearly states the i
 <br />
 
 ## References
-- Arena, G. and Marsman, M. (2026). Bayesian inference for discrete Markov random fields through coordinate rescaling. _Manuscript under revision_.
+- Arena, G. and Marsman, M. (2026). Bayesian inference for discrete Markov random fields through coordinate rescaling. _arXiv preprint_. https://doi.org/10.48550/arXiv.2601.17205
 - Ising, E. (1925). Beitrag zur theorie des ferromagnetismus. _Zeitschrift für Physik_, 31(1):253–258.
 - Fletcher, R. (1987). _Practical Methods of Optimization_. 2nd ed. Chichester: Wiley.
 - Nocedal, J. and Wright, S.J. (1999). _Numerical Optimization_. New York: Springer.

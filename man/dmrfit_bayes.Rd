@@ -97,7 +97,7 @@ summary(fit_exact)
 }
 \references{
 Arena, G. and Marsman, M. (2026). Bayesian inference for discrete Markov random fields through
-coordinate rescaling. Manuscript submitted for publication.
+coordinate rescaling. arXiv preprint. \doi{10.48550/arXiv.2601.17205}
 
 Liang, F. (2010). A double Metropolis-Hastings sampler for spatial models with intractable normalizing constants.
 \emph{Journal of Statistical Computation and Simulation}, 80(9), 1007-1022.

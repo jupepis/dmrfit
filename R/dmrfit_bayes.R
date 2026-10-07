@@ -40,7 +40,7 @@
 #' @return an object of class \code{dmrfit_bayes} (also of class \code{dmrfit}), including the pseudo-posterior mode (\code{argument}), the posterior draws (\code{draws}, a matrix with parameters by rows and iterations by columns), the acceptance rate (\code{acceptance}), the sampling method and scale (\code{method}, \code{scale}), the Savage-Dickey Bayes factors with the effective sample size of each parameter (\code{savage_dickey}), and the multivariate effective sample size of the draws (\code{mess}; Vats, Flegal and Jones, 2019), which is \code{NA} when there are fewer than \code{P + 1} batches of \code{floor(sqrt(nsim))} draws per parameter.
 #'
 #' @references Arena, G. and Marsman, M. (2026). Bayesian inference for discrete Markov random fields through
-#' coordinate rescaling. Manuscript submitted for publication.
+#' coordinate rescaling. arXiv preprint. \doi{10.48550/arXiv.2601.17205}
 #'
 #' Liang, F. (2010). A double Metropolis-Hastings sampler for spatial models with intractable normalizing constants.
 #' \emph{Journal of Statistical Computation and Simulation}, 80(9), 1007-1022.
