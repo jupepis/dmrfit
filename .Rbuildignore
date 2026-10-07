@@ -18,3 +18,5 @@
 ^codecov\.yml$
 ^vignettes/.*\.orig$
 ^vignettes/precompile\.R$
+^cran-comments\.md$
+^CRAN-SUBMISSION$

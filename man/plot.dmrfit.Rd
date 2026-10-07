@@ -113,7 +113,8 @@ compare widths between plots, fix the range, for instance with
 data(rads2)
 dysphoria <- names(which(attr(rads2, "clusters") == "Dysphoria"))
 fit <- dmrfit(rads2[, dysphoria], with_prior = TRUE, savage_dickey = TRUE)
-plot(fit)
+# network of the included edges (the default layout uses the igraph package)
+if (requireNamespace("igraph", quietly = TRUE)) plot(fit)
 
 # all estimated interactions, with the nodes grouped and placed on a circle
 groups <- c(rep("first", 3), rep("second", 4))
