@@ -16,3 +16,5 @@
 ^src/.*\.so$
 ^src/.*\.dll$
 ^codecov\.yml$
+^vignettes/.*\.orig$
+^vignettes/precompile\.R$

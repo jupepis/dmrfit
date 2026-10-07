@@ -1,0 +1,324 @@
+---
+title: "Analyzing a psychological network with dmrfit"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Analyzing a psychological network with dmrfit}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+# This is the source of the vignette, which is precompiled: after changes that affect its output, run
+# Rscript vignettes/precompile.R from the package root, which writes vignettes/dmrfit.Rmd and its figures.
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5, dpi = 96, fig.align = "center",
+                      out.width = "100%", fig.path = "dmrfit-")
+```
+
+This vignette illustrates a complete network analysis with `dmrfit`. It covers point estimation with confidence
+intervals, the evidence for each edge, Bayesian estimation, centrality, and the choice between the sampling methods.
+Each section first describes how to run the analysis and interpret its output. The paragraphs titled *Details* explain the methods and can be skipped on
+a first reading. The notation follows Arena and Marsman (2026).
+
+## Discrete Markov random fields and the pseudo-likelihood
+
+A discrete Markov random field models the conditional dependencies between discrete random variables, such as the
+items of a questionnaire, as a network: two variables are connected when they are dependent given all the other
+variables. Let $\mathbf{X} = (\mathbf{X}_1, \ldots, \mathbf{X}_n)$ denote the observed data for $n$ observations on $p$
+ordinal variables, where each variable takes one of the categories $0, 1, \ldots, m$, and let $\mathbf{X}_{\nu} =
+(X_{\nu 1}, \ldots, X_{\nu p})$ denote the $\nu$-th observation. The ordinal Markov random field (OMRF) is defined by the
+parameter vector $\boldsymbol{\eta} = (\boldsymbol{\mu}, \boldsymbol{\theta})$, which comprises the threshold parameters
+$\mu_{ih}$, the tendency of variable $i$ to take the non-baseline category $h = 1, \ldots, m$ that is not explained by
+its interactions with the other variables, and the interaction parameters $\theta_{ij}$, the pairwise conditional
+dependency between variables $i$ and $j$. An interaction $\theta_{ij} = 0$ means that variables $i$ and $j$ are
+conditionally independent, that is, there is no edge between them. When the variables are binary, the OMRF reduces to
+the Ising model.
+
+The full likelihood of the OMRF contains a normalizing constant that sums over all $(m + 1)^p$ possible response
+patterns, which is infeasible beyond a few variables. `dmrfit` uses the pseudo-likelihood instead, the product of the
+conditional distributions of each variable given the remaining variables,
+$$
+\tilde{f}(\mathbf{X}; \boldsymbol{\eta}) = \prod_{\nu=1}^{n} \prod_{i=1}^{p} f\left(X_{\nu i} \mid \mathbf{X}_{\nu(-i)},
+\boldsymbol{\eta}\right), \qquad
+f\left(X_{\nu i} = h \mid \mathbf{X}_{\nu(-i)}, \boldsymbol{\eta}\right) =
+\frac{\exp\left(\mu_{ih} + h \sum_{j \neq i} \theta_{ij} X_{\nu j}\right)}
+{1 + \sum_{k=1}^{m} \exp\left(\mu_{ik} + k \sum_{j \neq i} \theta_{ij} X_{\nu j}\right)},
+$$
+with $\mu_{i0} = 0$, whose normalizing constants are computationally tractable. Combined with a prior
+$\pi(\boldsymbol{\eta})$, it defines the pseudo-posterior
+$\tilde{\pi}(\boldsymbol{\eta} \mid \mathbf{X}) \propto \tilde{f}(\mathbf{X}; \boldsymbol{\eta})\, \pi(\boldsymbol{\eta})$.
+The pseudo-likelihood estimates are consistent, but the curvature of the pseudo-likelihood overstates the information
+in the data: used naively, it underestimates the variability of the estimates and the posterior variance. The package
+corrects this underestimation in two ways.
+
+- `dmrfit()` estimates the parameters by maximizing the pseudo-likelihood (or the pseudo-posterior), with robust
+  standard errors, confidence intervals and Bayes factors for the edges.
+- `dmrfit_bayes()` samples from the pseudo-posterior rescaled to the scale of the full posterior (coordinate rescaling,
+  CoRe, Arena and Marsman, 2026).
+
+```{r}
+library(dmrfit)
+```
+
+## The data
+
+`rads2` contains the responses of 917 adolescents from Lima (Peru) to the 25 items of the four-factor version of the
+Reynolds Adolescent Depression Scale (RADS-2), each answered on a four-point scale (Ramos-Vera et al., 2023). The
+positively worded items were reverse-coded, so that higher values mean more symptoms for every item. The items belong
+to four clusters, stored with the data. Here we use the 10 items of two clusters, dysphoria and anhedonia/negative
+affect, with $p = 10$ variables, $m + 1 = 4$ categories and $n = 917$ observations.
+
+```{r}
+data(rads2)
+clusters <- attr(rads2, "clusters")
+items <- names(clusters)[clusters %in% c("Dysphoria", "Anhedonia/Negative Affect")]
+X <- rads2[, items]
+clusters[items]
+```
+
+The response frequencies show that the highest category is rarely chosen for some items. This matters below, because a
+threshold of a rare category is estimated from few observations.
+
+```{r}
+sapply(X, function(item) table(factor(item, levels = 1:4)))
+```
+
+## Point estimation and confidence intervals
+
+`dmrfit()` estimates the thresholds and interactions. With `with_prior = TRUE` it maximizes the pseudo-posterior,
+which gives the maximum a posteriori (MAP) estimate, with beta-prime priors on the exponentiated thresholds,
+$\exp(\mu_{ih}) \sim \text{Beta-Prime}(0.5, 0.5)$, and Cauchy priors on the interactions, $\theta_{ij} \sim
+\text{Cauchy}(0, 2.5)$. Without the prior it gives the maximum pseudo-likelihood estimate (MPLE). `lrt_intervals = TRUE`
+adds likelihood-ratio intervals for all parameters, and `savage_dickey = TRUE` the Bayes factors of the next section.
+
+```{r}
+fit <- dmrfit(X, with_prior = TRUE, savage_dickey = TRUE, lrt_intervals = TRUE)
+```
+
+In the output, `mu[i,h]` is the threshold $\mu_{ih}$ and `theta[i,j]` the interaction $\theta_{ij}$, with the
+variables numbered in the column order of the data. `summary()` prints the estimates with their standard errors, and
+the Wald and likelihood-ratio intervals next to each other.
+
+```{r}
+summary(fit)
+```
+
+The two kinds of intervals agree for most parameters, but not for the thresholds of the rarely chosen highest
+categories. For item D1, whose highest category was chosen `r sum(X$D1 == 4)` times, the likelihood-ratio interval of
+$\mu_{13}$ extends further below the estimate than above it, which the symmetric Wald interval cannot do:
+
+```{r}
+confint(fit, parm = c("mu[1,3]", "theta[2,1]"))
+confint(fit, parm = c("mu[1,3]", "theta[2,1]"), method = "wald")
+```
+
+`plot(fit, type = "intervals")` shows the estimates and intervals of all parameters, the thresholds and the interactions
+in separate panels, each sorted by estimate.
+
+```{r intervals, fig.height = 8, fig.alt = "Estimates and likelihood-ratio intervals of the thresholds and interactions of the 10 items, sorted by estimate"}
+plot(fit, type = "intervals")
+```
+
+When the sample is small relative to the number of parameters and the likelihood-ratio intervals are not computed,
+`dmrfit()` warns that the Wald intervals may be inaccurate:
+
+```{r}
+fit_small <- dmrfit(X[1:200, ])
+```
+
+*Details.* The standard errors come from the Godambe-Huber-White (GHW, or sandwich) covariance
+$$
+\boldsymbol{\Sigma}_{\text{GHW}} = \left(-\mathbf{H}^{-1}\right) \mathbf{U} \left(-\mathbf{H}^{-1}\right),
+$$
+where $\mathbf{H}$ is the Hessian of the log pseudo-likelihood and $\mathbf{U} = \sum_{\nu=1}^{n} \mathbf{u}_{\nu}
+\mathbf{u}_{\nu}^{\intercal}$ the variance of the score, both evaluated at the estimate $\hat{\boldsymbol{\eta}}$. The
+naive covariance $-\mathbf{H}^{-1}$ would underestimate the variability. The likelihood-ratio interval of a parameter
+$\eta_k$ is based on its profile: for every value of $\eta_k$, the other parameters are set to the values that maximize
+the pseudo-likelihood. Because it is computed from a pseudo-likelihood, the profile likelihood-ratio statistic is not
+$\chi^2_1$-distributed but $\lambda_k \chi^2_1$-distributed, with $\lambda_k = [\boldsymbol{\Sigma}_{\text{GHW}}]_{kk} /
+[-\mathbf{H}^{-1}]_{kk}$ (Pace, Salvan and Sartori, 2011). The interval collects the values of $\eta_k$ for which
+$$
+\frac{2}{\lambda_k} \left[\log \tilde{f}(\mathbf{X}; \hat{\boldsymbol{\eta}}) - \max_{\boldsymbol{\eta}_{-k}} \log
+\tilde{f}(\mathbf{X}; \eta_k, \boldsymbol{\eta}_{-k})\right] \leq \chi^2_{1, 1 - \alpha},
+$$
+with $\chi^2_{1, 1 - \alpha}$ the quantile of the $\chi^2_1$ distribution at the level of the interval. When a prior is
+used, the pseudo-posterior takes the place of the pseudo-likelihood, and $\lambda_k$ is computed from its curvature
+$-(\mathbf{H} + \mathbf{H}_{\boldsymbol{\eta}})$, with $\mathbf{H}_{\boldsymbol{\eta}}$ the Hessian of the log prior,
+and from the posterior GHW covariance $\boldsymbol{\Gamma}\boldsymbol{\Gamma}^{\intercal}_{\text{GHW}} =
+(\boldsymbol{\Sigma}_{\text{GHW}}^{-1} - \mathbf{H}_{\boldsymbol{\eta}})^{-1}$. The interval follows the shape of the
+pseudo-likelihood, so it can be asymmetric, and in large samples it agrees with the Wald interval.
+
+A network structure can also be imposed with `structure`, a matrix with 1 for the edges to estimate and 0 for the edges
+fixed at zero. For instance, without edges between the two clusters:
+
+```{r network-within, fig.alt = "Network of the constrained fit without edges between the two clusters, with the nodes grouped by cluster"}
+S <- outer(clusters[items], clusters[items], "==") * 1
+diag(S) <- 0
+fit_within <- dmrfit(X, structure = S, with_prior = TRUE)
+plot(fit_within, all_edges = TRUE, groups = clusters[items])
+```
+
+## Is the edge there? Bayes factors
+
+An interaction estimated close to zero does not tell whether the edge is absent or the data are not informative enough
+to tell. The Savage-Dickey Bayes factor $\text{BF}_{01}$ (denoted $\text{BF}_{\text{cu}}$ in Arena and Marsman, 2026)
+compares the hypothesis of conditional independence, $\theta_{ij} = 0$, with the hypothesis $\theta_{ij} \neq 0$:
+$\text{BF}_{01} > 1$ is evidence for conditional independence (no edge), and $\text{BF}_{01} < 1$ evidence for an
+interaction. The plots classify the evidence for each edge as
+
+| $\text{BF}_{01}$ | Evidence |
+|---|---|
+| $< 1/10$ | included |
+| $1/10$ to $1/3$ | weak included |
+| $1/3$ to $3$ | inconclusive |
+| $3$ to $10$ | weak excluded |
+| $\geq 10$ | excluded |
+
+```{r}
+evidence <- table(cut(fit$savage_dickey$bf_01, c(0, 1/10, 1/3, 3, 10, Inf), right = FALSE,
+                      labels = c("included", "weak included", "inconclusive", "weak excluded", "excluded")))
+evidence
+```
+
+Of the `r length(fit$savage_dickey$bf_01)` possible edges, `r evidence[["included"]]` are included and
+`r evidence[["excluded"]]` excluded, and the data leave `r evidence[["inconclusive"]]` inconclusive.
+`plot(fit, type = "bf")` shows the evidence for every edge, with the size of the circle given by the size of the
+interaction, and the network plot draws the included edges.
+
+```{r bf-network, fig.alt = c("Evidence for every edge from its Savage-Dickey Bayes factor, with the size of the interaction", "Network of the included edges, with the nodes grouped by cluster")}
+plot(fit, type = "bf")
+plot(fit, groups = clusters[items])
+```
+
+*Details.* The Savage-Dickey Bayes factor is the ratio of the marginal posterior and the prior density of the
+interaction at zero, $\text{BF}_{01} = \pi(\theta_{ij} = 0 \mid \mathbf{X}) / \pi(\theta_{ij} = 0)$. `dmrfit()`
+estimates the posterior density from draws of the coordinate-rescaled pseudo-posterior (see the next section), obtained
+by sampling importance resampling (Skare et al., 2003). When zero lies beyond all draws of an interaction
+(`r sum(fit$savage_dickey$zero_beyond_draws)` interactions here), the density at zero cannot be estimated. The Bayes
+factor is then set at the floor $1/(10M)$, with $M$ the number of resampled draws, a bound that indicates very strong
+evidence for an interaction, and `summary()` marks it with `<`.
+
+## Bayesian estimation with coordinate rescaling
+
+`dmrfit_bayes()` samples from the posterior of the parameters. By default, it samples the coordinate-rescaled
+pseudo-posterior, which has the location of the pseudo-posterior and the scale of the GHW covariance.
+
+```{r}
+fit_bayes <- dmrfit_bayes(X, nsim = 10000, burnin = 1000, progress = FALSE)
+```
+
+We first assess the convergence and mixing of the chain. The trace plot shows the draws of the
+interactions with the largest absolute posterior modes, which should fluctuate around a stable level, without trends.
+The effective sample sizes (ESS) summarize the mixing.
+
+```{r trace, fig.alt = "Trace plots of the posterior draws of the four interactions with the largest absolute posterior modes"}
+plot(fit_bayes, type = "trace")
+min(fit_bayes$savage_dickey$ess)  # smallest effective sample size of a parameter
+fit_bayes$mess                    # multivariate effective sample size of all draws
+```
+
+The posterior densities show the posterior mode (solid line) and the 95% highest posterior density interval (dashed
+lines), the shortest interval that contains 95% of the posterior.
+
+```{r density, fig.alt = "Posterior densities of two thresholds and two interactions, with their posterior modes and highest posterior density intervals"}
+plot(fit_bayes, type = "density", pars = c("mu[1,3]", "mu[1,1]", "theta[3,1]", "theta[6,5]"))
+```
+
+`summary()` reports the posterior summaries and the Bayes factors computed from the draws, and `confint()` the highest
+posterior density intervals. The Bayes factors from the draws and from `dmrfit()` agree closely: they classify
+`r round(100 * mean(cut(fit$savage_dickey$bf_01, c(0, 1/10, 1/3, 3, 10, Inf), right = FALSE) == cut(fit_bayes$savage_dickey$bf_01, c(0, 1/10, 1/3, 3, 10, Inf), right = FALSE)))`%
+of the edges in the same evidence class.
+
+```{r}
+summary(fit_bayes)
+confint(fit_bayes, parm = c("mu[1,3]", "theta[2,1]"))
+```
+
+*Details.* The pseudo-posterior $\tilde{\pi}(\boldsymbol{\eta} \mid \mathbf{X})$ is approximately centered at the
+right location, but its scale is too small. CoRe defines the transformed parameters
+$$
+\boldsymbol{\beta} = \mathbf{A}\left(\boldsymbol{\eta} - \boldsymbol{\eta}^{\star}\right) + \boldsymbol{\eta}^{\star},
+\qquad \mathbf{A} = \boldsymbol{\Gamma} \mathbf{L}^{\intercal},
+$$
+where $\boldsymbol{\eta}^{\star}$ is the pseudo-posterior mode, $\mathbf{L}^{\intercal}$ the upper-triangular Cholesky
+factor of the negative pseudo-posterior Hessian, $\mathbf{L}\mathbf{L}^{\intercal} = -(\mathbf{H} +
+\mathbf{H}_{\boldsymbol{\eta}})$, and $\boldsymbol{\Gamma}$ the lower-triangular Cholesky factor of the GHW posterior
+covariance $\boldsymbol{\Gamma}\boldsymbol{\Gamma}^{\intercal}_{\text{GHW}}$. The transformed
+pseudo-posterior has the covariance $\boldsymbol{\Gamma}\boldsymbol{\Gamma}^{\intercal}_{\text{GHW}}$ to leading order,
+and it is sampled with the Fisher adaptive Metropolis-adjusted Langevin algorithm (FisherMALA, Titsias, 2024). The
+plots use the marginal posterior mode as the point summary by default (`estimate = "mode"`): in small samples the
+posterior of a threshold of a rarely chosen category is asymmetric, which moves the mean and the median away from the
+mode (Arena and Marsman, 2026).
+
+## Centrality
+
+The expected influence of a variable is the sum of its interactions, $\sum_{j} \theta_{ij}$ (Robinaugh, Millner and
+McNally, 2016), which measures how strongly it is connected to the rest of the network, with the sign of each
+connection. For a `dmrfit_bayes` fit, it is computed on every draw, which also gives the posterior probability that
+each variable is the most central.
+
+```{r centrality, fig.alt = "Expected influence of the 10 items with highest posterior density intervals and the posterior probability of being the most central item"}
+plot(fit_bayes, type = "centrality")
+```
+
+```{r, include = FALSE}
+# the most central item in every draw, for the text below
+inter_draws <- fit_bayes$draws[grep("^theta", rownames(fit_bayes$draws)), ]
+most_central <- apply(inter_draws, 2, function(theta) {
+    Theta <- matrix(0, length(items), length(items))
+    Theta[lower.tri(Theta)] <- theta
+    which.max(rowSums(Theta + t(Theta)))
+})
+top_item <- items[which.max(tabulate(most_central, nbins = length(items)))]
+```
+
+Item `r top_item` has the largest expected influence, and is the most central item in
+`r round(100 * mean(items[most_central] == top_item))`% of the posterior draws. For a `dmrfit` fit, `plot(fit, type = "centrality")` shows the estimates with Wald intervals.
+
+## Which method when
+
+CoRe approximates the posterior based on the full likelihood. For small networks, this posterior can be sampled
+exactly, because its normalizing constant can be computed by enumerating all $(m + 1)^p$ response patterns. This gives a
+direct check of the approximation, here on the first five items ($4^5 = 1{,}024$ response patterns):
+
+```{r}
+five <- items[1:5]
+fit_core <- dmrfit_bayes(rads2[, five], nsim = 5000, burnin = 1000, progress = FALSE)
+fit_exact <- dmrfit_bayes(rads2[, five], method = "exact", nsim = 5000, burnin = 1000, progress = FALSE)
+sd_ratio <- apply(fit_core$draws, 1, sd) / apply(fit_exact$draws, 1, sd)
+summary(sd_ratio)
+```
+
+The posterior standard deviations of CoRe are close to those of the exact posterior, and slightly larger on average
+(median ratio `r round(median(sd_ratio), 2)`, largest `r round(max(sd_ratio), 2)`). This agrees with the theory, because the GHW
+covariance is at least as large as the inverse Fisher information, with equality when the pseudo-likelihood is efficient, and the
+residual gap grows for small $n$ relative to the number of parameters (Arena and Marsman, 2026). The other options of
+`dmrfit_bayes()` are the following.
+
+- `method = "core"` (default): the coordinate-rescaled pseudo-posterior, as fast as sampling the pseudo-posterior.
+- `method = "adacore"`: adapts the rescaling during burn-in, at the running mean of the draws.
+- `method = "exact"`: the posterior based on the full likelihood, by enumeration, only for small networks (up to
+  `control$max_states` response patterns).
+- `method = "dmh"`: the posterior based on the full likelihood with the double Metropolis-Hastings algorithm (Liang,
+  2010), for any network size, but much slower: a reference rather than a routine choice.
+- `scale`, for `method = "core"`: the covariance the pseudo-posterior is rescaled to, the GHW covariance (`"ghw"`,
+  default), or the inverse of a Monte Carlo estimate of the negative Hessian of the full log-posterior, at the
+  pseudo-posterior mode (`"mch"`) or at the Robbins-Monro estimate of the full-posterior mode (`"rm"`). The last two
+  simulate data from the model and are slower.
+
+## References
+
+- Arena, G. and Marsman, M. (2026). Bayesian inference for discrete Markov random fields through coordinate rescaling.
+  arXiv preprint. <https://doi.org/10.48550/arXiv.2601.17205>
+- Liang, F. (2010). A double Metropolis-Hastings sampler for spatial models with intractable normalizing constants.
+  *Journal of Statistical Computation and Simulation*, 80(9), 1007-1022.
+- Pace, L., Salvan, A., and Sartori, N. (2011). Adjusting composite likelihood ratio statistics. *Statistica Sinica*,
+  21(1), 129-148.
+- Ramos-Vera, C., Quispe Callo, G., Basauri Delgado, M., Vallejos Saldarriaga, J., and Saintila, J. (2023). Factorial
+  and network structure of the Reynolds Adolescent Depression Scale (RADS-2) in Peruvian adolescents. *PLOS ONE*,
+  18(5), e0286081.
+- Robinaugh, D. J., Millner, A. J., and McNally, R. J. (2016). Identifying highly influential nodes in the complicated
+  grief network. *Journal of Abnormal Psychology*, 125(6), 747-757.
+- Skare, Ø., Bølviken, E., and Holden, L. (2003). Improved sampling-importance resampling and reduced bias importance
+  sampling. *Scandinavian Journal of Statistics*, 30(4), 719-737.
+- Titsias, M. K. (2024). Optimal preconditioning and Fisher adaptive Langevin sampling. In *Proceedings of the 37th
+  International Conference on Neural Information Processing Systems* (NIPS '23). Red Hook, NY, USA: Curran Associates.
