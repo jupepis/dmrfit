@@ -3,14 +3,16 @@
 * local: macOS 26.6 (aarch64), R 4.5.2
 * GitHub Actions: Windows (R release), Ubuntu (R devel, release, oldrel-1)
 * win-builder: R devel
-* mac-builder: R release
-* R-hub: linux (R devel), windows, macos-arm64, clang-asan, nosuggests
+* R-hub: linux, windows, macos-arm64, clang-asan, gcc14 and gcc16 (Fedora), all R devel
 
 ## R CMD check results
 
 0 errors | 0 warnings | 1 note
 
 * This is a new submission.
+
+  Possibly misspelled words in DESCRIPTION: GHW, Godambe, Ising, Langevin, Liang, Marsman, Skare, Titsias, et al. These
+  are names of authors and of methods (GHW is the Godambe-Huber-White covariance), and are spelled correctly.
 
 ## Comments
 

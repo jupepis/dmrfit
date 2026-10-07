@@ -110,28 +110,29 @@ compare widths between plots, fix the range, for instance with
 \code{+ ggplot2::scale_linewidth_continuous(limits = c(0, 1), range = c(0.3, 2.4))}.
 }
 \examples{
+# four items of the RADS-2 data (a small network keeps the examples fast)
 data(rads2)
-dysphoria <- names(which(attr(rads2, "clusters") == "Dysphoria"))
-fit <- dmrfit(rads2[, dysphoria], with_prior = TRUE, savage_dickey = TRUE)
+items <- c("D3", "D6", "D7", "D8")
+fit <- dmrfit(rads2[, items], with_prior = TRUE, savage_dickey = TRUE)
 # network of the included edges (the default layout uses the igraph package)
 if (requireNamespace("igraph", quietly = TRUE)) plot(fit)
 
 # all estimated interactions, with the nodes grouped and placed on a circle
-groups <- c(rep("first", 3), rep("second", 4))
+groups <- c("first", "first", "second", "second")
 plot(fit, all_edges = TRUE, groups = groups, layout = "circle")
 
 # evidence for every edge from its Savage-Dickey Bayes factor
 plot(fit, type = "bf")
 
 # trace and density of the posterior draws
-fit_bayes <- dmrfit_bayes(rads2[, dysphoria], nsim = 1000, burnin = 500, progress = FALSE)
+fit_bayes <- dmrfit_bayes(rads2[, items], nsim = 500, burnin = 300, progress = FALSE)
 plot(fit_bayes, type = "trace")
 plot(fit_bayes, type = "density", pars = c("theta[2,1]", "mu[1,1]"))
 
 # estimates and intervals: Wald, likelihood-ratio and highest posterior density
 plot(fit, type = "intervals")
-fit_lrt <- dmrfit(rads2[, dysphoria], lrt_intervals = c("mu[1,3]", "mu[2,3]", "theta[2,1]"))
-plot(fit_lrt, type = "intervals", pars = c("mu[1,3]", "mu[2,3]", "theta[2,1]"))
+fit_lrt <- dmrfit(rads2[, items], lrt_intervals = c("mu[1,3]", "theta[2,1]"))
+plot(fit_lrt, type = "intervals", pars = c("mu[1,3]", "theta[2,1]"))
 plot(fit_bayes, type = "intervals")
 
 # expected influence of every variable, without the explanation below the plot
