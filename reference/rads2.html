@@ -25,6 +25,9 @@ from Ramos-Vera et al. (2023), who also grouped the items into four clusters (st
 
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav"><li>
+  <a href="../articles/dmrfit.html">Get started</a>
+</li>
+<li>
   <a href="../reference/index.html">Reference</a>
 </li>
       </ul><ul class="nav navbar-nav navbar-right"><li>
@@ -108,7 +111,7 @@ Psychological Assessment Resources.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         Somatic Complaint </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                         7 </span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># point estimates and sandwich standard errors for the seven dysphoria items</span></span></span>
+<span class="r-in"><span><span class="co"># point estimates and Godambe-Huber-White standard errors for the seven dysphoria items</span></span></span>
 <span class="r-in"><span><span class="va">dysphoria</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">rads2</span>, <span class="st">"clusters"</span><span class="op">)</span> <span class="op">==</span> <span class="st">"Dysphoria"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="dmrfit.html">dmrfit</a></span><span class="op">(</span><span class="va">rads2</span><span class="op">[</span>, <span class="va">dysphoria</span><span class="op">]</span>, with_prior <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></span>
@@ -117,9 +120,9 @@ Psychological Assessment Resources.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> dmrfit(data = rads2[, dysphoria], with_prior = TRUE)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Discrete Markov Random Field</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Estimation method: maximum pseudolikelihood (with prior)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Estimation method: maximum pseudo-likelihood (with prior)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Nodes: 7  Observations: 917  Free parameters: 42 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Standard errors: Huber-White sandwich estimator</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Standard errors: Godambe-Huber-White (GHW) estimator</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ------------------------------------------------------------ </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Thresholds:</span>
@@ -148,31 +151,76 @@ Psychological Assessment Resources.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Pairwise interactions:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>            Post.Mode  Post.SD z value  Pr(&gt;|z|)    </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[2,1]  0.262512 0.049439  5.3099 1.097e-07 ***</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[3,1]  0.315226 0.060199  5.2364 1.637e-07 ***</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[4,1]  0.215751 0.055751  3.8699 0.0001089 ***</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[5,1]  0.102766 0.051743  1.9861 0.0470261 *  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[6,1]  0.215103 0.055583  3.8699 0.0001089 ***</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[7,1]  0.086310 0.049577  1.7409 0.0816983 .  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[3,2]  0.207480 0.057861  3.5859 0.0003360 ***</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[4,2]  0.078529 0.054517  1.4404 0.1497420    </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[5,2]  0.094154 0.049816  1.8900 0.0587542 .  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[6,2]  0.273915 0.050014  5.4768 4.332e-08 ***</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[7,2]  0.050618 0.048043  1.0536 0.2920697    </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[4,3]  0.799264 0.084449  9.4645 &lt; 2.2e-16 ***</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[5,3]  0.181064 0.066751  2.7125 0.0066769 ** </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[6,3]  0.207927 0.075345  2.7596 0.0057864 ** </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[7,3]  0.176419 0.060693  2.9068 0.0036518 ** </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[5,4]  0.173475 0.061509  2.8203 0.0047977 ** </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[6,4]  0.173782 0.068500  2.5369 0.0111824 *  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[7,4]  0.210920 0.059018  3.5738 0.0003518 ***</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[6,5]  0.227903 0.058071  3.9246 8.688e-05 ***</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[7,5]  0.185144 0.052731  3.5111 0.0004462 ***</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma[7,6]  0.147534 0.057994  2.5439 0.0109608 *  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[2,1]  0.262512 0.049439  5.3099 1.097e-07 ***</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,1]  0.315226 0.060199  5.2364 1.637e-07 ***</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[4,1]  0.215751 0.055751  3.8699 0.0001089 ***</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[5,1]  0.102766 0.051743  1.9861 0.0470261 *  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[6,1]  0.215103 0.055583  3.8699 0.0001089 ***</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[7,1]  0.086310 0.049577  1.7409 0.0816983 .  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,2]  0.207480 0.057861  3.5859 0.0003360 ***</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[4,2]  0.078529 0.054517  1.4404 0.1497420    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[5,2]  0.094154 0.049816  1.8900 0.0587542 .  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[6,2]  0.273915 0.050014  5.4768 4.332e-08 ***</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[7,2]  0.050618 0.048043  1.0536 0.2920697    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[4,3]  0.799264 0.084449  9.4645 &lt; 2.2e-16 ***</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[5,3]  0.181064 0.066751  2.7125 0.0066769 ** </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[6,3]  0.207927 0.075345  2.7596 0.0057864 ** </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[7,3]  0.176419 0.060693  2.9068 0.0036518 ** </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[5,4]  0.173475 0.061509  2.8203 0.0047977 ** </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[6,4]  0.173782 0.068500  2.5369 0.0111824 *  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[7,4]  0.210920 0.059018  3.5738 0.0003518 ***</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[6,5]  0.227903 0.058071  3.9246 8.688e-05 ***</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[7,5]  0.185144 0.052731  3.5111 0.0004462 ***</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[7,6]  0.147534 0.057994  2.5439 0.0109608 *  </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ---</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Negative pseudo-loglikelihood: 6876.938 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Intervals (95%): Wald (GHW standard errors)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            Wald lower Wald upper</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[1,1]       -1.2068    -0.7809</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[1,2]       -2.3956    -1.6710</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[1,3]       -5.5463    -4.1659</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[2,1]       -1.6069    -1.1794</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[2,2]       -3.3982    -2.5362</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[2,3]       -6.1689    -4.6474</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[3,1]       -1.5900    -1.1043</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[3,2]       -4.1184    -2.9955</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[3,3]       -9.3129    -7.0464</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[4,1]       -1.7317    -1.2593</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[4,2]       -4.4648    -3.4098</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[4,3]       -8.8024    -6.8704</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[5,1]       -1.0445    -0.6441</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[5,2]       -2.8919    -2.1046</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[5,3]       -6.1610    -4.6796</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[6,1]       -2.3306    -1.8552</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[6,2]       -4.6980    -3.6876</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[6,3]       -8.3395    -6.4986</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[7,1]       -0.1689     0.2320</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[7,2]       -1.3935    -0.7713</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[7,3]       -3.6910    -2.5527</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[2,1]     0.1656     0.3594</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,1]     0.1972     0.4332</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[4,1]     0.1065     0.3250</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[5,1]     0.0014     0.2042</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[6,1]     0.1062     0.3240</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[7,1]    -0.0109     0.1835</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,2]     0.0941     0.3209</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[4,2]    -0.0283     0.1854</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[5,2]    -0.0035     0.1918</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[6,2]     0.1759     0.3719</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[7,2]    -0.0435     0.1448</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[4,3]     0.6337     0.9648</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[5,3]     0.0502     0.3119</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[6,3]     0.0603     0.3556</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[7,3]     0.0575     0.2954</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[5,4]     0.0529     0.2940</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[6,4]     0.0395     0.3080</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[7,4]     0.0952     0.3266</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[6,5]     0.1141     0.3417</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[7,5]     0.0818     0.2885</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[7,6]     0.0339     0.2612</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Negative log pseudo-likelihood: 6876.938 </span>
 </code></pre></div>
     </div>
   </div>
