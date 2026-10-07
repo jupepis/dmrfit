@@ -20,11 +20,18 @@
 #'     intervals of a \code{dmrfit} fit computed with \code{lrt_intervals = TRUE}, otherwise its Wald intervals, both
 #'     at the level of the fit, or the highest posterior density intervals of mass \code{prob} of a
 #'     \code{dmrfit_bayes} fit (see \code{\link{confint.dmrfit}}). The caption states which.}
+#'   \item{\code{type = "centrality"}}{The expected influence of every variable, \eqn{EI_i = \sum_j \theta_{ij}}, the sum
+#'     of its interactions, sorted by its estimate. For a \code{dmrfit_bayes} fit, the posterior summary chosen by
+#'     \code{estimate} and the highest posterior density interval of mass \code{prob} of the expected influence
+#'     computed on every draw, and next to it the posterior probability that the variable is the most central (the
+#'     share of draws in which its expected influence is the largest). For a \code{dmrfit} fit, the estimate and its
+#'     Wald interval at the level of the fit; the standard error of a sum of interactions follows from their sandwich
+#'     covariance.}
 #' }
 #'
 #' @param x a \code{dmrfit} or \code{dmrfit_bayes} object.
-#' @param type the plot: \code{"network"} (default), \code{"bf"}, \code{"trace"}, \code{"density"} or
-#'   \code{"intervals"}.
+#' @param type the plot: \code{"network"} (default), \code{"bf"}, \code{"trace"}, \code{"density"},
+#'   \code{"intervals"} or \code{"centrality"}.
 #' @param estimate the posterior summary of the interactions of a \code{dmrfit_bayes} fit: \code{"mode"} (default) the
 #'   marginal posterior mode, the maximum of the kernel density estimate of the draws (\code{stats::density}),
 #'   \code{"mean"} or \code{"median"}. The mode is the default because the posterior can be asymmetric in small
@@ -35,7 +42,7 @@
 #'   threshold of variable 1), or their positions in that vector. By default, the four interactions with the largest
 #'   absolute posterior summary (see \code{estimate}) for trace and density, and all the free parameters for
 #'   intervals. The parameters are labeled with the variable names.
-#' @param prob (density, intervals) mass of the highest posterior density interval of a \code{dmrfit_bayes} fit
+#' @param prob (density, intervals, centrality) mass of the highest posterior density interval of a \code{dmrfit_bayes} fit
 #'   (default 0.95). The intervals of a \code{dmrfit} fit are at its \code{level}.
 #' @param all_edges (network) logical, whether to draw every estimated interaction instead of only the included ones
 #'   (default FALSE). Every estimated interaction is also drawn for a fit without Bayes factors (only the free ones
@@ -95,10 +102,14 @@
 #' plot(fit_lrt, type = "intervals", pars = c("mu[1,3]", "mu[2,3]", "sigma[2,1]"))
 #' plot(fit_bayes, type = "intervals")
 #'
+#' # expected influence of every variable
+#' plot(fit, type = "centrality")
+#' plot(fit_bayes, type = "centrality")
+#'
 #' @method plot dmrfit
 #' @export
 #'
-plot.dmrfit <- function(x, type = c("network", "bf", "trace", "density", "intervals"), estimate = c("mode", "mean", "median"),
+plot.dmrfit <- function(x, type = c("network", "bf", "trace", "density", "intervals", "centrality"), estimate = c("mode", "mean", "median"),
                         pars = NULL, prob = 0.95, all_edges = FALSE, groups = NULL, layout = c("fr", "circle"),
                         seed = 30, node_size = 10, ...) {
 
@@ -135,7 +146,8 @@ plot.dmrfit <- function(x, type = c("network", "bf", "trace", "density", "interv
                 bf = .plot_bf(x, estimate = estimate),
                 trace = .plot_draws(x, type = "trace", estimate = estimate, pars = pars, prob = prob),
                 density = .plot_draws(x, type = "density", estimate = estimate, pars = pars, prob = prob),
-                intervals = .plot_intervals(x, estimate = estimate, pars = pars, prob = prob))
+                intervals = .plot_intervals(x, estimate = estimate, pars = pars, prob = prob),
+                centrality = .plot_centrality(x, estimate = estimate, prob = prob))
     return(p)
 }
 
@@ -544,5 +556,83 @@ plot.dmrfit <- function(x, type = c("network", "bf", "trace", "density", "interv
                        strip.text = ggplot2::element_text(face = "bold"),
                        plot.background = ggplot2::element_rect(fill = .PLOT_SURFACE, colour = NA),
                        plot.caption = ggplot2::element_text(colour = "gray35", hjust = 0.5))
+    return(p)
+}
+
+
+#' expected_influence (internal)
+#' @description Expected influence of every variable, EI_i = sum_j theta_ij: for a dmrfit_bayes fit, computed on every
+#'   draw, summarized by the posterior summary, the HPD interval and the posterior probability of the largest expected
+#'   influence; for a dmrfit fit, the estimate with its Wald interval, the standard error from the sandwich covariance
+#'   of the interactions (sqrt(a' Sigma a), with a the indicator of the interactions of the variable).
+#' @param x a dmrfit or dmrfit_bayes object
+#' @param estimate the posterior summary for a dmrfit_bayes fit: "mode", "mean" or "median"
+#' @param prob mass of the HPD interval of a dmrfit_bayes fit
+#' @return a data frame with one row per variable: name, center, lower, upper and p_most_central (NA for a dmrfit fit)
+#' @noRd
+.expected_influence <- function(x, estimate, prob) {
+    var_names <- if (is.null(x$var_names)) paste0("V", seq_len(x$P)) else x$var_names
+    inter <- .interaction_estimates(x, "mean") # names and node indices of the interactions
+    inter_idx <- match(inter$name, names(x$argument))
+
+    # --- indicator of the interactions of each variable: EI = A theta ---
+    A <- matrix(0, x$P, nrow(inter))
+    A[cbind(inter$i, seq_len(nrow(inter)))] <- 1
+    A[cbind(inter$j, seq_len(nrow(inter)))] <- 1
+
+    if (inherits(x, "dmrfit_bayes")) {
+        ei_draws <- A %*% x$draws[inter_idx, , drop = FALSE]
+        summary_fun <- switch(estimate, mode = .posterior_mode, mean = mean, median = stats::median)
+        hpd <- t(apply(ei_draws, 1, .hdi, prob = prob))
+        most_central <- table(factor(apply(ei_draws, 2, which.max), levels = seq_len(x$P)))
+        out <- data.frame(name = var_names, center = apply(ei_draws, 1, summary_fun), lower = hpd[, 1], upper = hpd[, 2],
+                          p_most_central = as.vector(most_central) / ncol(ei_draws))
+    } else {
+        theta <- x$argument[inter_idx]
+        Sigma <- x$utils$HW[inter_idx, inter_idx, drop = FALSE] # zero for the absent edges of a constrained fit
+        se <- sqrt(diag(A %*% Sigma %*% t(A)))
+        z <- stats::qnorm((1 + .fit_level(x)) / 2)
+        center <- as.vector(A %*% theta)
+        out <- data.frame(name = var_names, center = center, lower = center - z * se, upper = center + z * se,
+                          p_most_central = NA_real_)
+    }
+    return(out)
+}
+
+
+#' plot_centrality (internal)
+#' @description Centrality plot of plot.dmrfit(type = "centrality"); see its documentation for the arguments.
+#' @return a ggplot object
+#' @noRd
+.plot_centrality <- function(x, estimate, prob) {
+    ei <- .expected_influence(x, estimate, prob)
+    ei$name <- factor(ei$name, levels = ei$name[order(ei$center)]) # sorted by expected influence
+    bayes <- inherits(x, "dmrfit_bayes")
+    rule <- if (bayes) {
+        paste0("Point: posterior ", estimate, "; line: ", round(100 * prob), "% highest posterior density interval\n",
+               "Pr(most central): posterior probability of the largest expected influence")
+    } else {
+        paste0("Point: estimate; line: ", round(100 * .fit_level(x)), "% Wald interval (sandwich standard errors)")
+    }
+
+    p <- ggplot2::ggplot(ei, ggplot2::aes(x = .data$center, y = .data$name)) +
+        ggplot2::geom_vline(xintercept = 0, colour = "gray80", linewidth = 0.4) +
+        ggplot2::geom_errorbar(ggplot2::aes(xmin = .data$lower, xmax = .data$upper), width = 0, orientation = "y",
+                               colour = .PLOT_DENSITY, linewidth = 0.5) +
+        ggplot2::geom_point(colour = .PLOT_DENSITY, size = 1.8) +
+        ggplot2::labs(x = expression("Expected influence " * sum(theta[ij], j)), y = NULL, caption = rule) +
+        ggplot2::theme_minimal(base_size = 12) +
+        ggplot2::theme(panel.grid.minor = ggplot2::element_blank(), panel.grid.major.y = ggplot2::element_blank(),
+                       plot.background = ggplot2::element_rect(fill = .PLOT_SURFACE, colour = NA),
+                       plot.caption = ggplot2::element_text(colour = "gray35", hjust = 0.5))
+    if (bayes) {
+        # posterior probability of the largest expected influence, in a column to the right of the panel
+        p <- p + ggplot2::geom_text(ggplot2::aes(x = Inf, label = sprintf("%.2f", .data$p_most_central)), hjust = -0.3,
+                                    size = 3, colour = .PLOT_INK) +
+            ggplot2::annotate("text", x = Inf, y = Inf, label = "Pr(most\ncentral)", hjust = -0.1, vjust = -0.3, size = 3,
+                              colour = "gray35", lineheight = 0.9) +
+            ggplot2::coord_cartesian(clip = "off") +
+            ggplot2::theme(plot.margin = ggplot2::margin(30, 60, 5.5, 5.5))
+    }
     return(p)
 }

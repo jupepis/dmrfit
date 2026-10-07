@@ -6,7 +6,7 @@
 \usage{
 \method{plot}{dmrfit}(
   x,
-  type = c("network", "bf", "trace", "density", "intervals"),
+  type = c("network", "bf", "trace", "density", "intervals", "centrality"),
   estimate = c("mode", "mean", "median"),
   pars = NULL,
   prob = 0.95,
@@ -21,8 +21,8 @@
 \arguments{
 \item{x}{a \code{dmrfit} or \code{dmrfit_bayes} object.}
 
-\item{type}{the plot: \code{"network"} (default), \code{"bf"}, \code{"trace"}, \code{"density"} or
-\code{"intervals"}.}
+\item{type}{the plot: \code{"network"} (default), \code{"bf"}, \code{"trace"}, \code{"density"},
+\code{"intervals"} or \code{"centrality"}.}
 
 \item{estimate}{the posterior summary of the interactions of a \code{dmrfit_bayes} fit: \code{"mode"} (default) the
 marginal posterior mode, the maximum of the kernel density estimate of the draws (\code{stats::density}),
@@ -36,7 +36,7 @@ threshold of variable 1), or their positions in that vector. By default, the fou
 absolute posterior summary (see \code{estimate}) for trace and density, and all the free parameters for
 intervals. The parameters are labeled with the variable names.}
 
-\item{prob}{(density, intervals) mass of the highest posterior density interval of a \code{dmrfit_bayes} fit
+\item{prob}{(density, intervals, centrality) mass of the highest posterior density interval of a \code{dmrfit_bayes} fit
 (default 0.95). The intervals of a \code{dmrfit} fit are at its \code{level}.}
 
 \item{all_edges}{(network) logical, whether to draw every estimated interaction instead of only the included ones
@@ -85,6 +85,13 @@ and the interactions in separate panels, each sorted by estimate. The intervals 
 intervals of a \code{dmrfit} fit computed with \code{lrt_intervals = TRUE}, otherwise its Wald intervals, both
 at the level of the fit, or the highest posterior density intervals of mass \code{prob} of a
 \code{dmrfit_bayes} fit (see \code{\link{confint.dmrfit}}). The caption states which.}
+\item{\code{type = "centrality"}}{The expected influence of every variable, \eqn{EI_i = \sum_j \theta_{ij}}, the sum
+of its interactions, sorted by its estimate. For a \code{dmrfit_bayes} fit, the posterior summary chosen by
+\code{estimate} and the highest posterior density interval of mass \code{prob} of the expected influence
+computed on every draw, and next to it the posterior probability that the variable is the most central (the
+share of draws in which its expected influence is the largest). For a \code{dmrfit} fit, the estimate and its
+Wald interval at the level of the fit; the standard error of a sum of interactions follows from their sandwich
+covariance.}
 }
 }
 \details{
@@ -121,6 +128,10 @@ plot(fit, type = "intervals")
 fit_lrt <- dmrfit(rads2[, dysphoria], lrt_intervals = c("mu[1,3]", "mu[2,3]", "sigma[2,1]"))
 plot(fit_lrt, type = "intervals", pars = c("mu[1,3]", "mu[2,3]", "sigma[2,1]"))
 plot(fit_bayes, type = "intervals")
+
+# expected influence of every variable
+plot(fit, type = "centrality")
+plot(fit_bayes, type = "centrality")
 
 }
 \references{

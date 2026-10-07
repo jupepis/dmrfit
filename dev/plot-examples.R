@@ -45,7 +45,9 @@ pages <- list(
     "16. intervals (dmrfit, Wald)"                            = plot(fit_bf, type = "intervals"),
     "17. intervals (dmrfit, likelihood-ratio)"                = plot(fit_lrt, type = "intervals"),
     "18. intervals (dmrfit_bayes, HPD)"                       = plot(fit_bayes, type = "intervals"),
-    "19. the returned ggplot can be modified"                 = plot(fit_bf, groups = clusters[items]) +
+    "19. centrality (dmrfit, Wald)"                           = plot(fit_bf, type = "centrality"),
+    "20. centrality (dmrfit_bayes, HPD and Pr(most central))"  = plot(fit_bayes, type = "centrality"),
+    "21. the returned ggplot can be modified"                 = plot(fit_bf, groups = clusters[items]) +
                                                                   labs(title = "RADS-2: dysphoria and anhedonia items") +
                                                                   theme(legend.position = "right")
 )

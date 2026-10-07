@@ -149,3 +149,22 @@ expect_equal(unname(p_h$data$upper[2]), dmrfit:::.hdi(fit_b$draws["sigma[2,1]", 
 expect_equal(levels(p_h$data$type), c("Thresholds", "Interactions"))
 expect_silent(ggplot2::ggplot_build(p_l))
 
+# --- centrality: expected influence EI_i = sum_j theta_ij, sorted by estimate
+ei <- dmrfit:::.expected_influence(fit, "mode", 0.95)
+Theta <- matrix(0, 5, 5); Theta[lower.tri(Theta)] <- fit$argument[-(1:15)]; Theta <- Theta + t(Theta)
+expect_equal(ei$center, rowSums(Theta))
+# dmrfit: Wald interval with the standard error of the sum from the sandwich covariance
+a1 <- as.numeric(c(rep(0, 15), col(Theta)[lower.tri(Theta)] == 1)) # the interactions sigma[i,1] of variable 1
+expect_equal(ei$upper[1] - ei$center[1], qnorm(0.975) * sqrt(drop(t(a1) %*% fit$utils$HW %*% a1)))
+expect_true(all(is.na(ei$p_most_central)))
+p_c <- plot(fit, type = "centrality")
+expect_equal(levels(p_c$data$name), as.character(ei$name[order(ei$center)]))
+expect_silent(ggplot2::ggplot_build(p_c))
+# dmrfit_bayes: computed on every draw; the probabilities of the largest expected influence sum to 1
+ei_b <- dmrfit:::.expected_influence(fit_b, "median", 0.9)
+ei_draws_1 <- colSums(fit_b$draws[grep("^sigma\\[[0-9]+,1\\]$", rownames(fit_b$draws)), ]) # variable 1
+expect_equal(ei_b$center[1], median(ei_draws_1))
+expect_equal(c(ei_b$lower[1], ei_b$upper[1]), dmrfit:::.hdi(ei_draws_1, 0.9))
+expect_equal(sum(ei_b$p_most_central), 1)
+expect_silent(ggplot2::ggplot_build(plot(fit_b, type = "centrality")))
+
