@@ -2,43 +2,48 @@
 # groups and the layout, and the argument checks. The plots are built (ggplot_build) but not drawn.
 
 data(rads2, package = "dmrfit")
+# the default network layout ("fr") needs igraph, which is only suggested: without it the network plots use a circle
+has_igraph <- requireNamespace("igraph", quietly = TRUE)
+lay <- if (has_igraph) "fr" else "circle"
 X <- rads2[, c("D3", "D6", "D7", "D8", "D16")]
 fit <- dmrfit(X, with_prior = TRUE, savage_dickey = TRUE, M = 500)
 edge_layer <- function(p) ggplot2::layer_data(p, 1)  # the curves are the first layer
 
 # --- the item names are stored and used as node labels
 expect_equal(fit$var_names, colnames(X))
-p <- plot(fit)
+p <- plot(fit, layout = lay)
 expect_inherits(p, "ggplot")
 expect_silent(ggplot2::ggplot_build(p))
 expect_equal(sort(ggplot2::layer_data(p, 3)$label), sort(colnames(X)))
 
 # --- Savage-Dickey rule: the included edges (BF_01 < 1/10) are drawn, or every edge with all_edges = TRUE
 sd <- fit$savage_dickey
-expect_equal(nrow(edge_layer(plot(fit))), sum(sd$bf_01 < 1 / 10))
-expect_equal(nrow(edge_layer(plot(fit, all_edges = TRUE))), choose(5, 2))
+expect_equal(nrow(edge_layer(plot(fit, layout = lay))), sum(sd$bf_01 < 1 / 10))
+expect_equal(nrow(edge_layer(plot(fit, all_edges = TRUE, layout = lay))), choose(5, 2))
 
 # --- without Bayes factors every estimated interaction is drawn, with a message; a constrained fit draws its free edges
 fit_nobf <- dmrfit(X, with_prior = TRUE)
-expect_message(p_nobf <- plot(fit_nobf), "every estimated interaction")
+expect_message(p_nobf <- plot(fit_nobf, layout = lay), "every estimated interaction")
 expect_equal(nrow(edge_layer(p_nobf)), choose(5, 2))
 S <- matrix(1, 5, 5); diag(S) <- 0; S[1, 2] <- S[2, 1] <- 0; S[3, 5] <- S[5, 3] <- 0
 fit_s <- dmrfit(X, structure = S)
-expect_equal(nrow(edge_layer(plot(fit_s, all_edges = TRUE))), choose(5, 2) - 2)
+expect_equal(nrow(edge_layer(plot(fit_s, all_edges = TRUE, layout = lay))), choose(5, 2) - 2)
 
 # --- groups: in column order or named, at most four
-p_g <- plot(fit, groups = c("a", "a", "b", "b", "c"))
+p_g <- plot(fit, groups = c("a", "a", "b", "b", "c"), layout = lay)
 expect_equal(nrow(ggplot2::layer_data(p_g, 2)), 5L)
-expect_silent(ggplot2::ggplot_build(plot(fit, groups = setNames(c("a", "b", "a", "b", "a"), rev(colnames(X))))))
-expect_error(plot(fit, groups = c("a", "b")), "one entry per variable")
-expect_error(plot(fit, groups = letters[1:5]), "At most 4 groups")
+expect_silent(ggplot2::ggplot_build(plot(fit, groups = setNames(c("a", "b", "a", "b", "a"), rev(colnames(X))), layout = lay)))
+expect_error(plot(fit, groups = c("a", "b"), layout = lay), "one entry per variable")
+expect_error(plot(fit, groups = letters[1:5], layout = lay), "At most 4 groups")
 
 # --- layout: the "fr" layout comes from all estimated interactions, so the nodes keep their positions when the
 # threshold changes; a different seed gives a different arrangement; "circle" puts the nodes on the unit circle
 node_xy <- function(p) ggplot2::layer_data(p, 2)[, c("x", "y")]
-expect_equal(node_xy(plot(fit)), node_xy(plot(fit, all_edges = TRUE)))
-expect_equal(node_xy(plot(fit)), node_xy(plot(fit, seed = 30)))
-expect_false(isTRUE(all.equal(node_xy(plot(fit)), node_xy(plot(fit, seed = 20)))))
+if (has_igraph) {
+    expect_equal(node_xy(plot(fit)), node_xy(plot(fit, all_edges = TRUE)))
+    expect_equal(node_xy(plot(fit)), node_xy(plot(fit, seed = 30)))
+    expect_false(isTRUE(all.equal(node_xy(plot(fit)), node_xy(plot(fit, seed = 20)))))
+}
 circle <- node_xy(plot(fit, layout = "circle"))
 expect_equal(circle$x^2 + circle$y^2, rep(1, 5))
 
@@ -53,20 +58,23 @@ expect_error(plot(fit, layout = "grid"))
 
 # --- the groups follow the levels of a factor; node_size sets the node size and scales the labels
 g <- factor(c("a", "a", "b", "b", "c"), levels = c("c", "b", "a"))
-expect_equal(ggplot2::ggplot_build(plot(fit, groups = g))$plot$scales$get_scales("fill")$get_limits(), c("c", "b", "a"))
-expect_equal(unique(ggplot2::layer_data(plot(fit, node_size = 14), 2)$size), 14)
-expect_equal(unique(ggplot2::layer_data(plot(fit, node_size = 14), 3)$size), 0.28 * 14)
-expect_error(plot(fit, node_size = 0), "positive number")
-expect_error(plot(fit, seed = "a"), "single number")
+expect_equal(ggplot2::ggplot_build(plot(fit, groups = g, layout = lay))$plot$scales$get_scales("fill")$get_limits(), c("c", "b", "a"))
+expect_equal(unique(ggplot2::layer_data(plot(fit, node_size = 14, layout = lay), 2)$size), 14)
+expect_equal(unique(ggplot2::layer_data(plot(fit, node_size = 14, layout = lay), 3)$size), 0.28 * 14)
+expect_error(plot(fit, node_size = 0, layout = lay), "positive number")
+expect_error(plot(fit, seed = "a", layout = lay), "single number")
 
 # --- the caller's random number stream is left untouched by the igraph layout
-set.seed(5); before <- .Random.seed
-invisible(plot(fit))
-expect_identical(.Random.seed, before)
+if (has_igraph) {
+    set.seed(5)
+    before <- .Random.seed
+    invisible(plot(fit))
+    expect_identical(.Random.seed, before)
+}
 
 # --- argument checks
 expect_error(plot(fit, type = "other"))
-expect_error(plot(fit, all_edges = NA), "TRUE or FALSE")
+expect_error(plot(fit, all_edges = NA, layout = lay), "TRUE or FALSE")
 
 # --- dmrfit_bayes: the edges are the marginal posterior modes (default), means or medians of the draws
 fit_b <- suppressWarnings(dmrfit_bayes(X, nsim = 400, burnin = 200, progress = FALSE))
@@ -75,8 +83,8 @@ est <- function(e) { d <- dmrfit:::.interaction_estimates(fit_b, e); setNames(d$
 expect_equal(est("mean"), apply(fit_b$draws[inter_rows, ], 1, mean))
 expect_equal(est("median"), apply(fit_b$draws[inter_rows, ], 1, median))
 expect_equal(est("mode"), apply(fit_b$draws[inter_rows, ], 1, function(z) { d <- density(z); d$x[which.max(d$y)] }))
-expect_silent(ggplot2::ggplot_build(plot(fit_b, estimate = "median")))
-expect_warning(plot(fit, estimate = "mean"), "ignored for a dmrfit fit")
+expect_silent(ggplot2::ggplot_build(plot(fit_b, estimate = "median", layout = lay)))
+expect_warning(plot(fit, estimate = "mean", layout = lay), "ignored for a dmrfit fit")
 
 
 # --- evidence classes of BF_01 (evidence for exclusion): each interval runs from the previous bound up to, but
@@ -170,8 +178,8 @@ expect_silent(ggplot2::ggplot_build(plot(fit_b, type = "centrality")))
 
 # --- show_comments = FALSE: no explanation below the plot, for every type
 for (type in c("network", "bf", "intervals", "centrality")) {
-    expect_true(!is.null(plot(fit, type = type)$labels$caption) || type == "bf")
-    expect_null(plot(fit, type = type, show_comments = FALSE)$labels$caption)
+    expect_true(!is.null(plot(fit, type = type, layout = lay)$labels$caption) || type == "bf")
+    expect_null(plot(fit, type = type, show_comments = FALSE, layout = lay)$labels$caption)
 }
 for (type in c("density", "centrality")) {
     expect_null(plot(fit_b, type = type, show_comments = FALSE)$labels$caption)

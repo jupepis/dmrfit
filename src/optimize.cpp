@@ -38,7 +38,8 @@ double find_root(double lower,
                  double c2, 
                  const arma::vec &beta_vec, 
                  const arma::vec &gq,
-                 double tol = 1e-8) {
+                 double tol = 1e-8,
+                 int max_iter = 200) {
   // initial evaluations of `beta_root_fun(b)` at the bounds
   double f_lower = beta_root_fun(lower, r, c1, c2, beta_vec, gq);
   double f_upper = beta_root_fun(upper, r, c1, c2, beta_vec, gq);
@@ -46,9 +47,10 @@ double find_root(double lower,
   if (f_lower * f_upper > 0) {
     Rcpp::stop("Function values at the bounds do not have opposite signs.");
   }
-  // using bisection method to find the root
+  // using bisection method to find the root (at most max_iter halvings: a finite interval reaches tol well before,
+  // and the limit stops the loop when the interval cannot shrink, for instance with an infinite bound)
   double mid, f_mid;
-  while ((upper - lower) / 2.0 > tol) {
+  for (int iter = 0; iter < max_iter && (upper - lower) / 2.0 > tol; iter++) {
     mid = (lower + upper) / 2.0;
     f_mid = beta_root_fun(mid, r, c1, c2, beta_vec, gq);
     
@@ -194,7 +196,7 @@ Rcpp::List cpp_optimize(
         rho = (f_try-f)/preddiff;
 
         if(f_try < arma::datum::inf){
-            is_terminate = (std::abs(f_try-f) < f_term) || (abs(preddiff) < m_term);
+            is_terminate = (std::abs(f_try-f) < f_term) || (std::abs(preddiff) < m_term);
         } 
         else{
             is_terminate = false;
@@ -362,7 +364,7 @@ Rcpp::List cpp_optimize_with_structure(
         rho = (f_try-f)/preddiff;
 
         if(f_try < arma::datum::inf){
-            is_terminate = (std::abs(f_try-f) < f_term) || (abs(preddiff) < m_term);
+            is_terminate = (std::abs(f_try-f) < f_term) || (std::abs(preddiff) < m_term);
         } 
         else{
             is_terminate = false;
@@ -541,7 +543,7 @@ Rcpp::List cpp_optimize_profile(
         rho = (f_try-f)/preddiff;
 
         if(f_try < arma::datum::inf){
-            is_terminate = (std::abs(f_try-f) < f_term) || (abs(preddiff) < m_term);
+            is_terminate = (std::abs(f_try-f) < f_term) || (std::abs(preddiff) < m_term);
         } 
         else{
             is_terminate = false;
