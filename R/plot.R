@@ -1,38 +1,50 @@
 #' @title Plot a fitted discrete Markov random field
 #'
-#' @description Plots of a \code{dmrfit} or \code{dmrfit_bayes} fit, made with \pkg{ggplot2}. With
-#' \code{type = "network"}, the nodes are the variables and the edges the pairwise interactions: the edge width is the
-#' absolute value of the interaction, the color and line type its sign. The interactions are the estimates of
-#' \code{dmrfit()}, or a posterior summary of the draws of \code{dmrfit_bayes()} (see \code{estimate}).
+#' @description Plots of a \code{dmrfit} or \code{dmrfit_bayes} fit, made with \pkg{ggplot2}. The interactions are
+#' the estimates of \code{dmrfit()}, or a posterior summary of the draws of \code{dmrfit_bayes()} (see
+#' \code{estimate}).
+#' \describe{
+#'   \item{\code{type = "network"}}{The nodes are the variables and the edges the pairwise interactions: the edge
+#'     width is the absolute value of the interaction, the color and line type its sign. When the fit has
+#'     Savage-Dickey Bayes factors, only the included edges are drawn (see Details).}
+#'   \item{\code{type = "bf"}}{One circle per pair of variables (lower triangle): its color is the evidence for the
+#'     edge given by its Savage-Dickey Bayes factor (see Details) and its area the absolute value of the interaction.
+#'     Requires a fit with Bayes factors.}
+#' }
 #'
 #' @param x a \code{dmrfit} or \code{dmrfit_bayes} object.
-#' @param type the plot: \code{"network"}.
+#' @param type the plot: \code{"network"} (default) or \code{"bf"}.
 #' @param estimate the posterior summary of the interactions of a \code{dmrfit_bayes} fit: \code{"mode"} (default) the
 #'   marginal posterior mode, the maximum of the kernel density estimate of the draws (\code{stats::density}),
 #'   \code{"mean"} or \code{"median"}. The mode is the default because the posterior can be asymmetric in small
 #'   samples, which moves the mean and the median away from the mode; Arena and Marsman (2026) found this for the
 #'   thresholds of rarely chosen response categories. Ignored for a \code{dmrfit} fit, which has point estimates.
-#' @param bf_threshold Bayes factor threshold for drawing an edge: an interaction is drawn when its Savage-Dickey Bayes
-#'   factor \code{BF_01}, the evidence for the absence of the edge, is below \code{1 / bf_threshold} (default 10, that
-#'   is \code{BF_01 < 1/10}). With \code{bf_threshold = NULL}, or for a \code{dmrfit} fit without Bayes factors, every
-#'   estimated interaction is drawn (only the free ones for a constrained fit).
-#' @param groups optional grouping of the nodes (for instance \code{attr(rads2, "clusters")}), a vector with one entry
-#'   per variable, in the column order of the data or named by variable. At most four groups, shown by the color and
-#'   shape of the nodes.
-#' @param layout the node positions: \code{"fr"} (default) the Fruchterman-Reingold layout of \pkg{igraph}, which must
-#'   be installed; \code{"circle"} the nodes on a circle, in the column order of the data; or a matrix of coordinates
-#'   with two columns and one row per variable (in the column order of the data, or with the variable names as row
-#'   names), rescaled by the same factor on both axes. The \code{"fr"} layout is computed from all estimated
-#'   interactions, weighted by their absolute value, so that the nodes keep their positions when \code{bf_threshold}
-#'   changes.
-#' @param seed random seed of the \code{"fr"} layout (default 30); other seeds give other arrangements. The caller's
-#'   random number stream is restored on exit.
-#' @param node_size size of the nodes (default 10); the labels scale with it.
+#' @param all_edges (network) logical, whether to draw every estimated interaction instead of only the included ones
+#'   (default FALSE). Every estimated interaction is also drawn for a fit without Bayes factors (only the free ones
+#'   for a constrained fit).
+#' @param groups (network) optional grouping of the nodes (for instance \code{attr(rads2, "clusters")}), a vector with
+#'   one entry per variable, in the column order of the data or named by variable. At most four groups, shown by the
+#'   color and shape of the nodes.
+#' @param layout (network) the node positions: \code{"fr"} (default) the Fruchterman-Reingold layout of \pkg{igraph},
+#'   which must be installed; \code{"circle"} the nodes on a circle, in the column order of the data; or a matrix of
+#'   coordinates with two columns and one row per variable (in the column order of the data, or with the variable
+#'   names as row names), rescaled by the same factor on both axes. The \code{"fr"} layout is computed from all
+#'   estimated interactions, weighted by their absolute value, so that the nodes keep their positions when
+#'   \code{all_edges} changes.
+#' @param seed (network) random seed of the \code{"fr"} layout (default 30); other seeds give other arrangements. The
+#'   caller's random number stream is restored on exit.
+#' @param node_size (network) size of the nodes (default 10); the labels scale with it.
 #' @param ... further arguments (currently unused).
 #'
-#' @details The edge widths are scaled to the range of the absolute interactions drawn in each plot. To compare widths
-#' between plots, fix the range, for instance with \code{+ ggplot2::scale_linewidth_continuous(limits = c(0, 1),
-#' range = c(0.3, 2.4))}.
+#' @details The evidence for an edge is classified by its Savage-Dickey Bayes factor \eqn{BF_{01}}, the evidence for
+#' the absence of the edge: included (\eqn{BF_{01} < 1/10}), weak included (\eqn{1/10 \le BF_{01} < 1/3}),
+#' inconclusive (\eqn{1/3 \le BF_{01} < 3}), weak excluded (\eqn{3 \le BF_{01} < 10}) and excluded
+#' (\eqn{BF_{01} \ge 10}), shown from orange (included) through gray to violet (excluded). The network plot draws the
+#' included edges.
+#'
+#' The edge widths of the network plot are scaled to the range of the absolute interactions drawn in each plot. To
+#' compare widths between plots, fix the range, for instance with
+#' \code{+ ggplot2::scale_linewidth_continuous(limits = c(0, 1), range = c(0.3, 2.4))}.
 #'
 #' @return a \code{ggplot} object, which can be modified further with \pkg{ggplot2}.
 #'
@@ -49,12 +61,15 @@
 #'
 #' # all estimated interactions, with the nodes grouped and placed on a circle
 #' groups <- c(rep("first", 3), rep("second", 4))
-#' plot(fit, bf_threshold = NULL, groups = groups, layout = "circle")
+#' plot(fit, all_edges = TRUE, groups = groups, layout = "circle")
+#'
+#' # evidence for every edge from its Savage-Dickey Bayes factor
+#' plot(fit, type = "bf")
 #'
 #' @method plot dmrfit
 #' @export
 #'
-plot.dmrfit <- function(x, type = c("network"), estimate = c("mode", "mean", "median"), bf_threshold = 10,
+plot.dmrfit <- function(x, type = c("network", "bf"), estimate = c("mode", "mean", "median"), all_edges = FALSE,
                         groups = NULL, layout = c("fr", "circle"), seed = 30, node_size = 10, ...) {
 
     type <- match.arg(type)
@@ -65,8 +80,8 @@ plot.dmrfit <- function(x, type = c("network"), estimate = c("mode", "mean", "me
         warning("estimate is ignored for a dmrfit fit, which has point estimates.")
     }
     estimate <- match.arg(estimate)
-    if (!is.null(bf_threshold) && (!is.numeric(bf_threshold) || length(bf_threshold) != 1 || bf_threshold <= 0)) {
-        stop("bf_threshold must be a positive number or NULL.")
+    if (!is.logical(all_edges) || length(all_edges) != 1 || is.na(all_edges)) {
+        stop("all_edges must be TRUE or FALSE.")
     }
     if (is.character(layout)) {
         layout <- match.arg(layout)
@@ -79,8 +94,9 @@ plot.dmrfit <- function(x, type = c("network"), estimate = c("mode", "mean", "me
     }
 
     p <- switch(type,
-                network = .plot_network(x, estimate = estimate, bf_threshold = bf_threshold, groups = groups,
-                                        layout = layout, seed = seed, node_size = node_size))
+                network = .plot_network(x, estimate = estimate, all_edges = all_edges, groups = groups, layout = layout,
+                                        seed = seed, node_size = node_size),
+                bf = .plot_bf(x, estimate = estimate))
     return(p)
 }
 
@@ -91,6 +107,18 @@ plot.dmrfit <- function(x, type = c("network"), estimate = c("mode", "mean", "me
 # node groups: four hues that pass the all-pairs checks, with the node shape as secondary encoding
 .PLOT_GROUP_COLORS <- c("#1baf7a", "#eda100", "#4a3aa7", "#e87ba4")
 .PLOT_GROUP_SHAPES <- c(21, 22, 24, 23)
+# --- Evidence for an edge from its Savage-Dickey Bayes factor BF_01 (evidence for exclusion) ---
+# upper bounds of the BF_01 intervals; each interval runs from the previous bound (0 for the first) up to, but
+# excluding, its own
+.PLOT_BF_INTERVALS <- c("Included" = 1/10, "Weak included" = 1/3, "Inconclusive" = 3, "Weak excluded" = 10,
+                        "Excluded" = Inf)
+# from evidence for the presence of an edge (orange) through gray to its absence (violet); the weak classes are the
+# two colors mixed half with white
+.PLOT_EVIDENCE_COLORS <- c("Included" = "#eb6834", "Weak included" = "#f5b39a", "Inconclusive" = "gray65",
+                           "Weak excluded" = "#a59dd3", "Excluded" = "#4a3aa7")
+.PLOT_EVIDENCE_LABELS <- c("Included" = "Included (< 1/10)", "Weak included" = "Weak included (1/10 - 1/3)",
+                           "Inconclusive" = "Inconclusive (1/3 - 3)", "Weak excluded" = "Weak excluded (3 - 10)",
+                           "Excluded" = "Excluded (>= 10)")
 .PLOT_SURFACE <- "#fcfcfb"
 .PLOT_INK <- "#1a1a19"
 
@@ -139,7 +167,7 @@ plot.dmrfit <- function(x, type = c("network"), estimate = c("mode", "mean", "me
 #' @param layout "fr", "circle", or a matrix with two columns and one row per variable
 #' @param var_names the variable names
 #' @param inter data frame of the estimated interactions (columns i, j and estimate)
-#' @param seed random seed of the "fr" layout
+#' @param seed (network) random seed of the "fr" layout
 #' @return a P x 2 matrix with the variable names as row names
 #' @noRd
 .network_layout <- function(layout, var_names, inter, seed) {
@@ -185,18 +213,18 @@ plot.dmrfit <- function(x, type = c("network"), estimate = c("mode", "mean", "me
 #' @description Network plot of plot.dmrfit(type = "network"); see its documentation for the arguments.
 #' @return a ggplot object
 #' @noRd
-.plot_network <- function(x, estimate, bf_threshold, groups, layout, seed, node_size) {
+.plot_network <- function(x, estimate, all_edges, groups, layout, seed, node_size) {
     P <- x$P
     var_names <- if (is.null(x$var_names)) paste0("V", seq_len(P)) else x$var_names
     inter <- .interaction_estimates(x, estimate)
 
     # --- edges to draw ---
     sd <- x$savage_dickey
-    if (!is.null(bf_threshold) && !is.null(sd)) {
-        drawn <- names(sd$bf_01)[sd$bf_01 < 1 / bf_threshold]
-        rule <- paste0("Edges: interactions with BF01 < 1/", format(bf_threshold))
+    if (!all_edges && !is.null(sd)) {
+        drawn <- names(sd$bf_01)[.evidence_class(sd$bf_01) == "Included"]
+        rule <- "Edges: included interactions (BF01 < 1/10)"
     } else {
-        if (!is.null(bf_threshold)) {
+        if (!all_edges) {
             message("No Savage-Dickey Bayes factors in the fit (savage_dickey = FALSE): every estimated interaction is drawn.")
         }
         drawn <- inter$name
@@ -265,5 +293,59 @@ plot.dmrfit <- function(x, type = c("network"), estimate = c("mode", "mean", "me
                        plot.background = ggplot2::element_rect(fill = .PLOT_SURFACE, colour = NA),
                        plot.caption = ggplot2::element_text(colour = "gray35", hjust = 0.5),
                        plot.margin = ggplot2::margin(20, 20, 10, 20))
+    return(p)
+}
+
+
+#' evidence_class (internal)
+#' @description Evidence class of each Savage-Dickey Bayes factor BF_01, from the intervals in .PLOT_BF_INTERVALS.
+#' @param bf01 Savage-Dickey Bayes factors BF_01
+#' @return a factor with the names of .PLOT_BF_INTERVALS as levels
+#' @noRd
+.evidence_class <- function(bf01) {
+    k <- findInterval(bf01, c(0, .PLOT_BF_INTERVALS[-length(.PLOT_BF_INTERVALS)]))
+    return(factor(names(.PLOT_BF_INTERVALS)[k], levels = names(.PLOT_BF_INTERVALS)))
+}
+
+
+#' plot_bf (internal)
+#' @description Bayes factor plot of plot.dmrfit(type = "bf"); see its documentation for the arguments.
+#' @return a ggplot object
+#' @noRd
+.plot_bf <- function(x, estimate) {
+    sd <- x$savage_dickey
+    if (is.null(sd)) {
+        stop("type = \"bf\" needs Savage-Dickey Bayes factors: refit with dmrfit(..., with_prior = TRUE, savage_dickey = TRUE).")
+    }
+    var_names <- if (is.null(x$var_names)) paste0("V", seq_len(x$P)) else x$var_names
+    inter <- .interaction_estimates(x, estimate)
+
+    bf01 <- rep(NA_real_, nrow(inter))
+    bf01[match(names(sd$bf_01), inter$name)] <- unname(sd$bf_01)
+    circles <- data.frame(row = factor(var_names[inter$i], levels = rev(var_names[-1])),
+                          col = factor(var_names[inter$j], levels = var_names[-length(var_names)]),
+                          evidence = .evidence_class(bf01),
+                          weight = abs(inter$estimate), stringsAsFactors = FALSE)
+    circles <- circles[!is.na(bf01), , drop = FALSE] # no circle for the absent edges of a constrained fit
+
+    size_lab <- if (inherits(x, "dmrfit_bayes")) paste0("|posterior ", estimate, "|") else "|estimate|"
+    p <- ggplot2::ggplot(circles, ggplot2::aes(x = .data$col, y = .data$row)) +
+        # a thin outline keeps the light classes visible on the light background
+        ggplot2::geom_point(ggplot2::aes(size = .data$weight, fill = .data$evidence), shape = 21, colour = "gray35",
+                            stroke = 0.3, show.legend = TRUE) +
+        ggplot2::scale_fill_manual(values = .PLOT_EVIDENCE_COLORS, labels = .PLOT_EVIDENCE_LABELS,
+                                   name = expression("Evidence (" * BF["01"] * ")"), drop = FALSE) +
+        ggplot2::scale_size_area(max_size = 9, name = size_lab) +
+        ggplot2::scale_x_discrete(drop = FALSE) +
+        ggplot2::scale_y_discrete(drop = FALSE) +
+        ggplot2::coord_equal() +
+        ggplot2::labs(x = NULL, y = NULL) +
+        ggplot2::theme_minimal(base_size = 12) +
+        ggplot2::theme(panel.grid.major = ggplot2::element_line(colour = "gray92", linewidth = 0.4),
+                       panel.grid.minor = ggplot2::element_blank(), legend.position = "right",
+                       axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+                       plot.background = ggplot2::element_rect(fill = .PLOT_SURFACE, colour = NA)) +
+        ggplot2::guides(fill = ggplot2::guide_legend(order = 1, override.aes = list(size = 5)),
+                        size = ggplot2::guide_legend(order = 2, override.aes = list(fill = "gray65")))
     return(p)
 }

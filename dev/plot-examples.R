@@ -22,21 +22,22 @@ fit_bayes <- dmrfit_bayes(rads2[, items], nsim = 2000, burnin = 1000, progress =
 
 # --- plots ------------------------------------------------------------------------------------------------------------
 pages <- list(
-    "1. dmrfit, Savage-Dickey rule (default: BF01 < 1/10)"   = plot(fit_bf),
-    "2. dmrfit, stricter rule (BF01 < 1/30)"                  = plot(fit_bf, bf_threshold = 30),
-    "3. dmrfit, all interactions (bf_threshold = NULL)"       = plot(fit_bf, bf_threshold = NULL),
-    "4. dmrfit without Bayes factors (message, all edges)"    = plot(fit_nobf),
-    "5. dmrfit, nodes grouped by cluster"                     = plot(fit_bf, groups = clusters[items]),
-    "6. dmrfit, circular layout given by the user"            = plot(fit_bf, groups = clusters[items],
-                                                                     layout = cbind(cos(2 * pi * seq_along(items) / length(items)),
-                                                                                    sin(2 * pi * seq_along(items) / length(items)))),
-    "7. dmrfit, constrained structure (no between-cluster edges)" = plot(fit_constrained, groups = clusters[items]),
-    "8. dmrfit_bayes, posterior modes (default), Bayes factors from the draws" = plot(fit_bayes, groups = clusters[items]),
-    "8b. dmrfit_bayes, posterior means (estimate = \"mean\")"  = plot(fit_bayes, groups = clusters[items], estimate = "mean"),
-    "9. other arrangement (seed = 20 instead of 30)"         = plot(fit_bf, groups = clusters[items], seed = 20),
+    "1. dmrfit, included edges (BF01 < 1/10)"                  = plot(fit_bf),
+    "2. dmrfit, all interactions (all_edges = TRUE)"           = plot(fit_bf, all_edges = TRUE),
+    "3. dmrfit without Bayes factors (message, all edges)"     = plot(fit_nobf),
+    "4. dmrfit, nodes grouped by cluster"                      = plot(fit_bf, groups = clusters[items]),
+    "5. dmrfit, circular layout given by the user"             = plot(fit_bf, groups = clusters[items],
+                                                                      layout = cbind(cos(2 * pi * seq_along(items) / length(items)),
+                                                                                     sin(2 * pi * seq_along(items) / length(items)))),
+    "6. dmrfit, constrained structure (no between-cluster edges)" = plot(fit_constrained, groups = clusters[items]),
+    "7. dmrfit_bayes, posterior modes (default)"               = plot(fit_bayes, groups = clusters[items]),
+    "8. dmrfit_bayes, posterior means (estimate = \"mean\")"  = plot(fit_bayes, groups = clusters[items], estimate = "mean"),
+    "9. other arrangement (seed = 20 instead of 30)"          = plot(fit_bf, groups = clusters[items], seed = 20),
     "10. circular layout, larger nodes (node_size = 13)"      = plot(fit_bf, groups = clusters[items], layout = "circle",
-                                                                     node_size = 13),
-    "11. the returned ggplot can be modified"                  = plot(fit_bf, groups = clusters[items]) +
+                                                                      node_size = 13),
+    "11. Bayes factors (dmrfit, SIR)"                         = plot(fit_bf, type = "bf"),
+    "12. Bayes factors (dmrfit_bayes, posterior mode)"        = plot(fit_bayes, type = "bf"),
+    "13. the returned ggplot can be modified"                 = plot(fit_bf, groups = clusters[items]) +
                                                                   labs(title = "RADS-2: dysphoria and anhedonia items") +
                                                                   theme(legend.position = "right")
 )

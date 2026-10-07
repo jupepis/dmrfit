@@ -6,9 +6,9 @@
 \usage{
 \method{plot}{dmrfit}(
   x,
-  type = c("network"),
+  type = c("network", "bf"),
   estimate = c("mode", "mean", "median"),
-  bf_threshold = 10,
+  all_edges = FALSE,
   groups = NULL,
   layout = c("fr", "circle"),
   seed = 30,
@@ -19,7 +19,7 @@
 \arguments{
 \item{x}{a \code{dmrfit} or \code{dmrfit_bayes} object.}
 
-\item{type}{the plot: \code{"network"}.}
+\item{type}{the plot: \code{"network"} (default) or \code{"bf"}.}
 
 \item{estimate}{the posterior summary of the interactions of a \code{dmrfit_bayes} fit: \code{"mode"} (default) the
 marginal posterior mode, the maximum of the kernel density estimate of the draws (\code{stats::density}),
@@ -27,26 +27,25 @@ marginal posterior mode, the maximum of the kernel density estimate of the draws
 samples, which moves the mean and the median away from the mode; Arena and Marsman (2026) found this for the
 thresholds of rarely chosen response categories. Ignored for a \code{dmrfit} fit, which has point estimates.}
 
-\item{bf_threshold}{Bayes factor threshold for drawing an edge: an interaction is drawn when its Savage-Dickey Bayes
-factor \code{BF_01}, the evidence for the absence of the edge, is below \code{1 / bf_threshold} (default 10, that
-is \code{BF_01 < 1/10}). With \code{bf_threshold = NULL}, or for a \code{dmrfit} fit without Bayes factors, every
-estimated interaction is drawn (only the free ones for a constrained fit).}
+\item{all_edges}{(network) logical, whether to draw every estimated interaction instead of only the included ones
+(default FALSE). Every estimated interaction is also drawn for a fit without Bayes factors (only the free ones
+for a constrained fit).}
 
-\item{groups}{optional grouping of the nodes (for instance \code{attr(rads2, "clusters")}), a vector with one entry
-per variable, in the column order of the data or named by variable. At most four groups, shown by the color and
-shape of the nodes.}
+\item{groups}{(network) optional grouping of the nodes (for instance \code{attr(rads2, "clusters")}), a vector with
+one entry per variable, in the column order of the data or named by variable. At most four groups, shown by the
+color and shape of the nodes.}
 
-\item{layout}{the node positions: \code{"fr"} (default) the Fruchterman-Reingold layout of \pkg{igraph}, which must
-be installed; \code{"circle"} the nodes on a circle, in the column order of the data; or a matrix of coordinates
-with two columns and one row per variable (in the column order of the data, or with the variable names as row
-names), rescaled by the same factor on both axes. The \code{"fr"} layout is computed from all estimated
-interactions, weighted by their absolute value, so that the nodes keep their positions when \code{bf_threshold}
-changes.}
+\item{layout}{(network) the node positions: \code{"fr"} (default) the Fruchterman-Reingold layout of \pkg{igraph},
+which must be installed; \code{"circle"} the nodes on a circle, in the column order of the data; or a matrix of
+coordinates with two columns and one row per variable (in the column order of the data, or with the variable
+names as row names), rescaled by the same factor on both axes. The \code{"fr"} layout is computed from all
+estimated interactions, weighted by their absolute value, so that the nodes keep their positions when
+\code{all_edges} changes.}
 
-\item{seed}{random seed of the \code{"fr"} layout (default 30); other seeds give other arrangements. The caller's
-random number stream is restored on exit.}
+\item{seed}{(network) random seed of the \code{"fr"} layout (default 30); other seeds give other arrangements. The
+caller's random number stream is restored on exit.}
 
-\item{node_size}{size of the nodes (default 10); the labels scale with it.}
+\item{node_size}{(network) size of the nodes (default 10); the labels scale with it.}
 
 \item{...}{further arguments (currently unused).}
 }
@@ -54,15 +53,28 @@ random number stream is restored on exit.}
 a \code{ggplot} object, which can be modified further with \pkg{ggplot2}.
 }
 \description{
-Plots of a \code{dmrfit} or \code{dmrfit_bayes} fit, made with \pkg{ggplot2}. With
-\code{type = "network"}, the nodes are the variables and the edges the pairwise interactions: the edge width is the
-absolute value of the interaction, the color and line type its sign. The interactions are the estimates of
-\code{dmrfit()}, or a posterior summary of the draws of \code{dmrfit_bayes()} (see \code{estimate}).
+Plots of a \code{dmrfit} or \code{dmrfit_bayes} fit, made with \pkg{ggplot2}. The interactions are
+the estimates of \code{dmrfit()}, or a posterior summary of the draws of \code{dmrfit_bayes()} (see
+\code{estimate}).
+\describe{
+\item{\code{type = "network"}}{The nodes are the variables and the edges the pairwise interactions: the edge
+width is the absolute value of the interaction, the color and line type its sign. When the fit has
+Savage-Dickey Bayes factors, only the included edges are drawn (see Details).}
+\item{\code{type = "bf"}}{One circle per pair of variables (lower triangle): its color is the evidence for the
+edge given by its Savage-Dickey Bayes factor (see Details) and its area the absolute value of the interaction.
+Requires a fit with Bayes factors.}
+}
 }
 \details{
-The edge widths are scaled to the range of the absolute interactions drawn in each plot. To compare widths
-between plots, fix the range, for instance with \code{+ ggplot2::scale_linewidth_continuous(limits = c(0, 1),
-range = c(0.3, 2.4))}.
+The evidence for an edge is classified by its Savage-Dickey Bayes factor \eqn{BF_{01}}, the evidence for
+the absence of the edge: included (\eqn{BF_{01} < 1/10}), weak included (\eqn{1/10 \le BF_{01} < 1/3}),
+inconclusive (\eqn{1/3 \le BF_{01} < 3}), weak excluded (\eqn{3 \le BF_{01} < 10}) and excluded
+(\eqn{BF_{01} \ge 10}), shown from orange (included) through gray to violet (excluded). The network plot draws the
+included edges.
+
+The edge widths of the network plot are scaled to the range of the absolute interactions drawn in each plot. To
+compare widths between plots, fix the range, for instance with
+\code{+ ggplot2::scale_linewidth_continuous(limits = c(0, 1), range = c(0.3, 2.4))}.
 }
 \examples{
 data(rads2)
@@ -72,7 +84,10 @@ plot(fit)
 
 # all estimated interactions, with the nodes grouped and placed on a circle
 groups <- c(rep("first", 3), rep("second", 4))
-plot(fit, bf_threshold = NULL, groups = groups, layout = "circle")
+plot(fit, all_edges = TRUE, groups = groups, layout = "circle")
+
+# evidence for every edge from its Savage-Dickey Bayes factor
+plot(fit, type = "bf")
 
 }
 \references{
