@@ -10,7 +10,7 @@
 #' @param parinit initial parameter values for the optimization, a vector of length equal to the number of parameters in the model, \code{sum(n_categories - 1) + P * (P - 1) / 2}, where \code{P} is the number of variables. If NULL (default), a vector of zeros.
 #' @param structure network structure, a P x P symmetric matrix with 1 for an edge and 0 for no edge. If NULL (default), the network is fully connected.
 #' @param with_prior logical, whether to include the prior in the optimization: a Beta-Prime prior on the thresholds and a Cauchy prior on the pairwise interactions. Default is FALSE.
-#' @param savage_dickey logical, whether to compute the Savage-Dickey density ratio Bayes factor for each pairwise interaction via Bayesian Sampling Importance Resampling (BSIR) from the coordinate-rescaled pseudo-posterior: the pseudo-posterior rescaled around its mode to the Godambe-Huber-White (GHW) covariance, which corrects the underestimated posterior variability of the pseudo-likelihood. The proposal is a multivariate t with the GHW covariance. When zero lies beyond all resampled draws of an interaction, its density at zero cannot be estimated from the draws: the Bayes factor is then reported at the floor \code{1/(10 * M)} and flagged in \code{savage_dickey$zero_beyond_draws}. Only available when \code{with_prior = TRUE}. Default is FALSE.
+#' @param savage_dickey logical, whether to compute the Savage-Dickey density ratio Bayes factor for each pairwise interaction via Bayesian Sampling Importance Resampling (BSIR) from the coordinate-rescaled pseudo-posterior: the pseudo-posterior rescaled around its mode to the Godambe-Huber-White (GHW) covariance, which corrects the underestimated posterior variability of the pseudo-likelihood. The proposal is a multivariate t with the GHW covariance. The posterior density of an interaction at zero is a Gaussian kernel estimate from the resampled draws, or, when few draws lie near zero, the density of a normal distribution with the mean and standard deviation of the draws, as recorded in \code{savage_dickey$density_at_zero}. Only available when \code{with_prior = TRUE}. Default is FALSE.
 #' @param M number of draws resampled in the BSIR step (default is 1000). Only used when \code{savage_dickey = TRUE}.
 #' @param oversampling multiplier for the number of proposal draws in the BSIR step (default is 10). The total number of proposal draws is \code{M * oversampling}. Only used when \code{savage_dickey = TRUE}.
 #' @param ncores number of cores used to compute the gradient, Hessian and pseudo-likelihood in parallel. It is capped at the number of available cores minus one, and has no effect when the package was built without OpenMP support. Default is 1.
@@ -350,9 +350,9 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
         names(bf_01) <- names(pars)[free_inter_idx]
 
         # --- Savage-Dickey density ratio at zero for each free interaction ---
-        # When zero lies beyond all resampled draws, the density at zero cannot be estimated from the draws (a kernel
-        # estimate there only extrapolates the tail of the nearest kernel): BF_01 is then reported at a floor and flagged
-        bf_floor <- 1 / (10 * M)
+        # The resampled draws are worth at most the effective sample size of the importance sample
+        density_at_zero <- character(length(free_inter_idx))
+        names(density_at_zero) <- names(bf_01)
         zero_beyond_draws <- logical(length(free_inter_idx))
         names(zero_beyond_draws) <- names(bf_01)
 
@@ -360,13 +360,10 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
             j <- free_inter_idx[k]
             sir_samples_j <- sir_samples[j, ]
             zero_beyond_draws[k] <- 0 < min(sir_samples_j) || 0 > max(sir_samples_j)
-            if (zero_beyond_draws[k]) { bf_01[k] <- bf_floor; next }
             bf_01[k] <- tryCatch({
-                # Gaussian kernel density estimate of the marginal posterior at zero, on the log scale (log-sum-exp)
-                h <- stats::bw.nrd0(sir_samples_j)
-                log_k <- stats::dnorm(0, mean = sir_samples_j, sd = h, log = TRUE)
-                log_post_at_zero <- max(log_k) + log(mean(exp(log_k - max(log_k))))
-                exp(log_post_at_zero - log_prior_at_zero)
+                d0 <- .log_density_at_zero(sir_samples_j, ess = min(ess, M))
+                density_at_zero[k] <- d0$method
+                exp(d0$log_density - log_prior_at_zero)
             }, error = function(e) {
                 warning("Savage-Dickey: density estimation failed for ", names(pars)[j],
                         ". The 'BF_01' is set to NA.")
@@ -386,8 +383,8 @@ dmrfit <- function(data, parinit = NULL, structure = NULL, with_prior = FALSE, s
             ess = ess,
             M = M,
             n_proposals = M_importance,
-            zero_beyond_draws = zero_beyond_draws,
-            bf_floor = bf_floor
+            density_at_zero = density_at_zero, # "kernel" or "normal": how the posterior density at zero was estimated
+            zero_beyond_draws = zero_beyond_draws
         )
     }
 
@@ -577,12 +574,19 @@ print.summary.dmrfit <- function(x, ...) {
                           BF_01 = formatC(sd$bf_01, format = "g", digits = 4),
                           `Pr(=0|x)` = formatC(sd$pr_null, format = "g", digits = 4),
                           check.names = FALSE)
-        floored <- if (is.null(sd$zero_beyond_draws)) rep(FALSE, nrow(tbl)) else sd$zero_beyond_draws
-        tbl$BF_01[floored] <- paste0("< ", formatC(sd$bf_floor, format = "g", digits = 2))
-        tbl$`Pr(=0|x)`[floored] <- paste0("< ", formatC(sd$bf_floor, format = "g", digits = 2))
+        if (is.null(sd$density_at_zero)) {
+            # fits from dmrfit 0.1.x: BF_01 at the floor when zero lies beyond all resampled draws
+            floored <- if (is.null(sd$zero_beyond_draws)) rep(FALSE, nrow(tbl)) else sd$zero_beyond_draws
+            tbl$BF_01[floored] <- paste0("< ", formatC(sd$bf_floor, format = "g", digits = 2))
+            tbl$`Pr(=0|x)`[floored] <- paste0("< ", formatC(sd$bf_floor, format = "g", digits = 2))
+        }
         rownames(tbl) <- names(sd$estimate)
         print(tbl)
-        if (any(floored))
+        n_normal <- sum(sd$density_at_zero == "normal")
+        if (n_normal > 0)
+            cat("\nBF_01 of", n_normal, "interaction(s) from a normal approximation of the draws (few draws near",
+                "zero).\n")
+        else if (is.null(sd$density_at_zero) && any(floored))
             cat("\n'<': zero lies beyond all resampled draws, so BF_01 is only bounded (very strong evidence for an",
                 "interaction).\n")
         cat("\nSIR samples:", sd$M,

@@ -192,10 +192,11 @@ plot(fit, groups = clusters[items])
 *Details.* The Savage-Dickey Bayes factor is the ratio of the marginal posterior and the prior density of the
 interaction at zero, $\text{BF}_{01} = \pi(\theta_{ij} = 0 \mid \mathbf{X}) / \pi(\theta_{ij} = 0)$. `dmrfit()`
 estimates the posterior density from draws of the coordinate-rescaled pseudo-posterior (see the next section), obtained
-by sampling importance resampling (Skare et al., 2003). When zero lies beyond all draws of an interaction
-(`r sum(fit$savage_dickey$zero_beyond_draws)` interactions here), the density at zero cannot be estimated. The Bayes
-factor is then set at the floor $1/(10M)$, with $M$ the number of resampled draws, a bound that indicates very strong
-evidence for an interaction, and `summary()` marks it with `<`.
+by sampling importance resampling (Skare et al., 2003), with a Gaussian kernel estimate. When few draws lie near zero
+(`r sum(fit$savage_dickey$density_at_zero == "normal")` interactions here), a kernel estimate rests on the handful of
+draws that happen to fall there, or on none, and varies by orders of magnitude between seeds. The posterior density at
+zero is then that of a normal distribution with the mean and standard deviation of the draws, and `summary()` reports
+how many Bayes factors use this approximation.
 
 ## Bayesian estimation with coordinate rescaling
 
