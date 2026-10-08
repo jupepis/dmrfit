@@ -21,7 +21,7 @@ Marsman, 2026)."><!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">dmrfit</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.1</span>
       </span>
     </div>
 
@@ -31,6 +31,9 @@ Marsman, 2026)."><!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/
 </li>
 <li>
   <a href="../reference/index.html">Reference</a>
+</li>
+<li>
+  <a href="../news/index.html">Changelog</a>
 </li>
       </ul><ul class="nav navbar-nav navbar-right"><li>
   <a href="https://github.com/jupepis/dmrfit/" class="external-link">
@@ -172,9 +175,10 @@ $$C_k \cdot 2 [\log PL(\hat\theta) - \max_{\theta_{-k}} \log PL(\theta_k, \theta
 For a full likelihood the statistic would be \(\chi^2_1\)-distributed (\(C_k = 1\)); for the
 pseudo-likelihood it is \(\lambda_k \chi^2_1\)-distributed, with \(\lambda_k = \Sigma_{kk} / (H^{-1})_{kk}\),
 because the curvature \(H\) of the pseudo-likelihood overstates the information in the data
-(\(\Sigma\) is the GHW covariance). The scaling \(C_k = 1 / \lambda_k\) calibrates the statistic (Pace,
-Salvan and Sartori, 2011; Varin, Reid and Firth, 2011). Unlike the Wald intervals, the likelihood-ratio intervals
-can be asymmetric around the estimate. The bounds are found by <code>uniroot</code> on each side of the estimate. The
+(\(\Sigma\) is the GHW covariance). The scaling \(C_k = 1 / \lambda_k\) calibrates the statistic (Geys,
+Molenberghs and Ryan, 1999; Pace, Salvan and Sartori, 2011; Varin, Reid and Firth, 2011). Unlike the Wald intervals,
+the likelihood-ratio intervals can be asymmetric around the estimate. The bounds are found by <code>uniroot</code> on each
+side of the estimate. The
 asymmetry matters when the sample size is small relative to the number of parameters (Arena and Marsman, 2026), so
 with fewer than 10 observations per free parameter <code>dmrfit()</code> warns that the Wald intervals may be inaccurate.</p>
     </div>
@@ -182,6 +186,9 @@ with fewer than 10 observations per free parameter <code>dmrfit()</code> warns t
     <h2>References</h2>
     <p>Arena, G. and Marsman, M. (2026). Bayesian inference for discrete Markov random fields through
 coordinate rescaling. arXiv preprint. <a href="https://doi.org/10.48550/arXiv.2601.17205" class="external-link">doi:10.48550/arXiv.2601.17205</a></p>
+<p>Geys, H., Molenberghs, G., and Ryan, L. M. (1999). Pseudolikelihood modeling of multivariate outcomes in
+developmental toxicology. <em>Journal of the American Statistical Association</em>, 94(447), 734-745.
+<a href="https://doi.org/10.1080/01621459.1999.10474176" class="external-link">doi:10.1080/01621459.1999.10474176</a></p>
 <p>Pace, L., Salvan, A., and Sartori, N. (2011). Adjusting composite likelihood ratio statistics. <em>Statistica
 Sinica</em>, 21(1), 129-148.</p>
 <p>Skare, Ø., Bølviken, E., and Holden, L. (2003). Improved sampling-importance resampling and reduced bias importance
