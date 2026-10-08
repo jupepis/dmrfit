@@ -140,9 +140,9 @@ expect_equal(length(sd$bf_01), 6L)
 expect_true(all(sd$bf_01 > 0))
 expect_equal(sd$pr_null, sd$bf_01 / (1 + sd$bf_01))
 expect_true(is.logical(sd$zero_beyond_draws))
-# Bayes factors of the flagged interactions sit at the floor 1 / (10 M)
-expect_true(all(sd$bf_01[sd$zero_beyond_draws] == sd$bf_floor))
-expect_equal(sd$bf_floor, 1 / (10 * 500))
+# the density at zero is a kernel estimate, or a normal approximation when few resampled draws lie near zero
+expect_true(all(sd$density_at_zero %in% c("kernel", "normal")))
+expect_true(all(sd$density_at_zero[sd$zero_beyond_draws] == "normal"))
 # the importance sample is not degenerate
 expect_true(sd$ess > 500 && sd$ess <= sd$n_proposals)
 # the same seed gives the same Bayes factors

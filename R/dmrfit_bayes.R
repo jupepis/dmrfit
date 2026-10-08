@@ -506,6 +506,7 @@ print.summary.dmrfit_bayes <- function(x, ...) {
 #'   where a kernel estimate rests on the few draws that happen to fall near zero (or on none, when zero lies beyond
 #'   all draws), and varies by orders of magnitude across seeds: the density at zero is then that of a normal
 #'   distribution with the mean and standard deviation of the draws.
+#'   Used by dmrfit_bayes() (MCMC draws) and dmrfit() (draws resampled by BSIR).
 #' @param x numeric vector, the draws of one parameter
 #' @param ess effective sample size of the draws (NA for constant draws)
 #' @param min_near minimum effective number of draws within one bandwidth of zero for the kernel estimate
