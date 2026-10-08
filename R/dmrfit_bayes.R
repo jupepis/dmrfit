@@ -37,7 +37,7 @@
 #'   \code{method = "dmh"}; \code{mc_draws} (1e5) and \code{mc_gibbs_iter} (5) simulated observations and Gibbs sweeps
 #'   for \code{scale = "mch"} and \code{"rm"}; \code{rm_iter} (50) Robbins-Monro iterations for \code{scale = "rm"}.
 #'
-#' @return an object of class \code{dmrfit_bayes} (also of class \code{dmrfit}), including the pseudo-posterior mode (\code{argument}), the posterior draws (\code{draws}, a matrix with parameters by rows and iterations by columns), the acceptance rate (\code{acceptance}), the sampling method and scale (\code{method}, \code{scale}), the Savage-Dickey Bayes factors with the effective sample size of each parameter (\code{savage_dickey}), and the multivariate effective sample size of the draws (\code{mess}; Vats, Flegal and Jones, 2019), which is \code{NA} when there are fewer than \code{P + 1} batches of \code{floor(sqrt(nsim))} draws per parameter.
+#' @return an object of class \code{dmrfit_bayes} (also of class \code{dmrfit}), including the pseudo-posterior mode (\code{argument}), the posterior draws (\code{draws}, a matrix with parameters by rows and iterations by columns), the acceptance rate (\code{acceptance}), the sampling method and scale (\code{method}, \code{scale}), the Savage-Dickey Bayes factors with the effective sample size of each parameter (\code{savage_dickey}; the posterior density of an interaction at zero is a Gaussian kernel estimate, or, when few draws lie near zero, the density of a normal distribution with the mean and standard deviation of the draws, as recorded in \code{savage_dickey$density_at_zero}), and the multivariate effective sample size of the draws (\code{mess}; Vats, Flegal and Jones, 2019), which is \code{NA} when there are fewer than \code{P + 1} batches of \code{floor(sqrt(nsim))} draws per parameter.
 #'
 #' @references Arena, G. and Marsman, M. (2026). Bayesian inference for discrete Markov random fields through
 #' coordinate rescaling. arXiv preprint. \doi{10.48550/arXiv.2601.17205}
@@ -253,36 +253,6 @@ dmrfit_bayes <- function(data, parinit = NULL, method = c("core", "adacore", "ex
     # Savage-Dickey via posterior draws
     log_prior_at_zero <- dcauchy(0, location = interactions_location, scale = interactions_scale, log = TRUE)
 
-    bf_01 <- numeric(length(inter_idx))
-    names(bf_01) <- par_names[inter_idx]
-
-    # --- Savage-Dickey density ratio at zero for each interaction ---
-    # When zero lies beyond all posterior draws, the density at zero cannot be estimated from the draws (a kernel
-    # estimate there only extrapolates the tail of the nearest kernel): BF_01 is then reported at a floor and flagged
-    bf_floor <- 1 / (10 * nsim)
-    zero_beyond_draws <- logical(length(inter_idx))
-    names(zero_beyond_draws) <- names(bf_01)
-
-    for (k in seq_along(inter_idx)) {
-        j <- inter_idx[k]
-        draws_j <- out$draws[j, ]
-        zero_beyond_draws[k] <- 0 < min(draws_j) || 0 > max(draws_j)
-        if (zero_beyond_draws[k]) { bf_01[k] <- bf_floor; next }
-        bf_01[k] <- tryCatch({
-            # Gaussian kernel density estimate of the marginal posterior at zero, on the log scale (log-sum-exp)
-            h <- stats::bw.nrd0(draws_j)
-            log_k <- stats::dnorm(0, mean = draws_j, sd = h, log = TRUE)
-            log_post_at_zero <- max(log_k) + log(mean(exp(log_k - max(log_k))))
-            exp(log_post_at_zero - log_prior_at_zero)
-        }, error = function(e) {
-            warning("Savage-Dickey: density estimation failed for ", par_names[j],
-                    ". The 'BF_01' is set to NA.")
-            NA_real_
-        })
-    }
-
-    pr_null <- bf_01 / (1 + bf_01) # this is the Pr(=0|x)
-
     # --- Effective sample size of the posterior draws, per parameter (autocorrelation-based) ---
     ess <- apply(out$draws, 1, .ess_mcmc)
     names(ess) <- par_names
@@ -296,6 +266,31 @@ dmrfit_bayes <- function(data, parinit = NULL, method = c("core", "adacore", "ex
                 "; the Bayes factors may be unreliable. Consider increasing 'nsim'.")
     }
 
+    # --- Savage-Dickey density ratio at zero for each interaction ---
+    bf_01 <- numeric(length(inter_idx))
+    names(bf_01) <- par_names[inter_idx]
+    density_at_zero <- character(length(inter_idx))
+    names(density_at_zero) <- names(bf_01)
+    zero_beyond_draws <- logical(length(inter_idx))
+    names(zero_beyond_draws) <- names(bf_01)
+
+    for (k in seq_along(inter_idx)) {
+        j <- inter_idx[k]
+        draws_j <- out$draws[j, ]
+        zero_beyond_draws[k] <- 0 < min(draws_j) || 0 > max(draws_j)
+        bf_01[k] <- tryCatch({
+            d0 <- .log_density_at_zero(draws_j, ess = ess[j])
+            density_at_zero[k] <- d0$method
+            exp(d0$log_density - log_prior_at_zero)
+        }, error = function(e) {
+            warning("Savage-Dickey: density estimation failed for ", par_names[j],
+                    ". The 'BF_01' is set to NA.")
+            NA_real_
+        })
+    }
+
+    pr_null <- bf_01 / (1 + bf_01) # this is the Pr(=0|x)
+
     pmles$savage_dickey <- list(
         bf_01 = bf_01,
         pr_null = pr_null,
@@ -305,8 +300,8 @@ dmrfit_bayes <- function(data, parinit = NULL, method = c("core", "adacore", "ex
         interactions_scale = interactions_scale,
         ess = ess,  # effective sample size of the posterior draws of each parameter
         M = nsim,
-        zero_beyond_draws = zero_beyond_draws,
-        bf_floor = bf_floor
+        density_at_zero = density_at_zero, # "kernel" or "normal": how the posterior density at zero was estimated
+        zero_beyond_draws = zero_beyond_draws
     )
 
     # store posterior draws
@@ -478,12 +473,19 @@ print.summary.dmrfit_bayes <- function(x, ...) {
             `Pr(=0|x)`  = formatC(sd$pr_null, format = "g", digits = 4),
             check.names = FALSE
         )
-        floored <- if (is.null(sd$zero_beyond_draws)) rep(FALSE, nrow(tbl)) else sd$zero_beyond_draws
-        tbl$BF_01[floored] <- paste0("< ", formatC(sd$bf_floor, format = "g", digits = 2))
-        tbl$`Pr(=0|x)`[floored] <- paste0("< ", formatC(sd$bf_floor, format = "g", digits = 2))
+        if (is.null(sd$density_at_zero)) {
+            # fits from dmrfit 0.1.x: BF_01 at the floor when zero lies beyond all draws
+            approx <- if (is.null(sd$zero_beyond_draws)) rep(FALSE, nrow(tbl)) else sd$zero_beyond_draws
+            tbl$BF_01[approx] <- paste0("< ", formatC(sd$bf_floor, format = "g", digits = 2))
+            tbl$`Pr(=0|x)`[approx] <- paste0("< ", formatC(sd$bf_floor, format = "g", digits = 2))
+        }
         rownames(tbl) <- names(sd$estimate)
         print(tbl)
-        if (any(floored))
+        n_normal <- sum(sd$density_at_zero == "normal")
+        if (n_normal > 0)
+            cat("\nBF_01 of", n_normal, "interaction(s) from a normal approximation of the draws (few draws near",
+                "zero).\n")
+        else if (is.null(sd$density_at_zero) && any(approx))
             cat("\n'<': zero lies beyond all posterior draws, so BF_01 is only bounded (very strong evidence for an",
                 "interaction).\n")
         ess_inter <- sd$ess[names(sd$estimate)]
@@ -496,6 +498,29 @@ print.summary.dmrfit_bayes <- function(x, ...) {
     }
 
     invisible(x)
+}
+
+#' log_density_at_zero (internal)
+#' @description Log density of the marginal posterior of one parameter at zero, from its draws. When enough draws lie
+#'   near zero, a Gaussian kernel estimate (bandwidth \code{bw.nrd0}). Otherwise zero lies in the tail of the draws,
+#'   where a kernel estimate rests on the few draws that happen to fall near zero (or on none, when zero lies beyond
+#'   all draws), and varies by orders of magnitude across seeds: the density at zero is then that of a normal
+#'   distribution with the mean and standard deviation of the draws.
+#' @param x numeric vector, the draws of one parameter
+#' @param ess effective sample size of the draws (NA for constant draws)
+#' @param min_near minimum effective number of draws within one bandwidth of zero for the kernel estimate
+#' @return a list with the log density at zero (\code{log_density}) and the estimator (\code{method}, "kernel" or
+#'   "normal")
+#' @noRd
+.log_density_at_zero <- function(x, ess, min_near = 10) {
+
+    h <- stats::bw.nrd0(x)
+    n_near <- sum(abs(x) < h) * ess / length(x) # effective number of draws within one bandwidth of zero
+    if (is.na(n_near) || n_near >= min_near) {
+        log_k <- stats::dnorm(0, mean = x, sd = h, log = TRUE)
+        return(list(log_density = max(log_k) + log(mean(exp(log_k - max(log_k)))), method = "kernel"))
+    }
+    list(log_density = stats::dnorm(0, mean = mean(x), sd = stats::sd(x), log = TRUE), method = "normal")
 }
 
 #' ess_mcmc (internal)

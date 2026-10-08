@@ -54,7 +54,20 @@ expect_true(grepl("Godambe-Huber-White covariance", dmrfit:::.method_label(NULL,
 # --- Savage-Dickey Bayes factors and effective sample sizes
 sd <- fits$core$savage_dickey
 expect_equal(length(sd$bf_01), 3L)
-expect_true(all(sd$bf_01[sd$zero_beyond_draws] == 1 / (10 * 600)))
+expect_true(all(sd$bf_01 > 0))
+expect_true(all(sd$density_at_zero %in% c("kernel", "normal")))
+expect_true(all(sd$density_at_zero[sd$zero_beyond_draws] == "normal"))
+# density at zero: kernel estimate when many draws lie near zero, normal approximation in the tail of the draws
+set.seed(1)
+x_bulk <- rnorm(5000, 0.1, 0.2)
+d_bulk <- dmrfit:::.log_density_at_zero(x_bulk, ess = 5000)
+expect_equal(d_bulk$method, "kernel")
+expect_equal(d_bulk$log_density, dnorm(0, 0.1, 0.2, log = TRUE), tolerance = 0.05)
+x_tail <- rnorm(5000, 0.2, 0.06)
+d_tail <- dmrfit:::.log_density_at_zero(x_tail, ess = 500)
+expect_equal(d_tail$method, "normal")
+expect_equal(d_tail$log_density, dnorm(0, mean(x_tail), sd(x_tail), log = TRUE))
+expect_equal(dmrfit:::.log_density_at_zero(x_tail + 1, ess = 500)$method, "normal") # zero beyond all draws
 expect_equal(length(sd$ess), 12L)
 expect_true(all(sd$ess > 0))
 expect_true(is.finite(fits$core$mess))
