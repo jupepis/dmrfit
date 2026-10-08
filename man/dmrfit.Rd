@@ -84,9 +84,10 @@ for each value of \eqn{\theta_k}, the other parameters are set to the values tha
 For a full likelihood the statistic would be \eqn{\chi^2_1}-distributed (\eqn{C_k = 1}); for the
 pseudo-likelihood it is \eqn{\lambda_k \chi^2_1}-distributed, with \eqn{\lambda_k = \Sigma_{kk} / (H^{-1})_{kk}},
 because the curvature \eqn{H} of the pseudo-likelihood overstates the information in the data
-(\eqn{\Sigma} is the GHW covariance). The scaling \eqn{C_k = 1 / \lambda_k} calibrates the statistic (Pace,
-Salvan and Sartori, 2011; Varin, Reid and Firth, 2011). Unlike the Wald intervals, the likelihood-ratio intervals
-can be asymmetric around the estimate. The bounds are found by \code{uniroot} on each side of the estimate. The
+(\eqn{\Sigma} is the GHW covariance). The scaling \eqn{C_k = 1 / \lambda_k} calibrates the statistic (Geys,
+Molenberghs and Ryan, 1999; Pace, Salvan and Sartori, 2011; Varin, Reid and Firth, 2011). Unlike the Wald intervals,
+the likelihood-ratio intervals can be asymmetric around the estimate. The bounds are found by \code{uniroot} on each
+side of the estimate. The
 asymmetry matters when the sample size is small relative to the number of parameters (Arena and Marsman, 2026), so
 with fewer than 10 observations per free parameter \code{dmrfit()} warns that the Wald intervals may be inaccurate.
 }
@@ -111,6 +112,10 @@ summary(fit_constrained)
 \references{
 Arena, G. and Marsman, M. (2026). Bayesian inference for discrete Markov random fields through
 coordinate rescaling. arXiv preprint. \doi{10.48550/arXiv.2601.17205}
+
+Geys, H., Molenberghs, G., and Ryan, L. M. (1999). Pseudolikelihood modeling of multivariate outcomes in
+developmental toxicology. \emph{Journal of the American Statistical Association}, 94(447), 734-745.
+\doi{10.1080/01621459.1999.10474176}
 
 Pace, L., Salvan, A., and Sartori, N. (2011). Adjusting composite likelihood ratio statistics. \emph{Statistica
 Sinica}, 21(1), 129-148.

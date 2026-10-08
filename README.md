@@ -20,7 +20,7 @@
 
 **`dmrfit()`: point estimation and Bayes factors**
 - Maximum pseudo-likelihood estimation, or maximum a posteriori estimation with `with_prior = TRUE` (Beta-Prime prior on the thresholds, Cauchy prior on the pairwise interactions), through a trust region algorithm (Fletcher, 1987; Nocedal and Wright, 1999).
-- Robust standard errors from the Godambe-Huber-White (GHW, or sandwich) estimator, with Wald intervals, and with `lrt_intervals = TRUE` profile likelihood-ratio intervals adjusted for the pseudo-likelihood (Pace et al., 2011), which can be asymmetric when the sample size is small relative to the number of parameters. `confint()` returns either, and `summary()` prints them next to each other.
+- Robust standard errors from the Godambe-Huber-White (GHW, or sandwich) estimator, with Wald intervals, and with `lrt_intervals = TRUE` profile likelihood-ratio intervals adjusted for the pseudo-likelihood (Geys et al., 1999; Pace et al., 2011), which can be asymmetric when the sample size is small relative to the number of parameters. `confint()` returns either, and `summary()` prints them next to each other.
 - Constrained estimation with `structure`, a P x P adjacency matrix of the edges to include.
 - Savage-Dickey Bayes factors for each pairwise interaction with `savage_dickey = TRUE`, computed by sampling importance resampling from the coordinate-rescaled pseudo-posterior (Skare et al., 2003).
 - Gradient, Hessian and pseudo-likelihood evaluations parallelized over `ncores`, with the same results for any number of cores.
@@ -123,6 +123,7 @@ When opening an issue, please, use a descriptive title that clearly states the i
 - Ising, E. (1925). Beitrag zur theorie des ferromagnetismus. _Zeitschrift für Physik_, 31(1):253–258.
 - Fletcher, R. (1987). _Practical Methods of Optimization_. 2nd ed. Chichester: Wiley.
 - Nocedal, J. and Wright, S.J. (1999). _Numerical Optimization_. New York: Springer.
+- Geys, H., Molenberghs, G., and Ryan, L. M. (1999). Pseudolikelihood modeling of multivariate outcomes in developmental toxicology. _Journal of the American Statistical Association_, 94(447):734–745. https://doi.org/10.1080/01621459.1999.10474176
 - Pace, L., Salvan, A., and Sartori, N. (2011). Adjusting composite likelihood ratio statistics. _Statistica Sinica_, 21(1):129–148.
 - Liang, F. (2010). A double Metropolis-Hastings sampler for spatial models with intractable normalizing constants. _Journal of Statistical Computation and Simulation_, 80(9):1007–1022.
 - Marsman, M., van den Bergh, D., and Haslbeck, J. M. B. (2025). Bayesian analysis of the ordinal

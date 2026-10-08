@@ -394,7 +394,7 @@ naive covariance $-\mathbf{H}^{-1}$ would underestimate the variability. The lik
 $\eta_k$ is based on its profile: for every value of $\eta_k$, the other parameters are set to the values that maximize
 the pseudo-likelihood. Because it is computed from a pseudo-likelihood, the profile likelihood-ratio statistic is not
 $\chi^2_1$-distributed but $\lambda_k \chi^2_1$-distributed, with $\lambda_k = [\boldsymbol{\Sigma}_{\text{GHW}}]_{kk} /
-[-\mathbf{H}^{-1}]_{kk}$ (Pace, Salvan and Sartori, 2011). The interval collects the values of $\eta_k$ for which
+[-\mathbf{H}^{-1}]_{kk}$ (Geys, Molenberghs and Ryan, 1999; Pace, Salvan and Sartori, 2011). The interval collects the values of $\eta_k$ for which
 $$
 \frac{2}{\lambda_k} \left[\log \tilde{f}(\mathbf{X}; \hat{\boldsymbol{\eta}}) - \max_{\boldsymbol{\eta}_{-k}} \log
 \tilde{f}(\mathbf{X}; \eta_k, \boldsymbol{\eta}_{-k})\right] \leq \chi^2_{1, 1 - \alpha},
@@ -761,6 +761,9 @@ residual gap grows for small $n$ relative to the number of parameters (Arena and
 
 - Arena, G. and Marsman, M. (2026). Bayesian inference for discrete Markov random fields through coordinate rescaling.
   arXiv preprint. <https://doi.org/10.48550/arXiv.2601.17205>
+- Geys, H., Molenberghs, G., and Ryan, L. M. (1999). Pseudolikelihood modeling of multivariate outcomes in
+  developmental toxicology. *Journal of the American Statistical Association*, 94(447), 734-745.
+  <https://doi.org/10.1080/01621459.1999.10474176>
 - Liang, F. (2010). A double Metropolis-Hastings sampler for spatial models with intractable normalizing constants.
   *Journal of Statistical Computation and Simulation*, 80(9), 1007-1022.
 - Pace, L., Salvan, A., and Sartori, N. (2011). Adjusting composite likelihood ratio statistics. *Statistica Sinica*,
