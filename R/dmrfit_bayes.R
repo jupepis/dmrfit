@@ -28,7 +28,7 @@
 #' @param thresholds_beta beta parameter for the Beta-Prime prior on thresholds (default is 0.5).
 #' @param interactions_location location parameter for the Cauchy prior on pairwise interactions (default is 0.0).
 #' @param interactions_scale scale parameter for the Cauchy prior on pairwise interactions (default is 2.5).
-#' @param sigma2 initial value for the adaptive variance parameter in the FisherMALA sampler (default is 0.1).
+#' @param sigma2 initial value for the adaptive variance parameter in the FisherMALA sampler (default is 1.0).
 #' @param seed random seed for reproducibility of the MCMC sampler (default is 123). The caller's random number stream is restored on exit.
 #' @param progress logical, whether to show a progress bar while sampling (default is TRUE).
 #' @param control a list of tuning settings, each with a default: \code{adaptive_stage} (500) iterations of the
@@ -72,7 +72,7 @@
 #'
 #' @export
 #'
-dmrfit_bayes <- function(data, parinit = NULL, method = c("core", "adacore", "exact", "dmh"), scale = c("ghw", "mch", "rm"), nsim = 1e03, burnin = 1e03, ncores = 1, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, sigma2 = 0.1, seed = 123, progress = TRUE, control = list()) {
+dmrfit_bayes <- function(data, parinit = NULL, method = c("core", "adacore", "exact", "dmh"), scale = c("ghw", "mch", "rm"), nsim = 1e03, burnin = 1e03, ncores = 1, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, sigma2 = 1.0, seed = 123, progress = TRUE, control = list()) {
 
     # save the matched call for print and summary methods
     cl <- match.call()
@@ -101,7 +101,7 @@ dmrfit_bayes <- function(data, parinit = NULL, method = c("core", "adacore", "ex
     # processing input arguments
 
     if(sigma2 > 1.0) {
-        warning("sigma2 is set to a value greater than 1.0. This may lead to unstable sampling. Consider using a smaller value (e.g., 1.0, 0.1 or 0.01) for better performance.")
+        warning("sigma2 is set to a value greater than 1.0. This may lead to unstable sampling. Consider using a value of at most 1.0 (the default).")
     }
     if(sigma2 <= 0.0) {
         sigma2 <- 1.0

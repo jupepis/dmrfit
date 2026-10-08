@@ -16,7 +16,7 @@ dmrfit_bayes(
   thresholds_beta = 0.5,
   interactions_location = 0,
   interactions_scale = 2.5,
-  sigma2 = 0.1,
+  sigma2 = 1,
   seed = 123,
   progress = TRUE,
   control = list()
@@ -56,7 +56,7 @@ slower.}
 
 \item{interactions_scale}{scale parameter for the Cauchy prior on pairwise interactions (default is 2.5).}
 
-\item{sigma2}{initial value for the adaptive variance parameter in the FisherMALA sampler (default is 0.1).}
+\item{sigma2}{initial value for the adaptive variance parameter in the FisherMALA sampler (default is 1.0).}
 
 \item{seed}{random seed for reproducibility of the MCMC sampler (default is 123). The caller's random number stream is restored on exit.}
 

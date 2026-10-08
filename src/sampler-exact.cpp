@@ -127,7 +127,7 @@ double fishermala_exact_log_acceptance_ratio(const arma::vec& current_pars,
 // @param nsim number of iterations after burnin
 // @param burnin number of burnin iterations
 // @param adaptive_stage_n_iter number of iterations for the initial adaptive stage (simple MALA)
-// @param sigma2 initial value for the step size (this is adaptive and a good starting value is needed (defailt is 1.0), however, it is allowed to vary over iterations) --> for OMRF is set to 0.01 (still needed?)
+// @param sigma2 initial value of the adaptive step size (default is 1.0)
 // @param thresholds_alpha hyperparameter for the beta prior on the thresholds (default is 0.5)
 // @param thresholds_beta hyperparameter for the beta prior on the thresholds (default is 0.5)
 // @param interactions_location location parameter for the cauchy prior on the interactions (default is 0.0)

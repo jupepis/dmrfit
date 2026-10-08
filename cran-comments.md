@@ -4,6 +4,9 @@ This is a bug-fix update of version 0.1.0. Constrained fits, `dmrfit(data, struc
 for some network structures, because the trust-region step produced NaN values. The step is now computed on the free
 parameters only. Regression tests were added. Unconstrained fits give the same results as in version 0.1.0.
 
+The default initial step size of the adaptive sampler in `dmrfit_bayes()` is also changed, from 0.1 to 1.0, the value
+used in the accompanying paper.
+
 ## Test environments
 
 * local: macOS 26.6 (aarch64), R 4.5.2

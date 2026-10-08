@@ -539,7 +539,7 @@ summary(fit_bayes)
 #> Discrete Markov Random Field
 #> Estimation method: Bayesian (FisherMALA), coordinate-rescaled pseudo-posterior (Godambe-Huber-White covariance) 
 #> Nodes: 10  Observations: 917  Parameters: 75 
-#> MCMC samples: 10000  Acceptance rate: 0.579  Elapsed: 5.5 sec
+#> MCMC samples: 10000  Acceptance rate: 0.579  Elapsed: 10.8 sec
 #> Multivariate effective sample size: 2006.8 
 #> ------------------------------------------------------------ 
 #> 
