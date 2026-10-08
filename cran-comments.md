@@ -1,26 +1,20 @@
+## Update
+
+This is a bug-fix update of version 0.1.0. Constrained fits, `dmrfit(data, structure = )`, could fail and return NULL
+for some network structures, because the trust-region step produced NaN values. The step is now computed on the free
+parameters only. Regression tests were added. Unconstrained fits give the same results as in version 0.1.0.
+
 ## Test environments
 
 * local: macOS 26.6 (aarch64), R 4.5.2
 * GitHub Actions: Windows (R release), Ubuntu (R devel, release, oldrel-1)
 * win-builder: R devel
-* R-hub: linux, windows, macos-arm64, clang-asan, gcc14 and gcc16 (Fedora), all R devel
-* local: tests and examples without the suggested package igraph
+* mac-builder: R release
 
 ## R CMD check results
 
-0 errors | 0 warnings | 1 note
+0 errors | 0 warnings | 0 notes
 
-* This is a new submission.
+## Reverse dependencies
 
-  Possibly misspelled words in DESCRIPTION: GHW, Godambe, Ising, Langevin, Liang, Marsman, Skare, Titsias, et al. These
-  are names of authors and of methods (GHW is the Godambe-Huber-White covariance), and are spelled correctly.
-
-## Comments
-
-* The vignette is precompiled: `vignettes/dmrfit.Rmd` is generated from `vignettes/dmrfit.Rmd.orig` (excluded from the
-  package build), because its model fits take about 30 seconds.
-* The dataset `rads2` is distributed under the CC BY 4.0 license, as stated in the `Copyright` field of DESCRIPTION,
-  in `?rads2` and in `inst/COPYRIGHTS`. The rest of the package is under the MIT license.
-* Parallel computation through OpenMP is controlled by the argument `ncores`, with default 1. Examples and tests use at
-  most 2 cores.
-* `igraph` (in Suggests) provides the default network layout of `plot()`. Examples and tests run without it.
+There are no reverse dependencies.
