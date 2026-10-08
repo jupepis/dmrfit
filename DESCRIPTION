@@ -1,8 +1,8 @@
 Package: dmrfit
-Date: 2026-10-07
+Date: 2026-10-08
 Type: Package
 Title: Scalable Bayesian Inference for Discrete Markov Random Fields
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: c(person(given = "Giuseppe",
              family = "Arena",
              role = c("aut", "cre"),
