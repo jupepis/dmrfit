@@ -177,7 +177,7 @@ Rcpp::List cpp_optimize(
             }
             else{ // very hard cases
                 arma::vec w = gq / beta_vec;
-                w(beta_eq_0) *= 0.0;
+                w(beta_eq_0).zeros(); // (0/0 is NaN, and NaN * 0 would stay NaN)
                 p = - (eigvec * w);
                 double u = std::sqrt(r*r - arma::dot(p,p));
                 if(u > 0.0){
@@ -258,7 +258,10 @@ Rcpp::List cpp_optimize_with_structure(
 
     double r = rinit;
     arma::vec pars = parinit % structure;
-    arma::uword n_pars = pars.n_elem;
+    // free coordinates: the trust-region subproblem is solved on their block only, because the rows and columns of the
+    // absent edges would add exact zero eigenvalues to the Hessian (with a zero gradient) and break the subproblem
+    arma::uvec free_idx = arma::find(structure != 0.0);
+    arma::uword n_free = free_idx.n_elem;
     Rcpp::List deriv = dmrf_deriv(pars,data,P,n_categories,with_prior,ncores,thresholds_alpha,thresholds_beta,interactions_location,interactions_scale);
 
     double rho = 0.0;
@@ -269,10 +272,10 @@ Rcpp::List cpp_optimize_with_structure(
     bool is_newton = false;
     arma::uword i;
 
-    arma::vec g(n_pars,arma::fill::zeros);
-    arma::vec p(n_pars,arma::fill::zeros);
-    arma::vec gq(n_pars,arma::fill::zeros);
-    arma::mat B(n_pars,n_pars,arma::fill::zeros);
+    arma::vec g(n_free,arma::fill::zeros);
+    arma::vec p(n_free,arma::fill::zeros);
+    arma::vec gq(n_free,arma::fill::zeros);
+    arma::mat B(n_free,n_free,arma::fill::zeros);
 
     arma::vec eigval;
     arma::mat eigvec;
@@ -281,8 +284,8 @@ Rcpp::List cpp_optimize_with_structure(
             
         if(accept){
             f = deriv["value"];
-            g = Rcpp::as<arma::vec>(deriv["gradient"]) % structure;
-            B = Rcpp::as<arma::mat>(deriv["hessian"]) % (structure * structure.t());
+            g = Rcpp::as<arma::vec>(deriv["gradient"]).elem(free_idx);
+            B = Rcpp::as<arma::mat>(deriv["hessian"]).submat(free_idx, free_idx);
             arma::eig_sym(eigval, eigvec, B); 
             gq = eigvec.t() * g;
         }
@@ -344,7 +347,7 @@ Rcpp::List cpp_optimize_with_structure(
             }
             else{ // very hard cases
                 arma::vec w = gq / beta_vec;
-                w(beta_eq_0) *= 0.0;
+                w(beta_eq_0).zeros(); // (0/0 is NaN, and NaN * 0 would stay NaN)
                 p = - (eigvec * w);
                 double u = std::sqrt(r*r - arma::dot(p,p));
                 if(u > 0.0){
@@ -355,8 +358,8 @@ Rcpp::List cpp_optimize_with_structure(
         }
 
         double preddiff = arma::dot(p ,(g + (B * p)/2.0));
-        arma::vec pars_try = pars + p;
-        pars_try %= structure;
+        arma::vec pars_try = pars;
+        pars_try.elem(free_idx) += p;
 
 
         deriv = dmrf_deriv(pars_try,data,P,n_categories,with_prior,ncores,thresholds_alpha,thresholds_beta,interactions_location,interactions_scale);
@@ -522,7 +525,7 @@ Rcpp::List cpp_optimize_profile(
             }
             else{ // very hard cases
                 arma::vec w = gq / beta_vec;
-                w(beta_eq_0) *= 0.0;
+                w(beta_eq_0).zeros(); // (0/0 is NaN, and NaN * 0 would stay NaN)
                 p = - (eigvec * w);
                 double u = std::sqrt(r*r - arma::dot(p,p));
                 if(u > 0.0){

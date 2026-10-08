@@ -49,6 +49,26 @@ S_all <- matrix(1, 4, 4); diag(S_all) <- 0
 for (pr in c(FALSE, TRUE)) {
     expect_equal(dmrfit(X, structure = S_all, with_prior = pr)$utils$HW, dmrfit(X, with_prior = pr)$utils$HW, tolerance = 1e-8)
 }
+# with every edge present, the constrained trust-region steps are those of the unconstrained fit
+expect_identical(dmrfit(X, structure = S_all)$argument, dmrfit(X)$argument)
+
+# --- constrained fits whose start gave a NaN trust-region step (exact zero eigenvalues of the absent edges in the masked
+# Hessian), and returned NULL
+for (s in c(1, 22, 30)) {
+    set.seed(s); P <- sample(4:8, 1)
+    X_s <- matrix(rbinom(300 * P, 1, 0.4), 300, P)
+    A <- matrix(rbinom(P * P, 1, 0.4), P, P); A[upper.tri(A, TRUE)] <- 0; A <- A + t(A)
+    fit_ns <- dmrfit(X_s, structure = A)
+    expect_false(is.null(fit_ns))
+    # the gradient vanishes on the free parameters, and the absent edges stay at zero
+    free_ns <- c(rep(TRUE, P), A[lower.tri(A)] == 1)
+    expect_true(max(abs(fit_ns$utils$gradient[free_ns])) < 1e-4)
+    expect_true(all(fit_ns$argument[!free_ns] == 0))
+}
+set.seed(1)
+X_s <- matrix(rbinom(800, 1, 0.4), 100, 8)
+A <- matrix(0, 8, 8); A[2, 1] <- A[1, 2] <- 1
+expect_false(is.null(dmrfit(X_s, structure = A)))
 
 # --- profile likelihood-ratio intervals: the adjusted profile statistic equals the chi-square quantile at both bounds
 fit_lrt <- dmrfit(X, with_prior = TRUE, lrt_intervals = TRUE, level = 0.9)
