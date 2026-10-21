@@ -53,9 +53,12 @@
     <div class="section level2">
 <h2 class="page-header" data-toc-text="0.1.1" id="dmrfit-011">dmrfit 0.1.1<a class="anchor" aria-label="anchor" href="#dmrfit-011"></a></h2>
 <ul><li>Constrained fits, <code>dmrfit(data, structure = )</code>, no longer fail and return NULL (“Optimization failed”) for some network structures. The trust-region step is now computed on the free parameters only (the thresholds and the interactions present in the structure). Unconstrained fits are unchanged.</li>
+<li>
+<code><a href="../reference/dmrfit_bayes.html">dmrfit_bayes()</a></code>: the default initial step size of the adaptive FisherMALA sampler is now <code>sigma2 = 1.0</code> (was 0.1), the value used in Arena and Marsman (2026). The step size adapts during the burn-in, so the target distribution is unchanged, but the draws for a given seed differ from version 0.1.0.</li>
+<li>The Savage-Dickey Bayes factors of <code><a href="../reference/dmrfit.html">dmrfit()</a></code> and <code><a href="../reference/dmrfit_bayes.html">dmrfit_bayes()</a></code> are now more stable across seeds: when few posterior draws lie near zero, the density at zero is estimated from a normal approximation of the draws, instead of a kernel estimate from those few draws or a floor. The estimator used for each interaction is in <code>savage_dickey$density_at_zero</code>, and <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> reports how many Bayes factors use the normal approximation.</li>
 </ul></div>
     <div class="section level2">
-<h2 class="page-header" data-toc-text="0.1.0" id="dmrfit-010">dmrfit 0.1.0<a class="anchor" aria-label="anchor" href="#dmrfit-010"></a></h2>
+<h2 class="page-header" data-toc-text="0.1.0" id="dmrfit-010">dmrfit 0.1.0<small>2026-10-18</small><a class="anchor" aria-label="anchor" href="#dmrfit-010"></a></h2>
 <ul><li>First CRAN release.</li>
 </ul></div>
   </div>

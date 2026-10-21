@@ -76,7 +76,7 @@ All samplers use the Fisher adaptive Metropolis-adjusted Langevin algorithm (Fis
 <span>  thresholds_beta <span class="op">=</span> <span class="fl">0.5</span>,</span>
 <span>  interactions_location <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  interactions_scale <span class="op">=</span> <span class="fl">2.5</span>,</span>
-<span>  sigma2 <span class="op">=</span> <span class="fl">0.1</span>,</span>
+<span>  sigma2 <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  seed <span class="op">=</span> <span class="fl">123</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -143,7 +143,7 @@ slower.</p></dd>
 
 
 <dt id="arg-sigma-">sigma2<a class="anchor" aria-label="anchor" href="#arg-sigma-"></a></dt>
-<dd><p>initial value for the adaptive variance parameter in the FisherMALA sampler (default is 0.1).</p></dd>
+<dd><p>initial value for the adaptive variance parameter in the FisherMALA sampler (default is 1.0).</p></dd>
 
 
 <dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
@@ -164,7 +164,7 @@ for <code>scale = "mch"</code> and <code>"rm"</code>; <code>rm_iter</code> (50) 
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>an object of class <code>dmrfit_bayes</code> (also of class <code>dmrfit</code>), including the pseudo-posterior mode (<code>argument</code>), the posterior draws (<code>draws</code>, a matrix with parameters by rows and iterations by columns), the acceptance rate (<code>acceptance</code>), the sampling method and scale (<code>method</code>, <code>scale</code>), the Savage-Dickey Bayes factors with the effective sample size of each parameter (<code>savage_dickey</code>), and the multivariate effective sample size of the draws (<code>mess</code>; Vats, Flegal and Jones, 2019), which is <code>NA</code> when there are fewer than <code>P + 1</code> batches of <code>floor(sqrt(nsim))</code> draws per parameter.</p>
+    <p>an object of class <code>dmrfit_bayes</code> (also of class <code>dmrfit</code>), including the pseudo-posterior mode (<code>argument</code>), the posterior draws (<code>draws</code>, a matrix with parameters by rows and iterations by columns), the acceptance rate (<code>acceptance</code>), the sampling method and scale (<code>method</code>, <code>scale</code>), the Savage-Dickey Bayes factors with the effective sample size of each parameter (<code>savage_dickey</code>; the posterior density of an interaction at zero is a Gaussian kernel estimate, or, when few draws lie near zero, the density of a normal distribution with the mean and standard deviation of the draws, as recorded in <code>savage_dickey$density_at_zero</code>), and the multivariate effective sample size of the draws (<code>mess</code>; Vats, Flegal and Jones, 2019), which is <code>NA</code> when there are fewer than <code>P + 1</code> batches of <code>floor(sqrt(nsim))</code> draws per parameter.</p>
     </div>
     <div id="references">
     <h2>References</h2>
@@ -207,8 +207,8 @@ Associates.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    -0.1373     0.3452    -0.0040 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Posterior: coordinate-rescaled pseudo-posterior (Godambe-Huber-White covariance) </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> MCMC samples: 500  Acceptance rate: 0.6  Elapsed: 0 sec</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Multivariate effective sample size: 236 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> MCMC samples: 500  Acceptance rate: 0.592  Elapsed: 0 sec</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Multivariate effective sample size: 232.2 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
@@ -218,21 +218,21 @@ Associates.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Discrete Markov Random Field (Ising)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Estimation method: Bayesian (FisherMALA), coordinate-rescaled pseudo-posterior (Godambe-Huber-White covariance) </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Nodes: 3  Observations: 1000  Parameters: 6 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> MCMC samples: 500  Acceptance rate: 0.6  Elapsed: 0 sec</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Multivariate effective sample size: 236 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> MCMC samples: 500  Acceptance rate: 0.592  Elapsed: 0 sec</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Multivariate effective sample size: 232.2 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ------------------------------------------------------------ </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Thresholds:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         Post.Mode Post.Mean Post.SD    2.5%   97.5%</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mu[1,1]   -1.4437   -1.4451  0.1262 -1.6943 -1.2143</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mu[2,1]    0.0164    0.0099  0.0798 -0.1300  0.1659</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mu[3,1]   -0.8830   -0.8824  0.1072 -1.0950 -0.6627</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[1,1]   -1.4437   -1.4496  0.1199 -1.6885 -1.2272</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[2,1]    0.0164    0.0118  0.0809 -0.1306  0.1710</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[3,1]   -0.8830   -0.8803  0.1105 -1.0898 -0.6611</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Pairwise interactions:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>            Post.Mode Post.Mean Post.SD    2.5%  97.5%</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> theta[2,1]   -0.1373   -0.1309  0.1577 -0.4166 0.1759</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,1]    0.3452    0.3467  0.1651  0.0266 0.7016</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,2]   -0.0040   -0.0033  0.1405 -0.2926 0.2595</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[2,1]   -0.1373   -0.1311  0.1590 -0.4216 0.1657</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,1]    0.3452    0.3494  0.1640  0.0359 0.6937</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,2]   -0.0040   -0.0073  0.1445 -0.2988 0.2437</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Negative log pseudo-likelihood at posterior mode: 1814.438 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
@@ -240,11 +240,13 @@ Associates.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> H0: theta = 0 for each pairwise interaction</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>            Post.Mode Post.SD BF_01 Pr(=0|x)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> theta[2,1]   -0.1373  0.1577 14.13   0.9339</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,1]    0.3452  0.1651 2.469   0.7118</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,2]   -0.0040  0.1405 22.69   0.9578</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[2,1]   -0.1373  0.1590 12.99   0.9285</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,1]    0.3452  0.1640 1.974   0.6637</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,2]   -0.0040  0.1445 21.78   0.9561</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> MCMC samples: 500   Effective sample size of the interactions: min 181.9 , median 201 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> BF_01 of 1 interaction(s) from a normal approximation of the draws (few draws near zero).</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> MCMC samples: 500   Effective sample size of the interactions: min 151.3 , median 175.8 </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># small network: the exact posterior is also available</span></span></span>
 <span class="r-in"><span><span class="va">fit_exact</span> <span class="op">&lt;-</span> <span class="fu">dmrfit_bayes</span><span class="op">(</span>data <span class="op">=</span> <span class="va">data</span>, method <span class="op">=</span> <span class="st">"exact"</span>, nsim <span class="op">=</span> <span class="fl">500</span>, burnin <span class="op">=</span> <span class="fl">500</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
@@ -257,21 +259,21 @@ Associates.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Discrete Markov Random Field (Ising)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Estimation method: Bayesian (FisherMALA), full-likelihood posterior (exact normalizing constant) </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Nodes: 3  Observations: 1000  Parameters: 6 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> MCMC samples: 500  Acceptance rate: 0.592  Elapsed: 0 sec</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Multivariate effective sample size: 225.9 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> MCMC samples: 500  Acceptance rate: 0.574  Elapsed: 0 sec</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Multivariate effective sample size: 206.2 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ------------------------------------------------------------ </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Thresholds:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         Post.Mode Post.Mean Post.SD    2.5%   97.5%</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mu[1,1]   -1.4437   -1.4425  0.1273 -1.7090 -1.1983</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mu[2,1]    0.0164    0.0105  0.0792 -0.1427  0.1588</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mu[3,1]   -0.8830   -0.8810  0.1072 -1.0900 -0.6708</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[1,1]   -1.4437   -1.4403  0.1213 -1.6788 -1.2160</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[2,1]    0.0164    0.0111  0.0789 -0.1284  0.1751</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[3,1]   -0.8830   -0.8758  0.1095 -1.0753 -0.6647</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Pairwise interactions:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>            Post.Mode Post.Mean Post.SD    2.5%  97.5%</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> theta[2,1]   -0.1373   -0.1353  0.1608 -0.4456 0.1609</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,1]    0.3452    0.3366  0.1589  0.0230 0.6419</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,2]   -0.0040   -0.0015  0.1370 -0.2828 0.2825</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[2,1]   -0.1373   -0.1358  0.1543 -0.4308 0.1397</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,1]    0.3452    0.3314  0.1586  0.0261 0.6516</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,2]   -0.0040   -0.0118  0.1418 -0.3031 0.2736</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Negative log pseudo-likelihood at posterior mode: 1814.438 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
@@ -279,11 +281,13 @@ Associates.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> H0: theta = 0 for each pairwise interaction</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>            Post.Mode Post.SD BF_01 Pr(=0|x)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> theta[2,1]   -0.1373  0.1608 15.11   0.9379</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,1]    0.3452  0.1589 2.506   0.7148</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,2]   -0.0040  0.1370 23.54   0.9592</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[2,1]   -0.1373  0.1543 15.05   0.9377</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,1]    0.3452  0.1586 2.225   0.6899</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta[3,2]   -0.0040  0.1418 24.78   0.9612</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> MCMC samples: 500   Effective sample size of the interactions: min 154.2 , median 178.8 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> BF_01 of 1 interaction(s) from a normal approximation of the draws (few draws near zero).</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> MCMC samples: 500   Effective sample size of the interactions: min 149.3 , median 155.3 </span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
