@@ -1,5 +1,7 @@
 ## Update
 
+This update follows version 0.1.0 closely because it fixes a bug that makes constrained fits fail.
+
 This is a bug-fix update of version 0.1.0. Constrained fits, `dmrfit(data, structure = )`, could fail and return NULL
 for some network structures, because the trust-region step produced NaN values. The step is now computed on the free
 parameters only. Regression tests were added. Unconstrained fits give the same results as in version 0.1.0.
@@ -20,7 +22,9 @@ kernel estimate from those few draws or a floor.
 
 ## R CMD check results
 
-0 errors | 0 warnings | 0 notes
+0 errors | 0 warnings | 1 note
+
+* Days since last update: the update fixes a bug in constrained fits (see above).
 
 ## Reverse dependencies
 
