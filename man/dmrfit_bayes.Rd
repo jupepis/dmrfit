@@ -16,7 +16,7 @@ dmrfit_bayes(
   thresholds_beta = 0.5,
   interactions_location = 0,
   interactions_scale = 2.5,
-  sigma2 = 0.1,
+  sigma2 = 1,
   seed = 123,
   progress = TRUE,
   control = list()
@@ -56,7 +56,7 @@ slower.}
 
 \item{interactions_scale}{scale parameter for the Cauchy prior on pairwise interactions (default is 2.5).}
 
-\item{sigma2}{initial value for the adaptive variance parameter in the FisherMALA sampler (default is 0.1).}
+\item{sigma2}{initial value for the adaptive variance parameter in the FisherMALA sampler (default is 1.0).}
 
 \item{seed}{random seed for reproducibility of the MCMC sampler (default is 123). The caller's random number stream is restored on exit.}
 
@@ -69,7 +69,7 @@ initial adaptive stage; \code{max_states} (1e6) largest number of response patte
 for \code{scale = "mch"} and \code{"rm"}; \code{rm_iter} (50) Robbins-Monro iterations for \code{scale = "rm"}.}
 }
 \value{
-an object of class \code{dmrfit_bayes} (also of class \code{dmrfit}), including the pseudo-posterior mode (\code{argument}), the posterior draws (\code{draws}, a matrix with parameters by rows and iterations by columns), the acceptance rate (\code{acceptance}), the sampling method and scale (\code{method}, \code{scale}), the Savage-Dickey Bayes factors with the effective sample size of each parameter (\code{savage_dickey}), and the multivariate effective sample size of the draws (\code{mess}; Vats, Flegal and Jones, 2019), which is \code{NA} when there are fewer than \code{P + 1} batches of \code{floor(sqrt(nsim))} draws per parameter.
+an object of class \code{dmrfit_bayes} (also of class \code{dmrfit}), including the pseudo-posterior mode (\code{argument}), the posterior draws (\code{draws}, a matrix with parameters by rows and iterations by columns), the acceptance rate (\code{acceptance}), the sampling method and scale (\code{method}, \code{scale}), the Savage-Dickey Bayes factors with the effective sample size of each parameter (\code{savage_dickey}; the posterior density of an interaction at zero is a Gaussian kernel estimate, or, when few draws lie near zero, the density of a normal distribution with the mean and standard deviation of the draws, as recorded in \code{savage_dickey$density_at_zero}), and the multivariate effective sample size of the draws (\code{mess}; Vats, Flegal and Jones, 2019), which is \code{NA} when there are fewer than \code{P + 1} batches of \code{floor(sqrt(nsim))} draws per parameter.
 }
 \description{
 Bayesian inference for a discrete Markov random field (Ising or ordinal) by Markov chain Monte Carlo.
