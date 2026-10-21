@@ -6,6 +6,8 @@
 <!-- badges: start -->
 [![github-repo-status](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 [![R-package-version](https://img.shields.io/github/r-package/v/jupepis/dmrfit)](https://github.com/jupepis/dmrfit)
+[![CRAN status](https://www.r-pkg.org/badges/version/dmrfit)](https://CRAN.R-project.org/package=dmrfit)
+[![CRAN downloads](https://cranlogs.r-pkg.org/badges/grand-total/dmrfit)](https://CRAN.R-project.org/package=dmrfit)
 [![R-CMD-check](https://github.com/jupepis/dmrfit/actions/workflows/check-standard.yaml/badge.svg)](https://github.com/jupepis/dmrfit/actions/workflows/check-standard.yaml)
 [![Codecov test coverage](https://codecov.io/gh/jupepis/dmrfit/graph/badge.svg)](https://app.codecov.io/gh/jupepis/dmrfit)
 <!-- badges: end -->
