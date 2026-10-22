@@ -11,6 +11,7 @@
   a kernel estimate from those few draws or a floor. The estimator used for each
   interaction is in `savage_dickey$density_at_zero`, and `summary()` reports how many Bayes factors use the normal
   approximation.
+* Fixes the compiler warnings (-Wself-assign-overloaded) reported on macOS.
 
 # dmrfit 0.1.0
 

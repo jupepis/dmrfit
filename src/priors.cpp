@@ -19,7 +19,7 @@ arma::vec log_dcauchy(
     ){
     x -= l;
     x /= gamma;
-    x %= x;
+    x = arma::square(x);
     x += 1.0;
     x *= (gamma*arma::datum::pi);
     return -arma::log(x);
@@ -41,7 +41,7 @@ arma::vec log_dcauchy_second_derivative(
     double l, // location parameter
     double gamma){ // scale parameter
     x -= l; // (x-l)
-    x %= x; // (x-l)^2
+    x = arma::square(x); // (x-l)^2
     gamma *= gamma; // gamma^2
     arma::vec denom = gamma + x;
     return   2.0 * ( x - gamma ) / ( denom % denom );

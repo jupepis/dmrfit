@@ -13,6 +13,9 @@ The Savage-Dickey Bayes factors of `dmrfit()` and `dmrfit_bayes()` are now more 
 posterior draws lie near zero, the density at zero is estimated from a normal approximation of the draws, instead of a
 kernel estimate from those few draws or a floor.
 
+The update also removes the compiler warnings in `src/priors.cpp` (-Wself-assign-overloaded) reported by the CRAN
+checks of version 0.1.0 on r-release-macos-x86_64, r-oldrel-macos-arm64 and r-oldrel-macos-x86_64.
+
 ## Test environments
 
 * local: macOS 26.6 (aarch64), R 4.5.2
