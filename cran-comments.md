@@ -21,7 +21,6 @@ checks of version 0.1.0 on r-release-macos-x86_64, r-oldrel-macos-arm64 and r-ol
 * local: macOS 26.6 (aarch64), R 4.5.2
 * GitHub Actions: Windows (R release), Ubuntu (R devel, release, oldrel-1)
 * win-builder: R devel
-* mac-builder: R release
 
 ## R CMD check results
 
