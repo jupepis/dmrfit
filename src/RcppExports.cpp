@@ -92,6 +92,206 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// cpp_core_edge_sampler
+Rcpp::List cpp_core_edge_sampler(const arma::mat& X, const arma::vec& freq, const arma::uvec& n_categories, const arma::vec& pars, const arma::vec& eta_star, const arma::mat& Ainv, arma::uword nsim, arma::uword burnin, arma::uword adaptive_stage_n_iter, arma::uword thin, double sigma2, std::string edge_prior, double inclusion_prob, double beta_alpha, double beta_beta, std::string slab, double interactions_location, double interactions_scale, std::string threshold_prior, double thresholds_alpha, double thresholds_beta, Rcpp::Nullable<Rcpp::NumericVector> threshold_mean, double threshold_sd, bool use_likelihood, bool progress);
+RcppExport SEXP _dmrfit_cpp_core_edge_sampler(SEXP XSEXP, SEXP freqSEXP, SEXP n_categoriesSEXP, SEXP parsSEXP, SEXP eta_starSEXP, SEXP AinvSEXP, SEXP nsimSEXP, SEXP burninSEXP, SEXP adaptive_stage_n_iterSEXP, SEXP thinSEXP, SEXP sigma2SEXP, SEXP edge_priorSEXP, SEXP inclusion_probSEXP, SEXP beta_alphaSEXP, SEXP beta_betaSEXP, SEXP slabSEXP, SEXP interactions_locationSEXP, SEXP interactions_scaleSEXP, SEXP threshold_priorSEXP, SEXP thresholds_alphaSEXP, SEXP thresholds_betaSEXP, SEXP threshold_meanSEXP, SEXP threshold_sdSEXP, SEXP use_likelihoodSEXP, SEXP progressSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type freq(freqSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type n_categories(n_categoriesSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type pars(parsSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type eta_star(eta_starSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Ainv(AinvSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type nsim(nsimSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type burnin(burninSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type adaptive_stage_n_iter(adaptive_stage_n_iterSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type thin(thinSEXP);
+    Rcpp::traits::input_parameter< double >::type sigma2(sigma2SEXP);
+    Rcpp::traits::input_parameter< std::string >::type edge_prior(edge_priorSEXP);
+    Rcpp::traits::input_parameter< double >::type inclusion_prob(inclusion_probSEXP);
+    Rcpp::traits::input_parameter< double >::type beta_alpha(beta_alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type beta_beta(beta_betaSEXP);
+    Rcpp::traits::input_parameter< std::string >::type slab(slabSEXP);
+    Rcpp::traits::input_parameter< double >::type interactions_location(interactions_locationSEXP);
+    Rcpp::traits::input_parameter< double >::type interactions_scale(interactions_scaleSEXP);
+    Rcpp::traits::input_parameter< std::string >::type threshold_prior(threshold_priorSEXP);
+    Rcpp::traits::input_parameter< double >::type thresholds_alpha(thresholds_alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type thresholds_beta(thresholds_betaSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type threshold_mean(threshold_meanSEXP);
+    Rcpp::traits::input_parameter< double >::type threshold_sd(threshold_sdSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_likelihood(use_likelihoodSEXP);
+    Rcpp::traits::input_parameter< bool >::type progress(progressSEXP);
+    rcpp_result_gen = Rcpp::wrap(cpp_core_edge_sampler(X, freq, n_categories, pars, eta_star, Ainv, nsim, burnin, adaptive_stage_n_iter, thin, sigma2, edge_prior, inclusion_prob, beta_alpha, beta_beta, slab, interactions_location, interactions_scale, threshold_prior, thresholds_alpha, thresholds_beta, threshold_mean, threshold_sd, use_likelihood, progress));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cpp_dmh_edge_sampler
+Rcpp::List cpp_dmh_edge_sampler(const arma::vec& S, double n, const arma::mat& X, const arma::vec& freq, const arma::mat& data, const arma::uvec& n_categories, const arma::vec& pars, arma::uword nsim, arma::uword burnin, arma::uword adaptive_stage_n_iter, arma::uword thin, double sigma2, std::string edge_prior, double inclusion_prob, double beta_alpha, double beta_beta, std::string slab, double interactions_location, double interactions_scale, std::string threshold_prior, double thresholds_alpha, double thresholds_beta, Rcpp::Nullable<Rcpp::NumericVector> threshold_mean, double threshold_sd, arma::uword L, arma::uword inner_sampler_n_iter, bool use_likelihood, bool progress);
+RcppExport SEXP _dmrfit_cpp_dmh_edge_sampler(SEXP SSEXP, SEXP nSEXP, SEXP XSEXP, SEXP freqSEXP, SEXP dataSEXP, SEXP n_categoriesSEXP, SEXP parsSEXP, SEXP nsimSEXP, SEXP burninSEXP, SEXP adaptive_stage_n_iterSEXP, SEXP thinSEXP, SEXP sigma2SEXP, SEXP edge_priorSEXP, SEXP inclusion_probSEXP, SEXP beta_alphaSEXP, SEXP beta_betaSEXP, SEXP slabSEXP, SEXP interactions_locationSEXP, SEXP interactions_scaleSEXP, SEXP threshold_priorSEXP, SEXP thresholds_alphaSEXP, SEXP thresholds_betaSEXP, SEXP threshold_meanSEXP, SEXP threshold_sdSEXP, SEXP LSEXP, SEXP inner_sampler_n_iterSEXP, SEXP use_likelihoodSEXP, SEXP progressSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type S(SSEXP);
+    Rcpp::traits::input_parameter< double >::type n(nSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type freq(freqSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type data(dataSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type n_categories(n_categoriesSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type pars(parsSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type nsim(nsimSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type burnin(burninSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type adaptive_stage_n_iter(adaptive_stage_n_iterSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type thin(thinSEXP);
+    Rcpp::traits::input_parameter< double >::type sigma2(sigma2SEXP);
+    Rcpp::traits::input_parameter< std::string >::type edge_prior(edge_priorSEXP);
+    Rcpp::traits::input_parameter< double >::type inclusion_prob(inclusion_probSEXP);
+    Rcpp::traits::input_parameter< double >::type beta_alpha(beta_alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type beta_beta(beta_betaSEXP);
+    Rcpp::traits::input_parameter< std::string >::type slab(slabSEXP);
+    Rcpp::traits::input_parameter< double >::type interactions_location(interactions_locationSEXP);
+    Rcpp::traits::input_parameter< double >::type interactions_scale(interactions_scaleSEXP);
+    Rcpp::traits::input_parameter< std::string >::type threshold_prior(threshold_priorSEXP);
+    Rcpp::traits::input_parameter< double >::type thresholds_alpha(thresholds_alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type thresholds_beta(thresholds_betaSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type threshold_mean(threshold_meanSEXP);
+    Rcpp::traits::input_parameter< double >::type threshold_sd(threshold_sdSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type L(LSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type inner_sampler_n_iter(inner_sampler_n_iterSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_likelihood(use_likelihoodSEXP);
+    Rcpp::traits::input_parameter< bool >::type progress(progressSEXP);
+    rcpp_result_gen = Rcpp::wrap(cpp_dmh_edge_sampler(S, n, X, freq, data, n_categories, pars, nsim, burnin, adaptive_stage_n_iter, thin, sigma2, edge_prior, inclusion_prob, beta_alpha, beta_beta, slab, interactions_location, interactions_scale, threshold_prior, thresholds_alpha, thresholds_beta, threshold_mean, threshold_sd, L, inner_sampler_n_iter, use_likelihood, progress));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cpp_exact_edge_sampler
+Rcpp::List cpp_exact_edge_sampler(const arma::imat& Y, const arma::vec& S, double n, const arma::mat& X, const arma::uvec& n_categories, const arma::vec& pars, arma::uword nsim, arma::uword burnin, arma::uword adaptive_stage_n_iter, arma::uword thin, double sigma2, std::string edge_prior, double inclusion_prob, double beta_alpha, double beta_beta, std::string slab, double interactions_location, double interactions_scale, std::string threshold_prior, double thresholds_alpha, double thresholds_beta, Rcpp::Nullable<Rcpp::NumericVector> threshold_mean, double threshold_sd, bool use_likelihood, bool progress);
+RcppExport SEXP _dmrfit_cpp_exact_edge_sampler(SEXP YSEXP, SEXP SSEXP, SEXP nSEXP, SEXP XSEXP, SEXP n_categoriesSEXP, SEXP parsSEXP, SEXP nsimSEXP, SEXP burninSEXP, SEXP adaptive_stage_n_iterSEXP, SEXP thinSEXP, SEXP sigma2SEXP, SEXP edge_priorSEXP, SEXP inclusion_probSEXP, SEXP beta_alphaSEXP, SEXP beta_betaSEXP, SEXP slabSEXP, SEXP interactions_locationSEXP, SEXP interactions_scaleSEXP, SEXP threshold_priorSEXP, SEXP thresholds_alphaSEXP, SEXP thresholds_betaSEXP, SEXP threshold_meanSEXP, SEXP threshold_sdSEXP, SEXP use_likelihoodSEXP, SEXP progressSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::imat& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type S(SSEXP);
+    Rcpp::traits::input_parameter< double >::type n(nSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type n_categories(n_categoriesSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type pars(parsSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type nsim(nsimSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type burnin(burninSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type adaptive_stage_n_iter(adaptive_stage_n_iterSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type thin(thinSEXP);
+    Rcpp::traits::input_parameter< double >::type sigma2(sigma2SEXP);
+    Rcpp::traits::input_parameter< std::string >::type edge_prior(edge_priorSEXP);
+    Rcpp::traits::input_parameter< double >::type inclusion_prob(inclusion_probSEXP);
+    Rcpp::traits::input_parameter< double >::type beta_alpha(beta_alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type beta_beta(beta_betaSEXP);
+    Rcpp::traits::input_parameter< std::string >::type slab(slabSEXP);
+    Rcpp::traits::input_parameter< double >::type interactions_location(interactions_locationSEXP);
+    Rcpp::traits::input_parameter< double >::type interactions_scale(interactions_scaleSEXP);
+    Rcpp::traits::input_parameter< std::string >::type threshold_prior(threshold_priorSEXP);
+    Rcpp::traits::input_parameter< double >::type thresholds_alpha(thresholds_alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type thresholds_beta(thresholds_betaSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type threshold_mean(threshold_meanSEXP);
+    Rcpp::traits::input_parameter< double >::type threshold_sd(threshold_sdSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_likelihood(use_likelihoodSEXP);
+    Rcpp::traits::input_parameter< bool >::type progress(progressSEXP);
+    rcpp_result_gen = Rcpp::wrap(cpp_exact_edge_sampler(Y, S, n, X, n_categories, pars, nsim, burnin, adaptive_stage_n_iter, thin, sigma2, edge_prior, inclusion_prob, beta_alpha, beta_beta, slab, interactions_location, interactions_scale, threshold_prior, thresholds_alpha, thresholds_beta, threshold_mean, threshold_sd, use_likelihood, progress));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cpp_pseudo_edge_sampler
+Rcpp::List cpp_pseudo_edge_sampler(const arma::mat& X, const arma::vec& freq, const arma::uvec& n_categories, const arma::vec& pars, arma::uword nsim, arma::uword burnin, arma::uword adaptive_stage_n_iter, arma::uword thin, double sigma2, std::string edge_prior, double inclusion_prob, double beta_alpha, double beta_beta, std::string slab, double interactions_location, double interactions_scale, std::string threshold_prior, double thresholds_alpha, double thresholds_beta, Rcpp::Nullable<Rcpp::NumericVector> threshold_mean, double threshold_sd, bool use_likelihood, bool progress);
+RcppExport SEXP _dmrfit_cpp_pseudo_edge_sampler(SEXP XSEXP, SEXP freqSEXP, SEXP n_categoriesSEXP, SEXP parsSEXP, SEXP nsimSEXP, SEXP burninSEXP, SEXP adaptive_stage_n_iterSEXP, SEXP thinSEXP, SEXP sigma2SEXP, SEXP edge_priorSEXP, SEXP inclusion_probSEXP, SEXP beta_alphaSEXP, SEXP beta_betaSEXP, SEXP slabSEXP, SEXP interactions_locationSEXP, SEXP interactions_scaleSEXP, SEXP threshold_priorSEXP, SEXP thresholds_alphaSEXP, SEXP thresholds_betaSEXP, SEXP threshold_meanSEXP, SEXP threshold_sdSEXP, SEXP use_likelihoodSEXP, SEXP progressSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type freq(freqSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type n_categories(n_categoriesSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type pars(parsSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type nsim(nsimSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type burnin(burninSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type adaptive_stage_n_iter(adaptive_stage_n_iterSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type thin(thinSEXP);
+    Rcpp::traits::input_parameter< double >::type sigma2(sigma2SEXP);
+    Rcpp::traits::input_parameter< std::string >::type edge_prior(edge_priorSEXP);
+    Rcpp::traits::input_parameter< double >::type inclusion_prob(inclusion_probSEXP);
+    Rcpp::traits::input_parameter< double >::type beta_alpha(beta_alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type beta_beta(beta_betaSEXP);
+    Rcpp::traits::input_parameter< std::string >::type slab(slabSEXP);
+    Rcpp::traits::input_parameter< double >::type interactions_location(interactions_locationSEXP);
+    Rcpp::traits::input_parameter< double >::type interactions_scale(interactions_scaleSEXP);
+    Rcpp::traits::input_parameter< std::string >::type threshold_prior(threshold_priorSEXP);
+    Rcpp::traits::input_parameter< double >::type thresholds_alpha(thresholds_alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type thresholds_beta(thresholds_betaSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type threshold_mean(threshold_meanSEXP);
+    Rcpp::traits::input_parameter< double >::type threshold_sd(threshold_sdSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_likelihood(use_likelihoodSEXP);
+    Rcpp::traits::input_parameter< bool >::type progress(progressSEXP);
+    rcpp_result_gen = Rcpp::wrap(cpp_pseudo_edge_sampler(X, freq, n_categories, pars, nsim, burnin, adaptive_stage_n_iter, thin, sigma2, edge_prior, inclusion_prob, beta_alpha, beta_beta, slab, interactions_location, interactions_scale, threshold_prior, thresholds_alpha, thresholds_beta, threshold_mean, threshold_sd, use_likelihood, progress));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cpp_paper_edge_logpl
+Rcpp::List cpp_paper_edge_logpl(const arma::mat& X, const arma::vec& freq, const arma::uvec& n_categories, const arma::vec& eta);
+RcppExport SEXP _dmrfit_cpp_paper_edge_logpl(SEXP XSEXP, SEXP freqSEXP, SEXP n_categoriesSEXP, SEXP etaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type freq(freqSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type n_categories(n_categoriesSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type eta(etaSEXP);
+    rcpp_result_gen = Rcpp::wrap(cpp_paper_edge_logpl(X, freq, n_categories, eta));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cpp_paper_edge_line
+Rcpp::List cpp_paper_edge_line(const arma::mat& X, const arma::vec& freq, const arma::uvec& n_categories, const arma::vec& psi, bool core, const arma::vec& eta_star, const arma::mat& Ainv, arma::uword k, double t);
+RcppExport SEXP _dmrfit_cpp_paper_edge_line(SEXP XSEXP, SEXP freqSEXP, SEXP n_categoriesSEXP, SEXP psiSEXP, SEXP coreSEXP, SEXP eta_starSEXP, SEXP AinvSEXP, SEXP kSEXP, SEXP tSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type freq(freqSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type n_categories(n_categoriesSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type psi(psiSEXP);
+    Rcpp::traits::input_parameter< bool >::type core(coreSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type eta_star(eta_starSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Ainv(AinvSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type k(kSEXP);
+    Rcpp::traits::input_parameter< double >::type t(tSEXP);
+    rcpp_result_gen = Rcpp::wrap(cpp_paper_edge_line(X, freq, n_categories, psi, core, eta_star, Ainv, k, t));
+    return rcpp_result_gen;
+END_RCPP
+}
+// log_dcauchy_second_derivative
+arma::vec log_dcauchy_second_derivative(arma::vec x, double l, double gamma);
+RcppExport SEXP _dmrfit_log_dcauchy_second_derivative(SEXP xSEXP, SEXP lSEXP, SEXP gammaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type l(lSEXP);
+    Rcpp::traits::input_parameter< double >::type gamma(gammaSEXP);
+    rcpp_result_gen = Rcpp::wrap(log_dcauchy_second_derivative(x, l, gamma));
+    return rcpp_result_gen;
+END_RCPP
+}
+// log_beta_prime_second_derivative
+arma::vec log_beta_prime_second_derivative(arma::vec x, double alpha, double beta);
+RcppExport SEXP _dmrfit_log_beta_prime_second_derivative(SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
+    rcpp_result_gen = Rcpp::wrap(log_beta_prime_second_derivative(x, alpha, beta));
+    return rcpp_result_gen;
+END_RCPP
+}
 // cpp_adacore_sampler
 Rcpp::List cpp_adacore_sampler(const arma::mat& data, const arma::vec& pars, const arma::uvec& n_categories, const arma::vec& pmles, arma::uword nsim, arma::uword burnin, arma::uword adaptive_stage_n_iter, double sigma2, double thresholds_alpha, double thresholds_beta, double interactions_location, double interactions_scale, bool verbose, bool progress);
 RcppExport SEXP _dmrfit_cpp_adacore_sampler(SEXP dataSEXP, SEXP parsSEXP, SEXP n_categoriesSEXP, SEXP pmlesSEXP, SEXP nsimSEXP, SEXP burninSEXP, SEXP adaptive_stage_n_iterSEXP, SEXP sigma2SEXP, SEXP thresholds_alphaSEXP, SEXP thresholds_betaSEXP, SEXP interactions_locationSEXP, SEXP interactions_scaleSEXP, SEXP verboseSEXP, SEXP progressSEXP) {
@@ -361,6 +561,14 @@ static const R_CallMethodDef CallEntries[] = {
     {"_dmrfit_cpp_optimize", (DL_FUNC) &_dmrfit_cpp_optimize, 16},
     {"_dmrfit_cpp_optimize_with_structure", (DL_FUNC) &_dmrfit_cpp_optimize_with_structure, 17},
     {"_dmrfit_cpp_optimize_profile", (DL_FUNC) &_dmrfit_cpp_optimize_profile, 18},
+    {"_dmrfit_cpp_core_edge_sampler", (DL_FUNC) &_dmrfit_cpp_core_edge_sampler, 25},
+    {"_dmrfit_cpp_dmh_edge_sampler", (DL_FUNC) &_dmrfit_cpp_dmh_edge_sampler, 28},
+    {"_dmrfit_cpp_exact_edge_sampler", (DL_FUNC) &_dmrfit_cpp_exact_edge_sampler, 25},
+    {"_dmrfit_cpp_pseudo_edge_sampler", (DL_FUNC) &_dmrfit_cpp_pseudo_edge_sampler, 23},
+    {"_dmrfit_cpp_paper_edge_logpl", (DL_FUNC) &_dmrfit_cpp_paper_edge_logpl, 4},
+    {"_dmrfit_cpp_paper_edge_line", (DL_FUNC) &_dmrfit_cpp_paper_edge_line, 9},
+    {"_dmrfit_log_dcauchy_second_derivative", (DL_FUNC) &_dmrfit_log_dcauchy_second_derivative, 3},
+    {"_dmrfit_log_beta_prime_second_derivative", (DL_FUNC) &_dmrfit_log_beta_prime_second_derivative, 3},
     {"_dmrfit_cpp_adacore_sampler", (DL_FUNC) &_dmrfit_cpp_adacore_sampler, 14},
     {"_dmrfit_cpp_core_sampler", (DL_FUNC) &_dmrfit_cpp_core_sampler, 16},
     {"_dmrfit_cpp_dmh_sampler", (DL_FUNC) &_dmrfit_cpp_dmh_sampler, 15},

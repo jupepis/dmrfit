@@ -34,8 +34,10 @@ Imports:
     Rcpp (>= 1.1.0),
     stats
 Suggests: 
+    coda,
     igraph,
     knitr,
+    MASS,
     rmarkdown,
     tinytest
 VignetteBuilder: knitr

@@ -11,6 +11,8 @@
 ^Meta$
 ^docs$
 ^pl_project$
+^edge_project$
+^es_project$
 \.DS_Store$
 ^src/.*\.o$
 ^src/.*\.so$

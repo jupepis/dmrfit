@@ -13,6 +13,38 @@ cpp_optimize_profile <- function(data, parinit, which_parconstr, parconstr, n_ca
     .Call(`_dmrfit_cpp_optimize_profile`, data, parinit, which_parconstr, parconstr, n_categories, P, f_term, m_term, n_iter_max, rinit, rmax, with_prior, epsilon, ncores, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale)
 }
 
+cpp_core_edge_sampler <- function(X, freq, n_categories, pars, eta_star, Ainv, nsim, burnin, adaptive_stage_n_iter = 500L, thin = 1L, sigma2 = 0.1, edge_prior = "beta-bernoulli", inclusion_prob = 0.5, beta_alpha = 1.0, beta_beta = 1.0, slab = "cauchy", interactions_location = 0.0, interactions_scale = 2.5, threshold_prior = "betaprime", thresholds_alpha = 0.5, thresholds_beta = 0.5, threshold_mean = NULL, threshold_sd = 1.0, use_likelihood = TRUE, progress = TRUE) {
+    .Call(`_dmrfit_cpp_core_edge_sampler`, X, freq, n_categories, pars, eta_star, Ainv, nsim, burnin, adaptive_stage_n_iter, thin, sigma2, edge_prior, inclusion_prob, beta_alpha, beta_beta, slab, interactions_location, interactions_scale, threshold_prior, thresholds_alpha, thresholds_beta, threshold_mean, threshold_sd, use_likelihood, progress)
+}
+
+cpp_dmh_edge_sampler <- function(S, n, X, freq, data, n_categories, pars, nsim, burnin, adaptive_stage_n_iter = 500L, thin = 1L, sigma2 = 0.1, edge_prior = "beta-bernoulli", inclusion_prob = 0.5, beta_alpha = 1.0, beta_beta = 1.0, slab = "cauchy", interactions_location = 0.0, interactions_scale = 2.5, threshold_prior = "betaprime", thresholds_alpha = 0.5, thresholds_beta = 0.5, threshold_mean = NULL, threshold_sd = 1.0, L = 25000L, inner_sampler_n_iter = 5L, use_likelihood = TRUE, progress = TRUE) {
+    .Call(`_dmrfit_cpp_dmh_edge_sampler`, S, n, X, freq, data, n_categories, pars, nsim, burnin, adaptive_stage_n_iter, thin, sigma2, edge_prior, inclusion_prob, beta_alpha, beta_beta, slab, interactions_location, interactions_scale, threshold_prior, thresholds_alpha, thresholds_beta, threshold_mean, threshold_sd, L, inner_sampler_n_iter, use_likelihood, progress)
+}
+
+cpp_exact_edge_sampler <- function(Y, S, n, X, n_categories, pars, nsim, burnin, adaptive_stage_n_iter = 500L, thin = 1L, sigma2 = 0.1, edge_prior = "beta-bernoulli", inclusion_prob = 0.5, beta_alpha = 1.0, beta_beta = 1.0, slab = "cauchy", interactions_location = 0.0, interactions_scale = 2.5, threshold_prior = "betaprime", thresholds_alpha = 0.5, thresholds_beta = 0.5, threshold_mean = NULL, threshold_sd = 1.0, use_likelihood = TRUE, progress = TRUE) {
+    .Call(`_dmrfit_cpp_exact_edge_sampler`, Y, S, n, X, n_categories, pars, nsim, burnin, adaptive_stage_n_iter, thin, sigma2, edge_prior, inclusion_prob, beta_alpha, beta_beta, slab, interactions_location, interactions_scale, threshold_prior, thresholds_alpha, thresholds_beta, threshold_mean, threshold_sd, use_likelihood, progress)
+}
+
+cpp_pseudo_edge_sampler <- function(X, freq, n_categories, pars, nsim, burnin, adaptive_stage_n_iter = 500L, thin = 1L, sigma2 = 0.1, edge_prior = "beta-bernoulli", inclusion_prob = 0.5, beta_alpha = 1.0, beta_beta = 1.0, slab = "cauchy", interactions_location = 0.0, interactions_scale = 2.5, threshold_prior = "betaprime", thresholds_alpha = 0.5, thresholds_beta = 0.5, threshold_mean = NULL, threshold_sd = 1.0, use_likelihood = TRUE, progress = TRUE) {
+    .Call(`_dmrfit_cpp_pseudo_edge_sampler`, X, freq, n_categories, pars, nsim, burnin, adaptive_stage_n_iter, thin, sigma2, edge_prior, inclusion_prob, beta_alpha, beta_beta, slab, interactions_location, interactions_scale, threshold_prior, thresholds_alpha, thresholds_beta, threshold_mean, threshold_sd, use_likelihood, progress)
+}
+
+cpp_paper_edge_logpl <- function(X, freq, n_categories, eta) {
+    .Call(`_dmrfit_cpp_paper_edge_logpl`, X, freq, n_categories, eta)
+}
+
+cpp_paper_edge_line <- function(X, freq, n_categories, psi, core, eta_star, Ainv, k, t) {
+    .Call(`_dmrfit_cpp_paper_edge_line`, X, freq, n_categories, psi, core, eta_star, Ainv, k, t)
+}
+
+log_dcauchy_second_derivative <- function(x, l, gamma) {
+    .Call(`_dmrfit_log_dcauchy_second_derivative`, x, l, gamma)
+}
+
+log_beta_prime_second_derivative <- function(x, alpha, beta) {
+    .Call(`_dmrfit_log_beta_prime_second_derivative`, x, alpha, beta)
+}
+
 cpp_adacore_sampler <- function(data, pars, n_categories, pmles, nsim, burnin, adaptive_stage_n_iter = 500L, sigma2 = 1.0, thresholds_alpha = 0.5, thresholds_beta = 0.5, interactions_location = 0.0, interactions_scale = 2.5, verbose = FALSE, progress = TRUE) {
     .Call(`_dmrfit_cpp_adacore_sampler`, data, pars, n_categories, pmles, nsim, burnin, adaptive_stage_n_iter, sigma2, thresholds_alpha, thresholds_beta, interactions_location, interactions_scale, verbose, progress)
 }

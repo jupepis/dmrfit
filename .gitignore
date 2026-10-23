@@ -32,3 +32,7 @@ Meta/
 # /.quarto/
 # **/*.quarto_ipynb
 docs
+
+# edge-selection working folder and simulation study (kept out of the repository)
+edge_project/
+es_project/

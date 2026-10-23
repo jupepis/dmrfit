@@ -36,6 +36,7 @@ arma::vec log_dcauchy_first_derivative(
 }
 
 // Cauchy : log second derivative
+// [[Rcpp::export]]
 arma::vec log_dcauchy_second_derivative(
     arma::vec x, 
     double l, // location parameter
@@ -70,6 +71,7 @@ arma::vec log_beta_prime_first_derivative(
 }
 
 // log beta-prime : log second derivative
+// [[Rcpp::export]]
 arma::vec log_beta_prime_second_derivative(
     arma::vec x, 
     double alpha,
